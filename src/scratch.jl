@@ -41,7 +41,7 @@ c_vec = reshape(drive, (k * N, 1))
 z = [ρ0]
 for n = 1:N
     ρ = z[n]
-    H_n = H(drive .* 0.0 .+ 1/2 * pi, n * dt, T, N)
+    H_n = H(drive, n * dt, T, N)
     H_k = sx
     blz = zero(H_k)
     
@@ -57,16 +57,59 @@ for n = 1:N
 end
 
 
-zz = [real(tr(i * sz)) for i in z]
+# zz = [real(tr(i * sz)) for i in z]
+
+# H_n = H(drive, 0.1, T, N)
+# H_k = sx
+# blz = zero(H_k)
+
+
+# L2 = [H_n H_k; blz H_n]
+
+# expl2 = exp(-1.0im * L2 * dt)
+
+# DH_k = expl2[1:2, 3:end]
+# P_n = expl2[1:2, 1:2]
+
+
+
+# work in vector formalism
+
+ρ0vec = reshape(ρ0, (4,1))
+ρTvec = reshape(ρT, (4, 1))
 
 H_n = H(drive, 0.1, T, N)
-H_k = sx
-blz = zero(H_k)
+i2 = I(size(H_n,1))
+
+Hhat = kron(i2, H_n) - kron(H_n', i2)
 
 
-L2 = [H_n H_k; blz H_n]
+z = [ρ0vec]
 
-expl2 = exp(-1.0im * L2 * dt)
+for n = 1:N
+    ρ = z[n]
+    H_n_temp = H(drive .* 0.0 .+ 0.5 * pi, n * dt, T, N)
+    H_n = kron(i2, H_n_temp) - kron(H_n_temp', i2)
 
-DH_k = expl2[1:2, 3:end]
-P_n = expl2[1:2, 1:2]
+    i2 = I(size(H_n_temp,1))
+
+    H_k = kron(i2, sx) - kron(sx', i2)
+
+    
+    blz = zero(H_k)
+    
+    L2 = [H_n H_k; blz H_n]
+    expl2 = exp(-1.0im * L2 * dt)
+
+    # DH_k = expl2[1:2, 3:end]
+    P_n = expl2[1:4, 1:4]
+
+    ρ_t = P_n * ρ
+    append!(z, [ρ_t])
+
+end
+
+
+szhat = kron(i2, sz) - kron(sz', i2)
+
+zz = [real(tr(sz * reshape(i, (2,2)))) for i in z]
