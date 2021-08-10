@@ -1,5 +1,7 @@
 module GRAPE
 
-# Write your package code here.
+include("optimize.jl")
+
+export GRAPEWrk, optimize
 
 end
