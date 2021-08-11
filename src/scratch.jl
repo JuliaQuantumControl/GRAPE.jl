@@ -56,42 +56,77 @@ end
 
 dim, ψ_store, ϕ_store, state0, temp_state, mat0, aux_store, dd_store = _get_storage_arrays(ρ0vec, ρTvec, N, K)
 
+function test_grape(F, G, x, dim, ψ_store, ϕ_store, state0, temp_state, mat0, aux_store, dd_store, grad, H_func, H_K_super)
+    for n = 1:N
+        ψ = ψ_store[n]
+        # could compute Hamiltonian once and store it
+        H_n_temp = H_func(x, n * dt, T, N)
+        id = I(size(H_n_temp,1))
+        
+        H_n = kron(id, H_n_temp) - kron(H_n_temp', id)
+        # U * ψ
+        ψ_store[n+1] .= expv(-1.0im * dt, H_n, ψ)
+    
+        # compute and store the directional derivative
+        # set up the temp_state 
+        temp_state[dim+1:end] .= ψ
+        for k = 1:K
+            # set up augmented matrix
+            H_k = H_K_super[k]
+            aux_store[1:dim, dim+1:end] .= H_k
+            # then on the diagonal we want H_n
+            aux_store[1:dim, 1:dim] .= H_n
+            aux_store[dim+1:end, dim+1:end] .= H_n
+            dd_store[k][n] .= expv(-1.0im * dt, aux_store, temp_state)[1:dim]
+        end
+    end
+
+    @show abs2.(ψ_store[end])
+
+    for n = reverse(1:N)
+        ϕ = ϕ_store[n+1]
+        H_n_temp = H_func(x, n * dt, T, N)
+        id = I(size(H_n_temp,1))
+        
+        H_n = kron(id, H_n_temp) - kron(H_n_temp', id)
+        ϕ_store[n] .= expv(1.0im * dt, H_n, ϕ)
+    end
+
+    fid = abs2(ϕ_store[N]' * ψ_store[N])
+    for n = 1:N
+        for k = 1:K
+            grad[k, n] = 2 * real(ϕ_store[n]' * dd_store[k][n] * ψ_store[n]' * ϕ_store[N])
+        end
+    end
+
+    if G !== nothing
+        G .= grad
+    end
+    if F !== nothing
+        return fid
+    end
+
+
+end
+
+using Optim
+topt = (F, G, x) -> test_grape(F, G, x, dim, ψ_store, ϕ_store, state0, temp_state, mat0, aux_store, dd_store, grad, H, H_K_super)
+
+
+topt(1.0, nothing, res.minimizer)
+
+res = Optim.optimize(Optim.only_fg!(topt), drive, Optim.LBFGS(), Optim.Options(show_trace=true, f_tol = 1e-3))
+
+
+res.minimizer
+
+
+
 H_K_super = [super_sx, super_sy]
 # forward evolution and directional derivative
-for n = 1:N
-    ψ = ψ_store[n]
-    # could compute Hamiltonian once and store it
-    H_n_temp = H(drive, n * dt, T, N)
-    id = I(size(H_n_temp,1))
-    
-    H_n = kron(id, H_n_temp) - kron(H_n_temp', id)
-    # U * ψ
-    ψ_store[n+1] .= expv(-1.0im * dt, H_n, ψ)
 
-    # compute and store the directional derivative
-    # set up the temp_state 
-    temp_state[dim+1:end] .= ψ
-    for k = 1:K
-        # set up augmented matrix
-        H_k = H_K_super[k]
-        aux_store[1:dim, dim+1:end] .= H_k
-        # then on the diagonal we want H_n
-        aux_store[1:dim, 1:dim] .= H_n
-        aux_store[dim+1:end, dim+1:end] .= H_n
-        dd_store[k][n] .= expv(-1.0im * dt, aux_store, temp_state)[1:dim]
-    end
-end
 
 # now backwards
-
-for n = reverse(1:N)
-    ϕ = ϕ_store[n+1]
-    H_n_temp = H(drive, n * dt, T, N)
-    id = I(size(H_n_temp,1))
-    
-    H_n = kron(id, H_n_temp) - kron(H_n_temp', id)
-    ϕ_store[n] .= expv(1.0im * dt, H_n, ϕ)
-end
 
 # compute the fidelity
 fid = abs2(ϕ_store[N]' * ψ_store[N])
