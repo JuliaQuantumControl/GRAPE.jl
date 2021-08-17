@@ -22,12 +22,12 @@ function GrapeWrk(objective, n_slices, n_controls, T; pulse_mapping="")
     # store forward evolution
     ψ_store = init_storage(initial_state, n_slices+1)
     # ask Michael
-    H_store = init_storage(H(0.0), n_slices)
+    H_store = init_storage(zeros(eltype(initial_state), 2*dim, 2*dim), n_slices)
     # aux matrix store
     aux_mat = zeros(eltype(initial_state), 2*dim, 2*dim)
     aux_state = zeros(eltype(initial_state), 2*dim)
     # storage for directional derivative, is this needed?
-    dP_du = [[zeros(eltype(ψ), size(ψ)) for i = 1:N_slices] for k = 1:K_controls]
+    dP_du = [[zeros(eltype(initial_state), size(initial_state)) for i = 1:n_slices] for k = 1:n_controls]
 
     return GrapeWrk(objective, pulse_mapping, H_store, ψ_store, aux_state, aux_mat, dP_du)
 end
