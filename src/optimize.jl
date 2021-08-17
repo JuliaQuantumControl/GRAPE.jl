@@ -2,7 +2,7 @@ using QuantumControlBase
 using Parameters
 using ConcreteStructs
 
-@concrete struct GRAPEWrk
+@concrete struct GrapeWrk
     objectives # copy of objectives
     pulse_mapping # as michael describes, similar to c_ops
     H_store # store for Hamiltonian
@@ -13,11 +13,11 @@ using ConcreteStructs
     dd_store # store for directional derivative
 end
 
-function GRAPEWrk(objective, n_slices, n_controls; pulse_mapping="")
+function GrapeWrk(objective, n_slices, n_controls; pulse_mapping="")
     @unpack initial_state, H, target = objective
     dim, ψ_store, ϕ_store, temp_state, aux_mat, dd_store, H_store = _get_storage_arrays(initial_state, target, n_slices, n_controls)
 
-    return GRAPEWrk(objective, pulse_mapping, H_store, ψ_store, ϕ_store, temp_state, aux_mat, dd_store)
+    return GrapeWrk(objective, pulse_mapping, H_store, ψ_store, ϕ_store, temp_state, aux_mat, dd_store)
 
 end
 
