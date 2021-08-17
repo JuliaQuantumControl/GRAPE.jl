@@ -11,6 +11,7 @@ using ConcreteStructs
     aux_state # store for [psi 0]
     aux_store # store for auxiliary matrix
     dP_du # store for directional derivative
+    dim # dimension of system
 end
 
 function GrapeWrk(objective, n_slices, n_controls, T; pulse_mapping="")
@@ -29,11 +30,11 @@ function GrapeWrk(objective, n_slices, n_controls, T; pulse_mapping="")
     # storage for directional derivative, is this needed?
     dP_du = [[zeros(eltype(initial_state), size(initial_state)) for i = 1:n_slices] for k = 1:n_controls]
 
-    return GrapeWrk(objective, pulse_mapping, H_store, ψ_store, aux_state, aux_mat, dP_du)
+    return GrapeWrk(objective, pulse_mapping, H_store, ψ_store, aux_state, aux_mat, dP_du, dim)
 end
 
 function optimize(wrk, pulse_options, tlist, propagator, )
-    @unpack objectives, pulse_mapping, H_store, ψ_store, aux_state,aux_store, dP_du = wrk
+    @unpack objectives, pulse_mapping, H_store, ψ_store, aux_state,aux_store, dP_du, dim = wrk
 
     # now we need to make a fn of F, G, x
     function test_grape(F, G, x, dim, ψ_store, ϕ_store, temp_state, aux_store, dd_store, grad, H_func, H_K_super)
