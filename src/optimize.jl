@@ -1,4 +1,5 @@
 using QuantumControlBase
+using QuantumPropagators
 using Parameters
 using ConcreteStructs
 
@@ -7,43 +8,32 @@ using ConcreteStructs
     pulse_mapping # as michael describes, similar to c_ops
     H_store # store for Hamiltonian
     ψ_store # store for forward states
-    ϕ_store # store for reverse states
-    temp_state # store for [psi 0]
+    aux_state # store for [psi 0]
     aux_store # store for auxiliary matrix
-    dd_store # store for directional derivative
+    dP_du # store for directional derivative
 end
 
-function GrapeWrk(objective, n_slices, n_controls; pulse_mapping="")
+function GrapeWrk(objective, n_slices, n_controls, T; pulse_mapping="")
     @unpack initial_state, H, target = objective
-    dim, ψ_store, ϕ_store, temp_state, aux_mat, dd_store, H_store = _get_storage_arrays(initial_state, target, n_slices, n_controls)
+    # lets think about what we really need here
+    dt = T/n_slices
+    # tlist = collect(0.0:dt:T)
+    dim = size(initial_state, 1)
+    # store forward evolution
+    ψ_store = init_storage(initial_state, n_slices+1)
+    # ask Michael
+    H_store = init_storage(H(0.0), n_slices)
+    # aux matrix store
+    aux_mat = zeros(eltype(initial_state), 2*dim, 2*dim)
+    aux_state = zeros(eltype(initial_state), 2*dim)
+    # storage for directional derivative, is this needed?
+    dP_du = [[zeros(eltype(ψ), size(ψ)) for i = 1:N_slices] for k = 1:K_controls]
 
-    return GrapeWrk(objective, pulse_mapping, H_store, ψ_store, ϕ_store, temp_state, aux_mat, dd_store)
-
-end
-
-function _get_storage_arrays(ψ, ϕ, N_slices, K_controls)
-    dim = size(ψ,1)
-    # you will need a store for both states and costates
-    ψ_store = [zeros(eltype(ψ), size(ψ)) for i = 1:N_slices+1]
-    ϕ_store = [zeros(eltype(ϕ), size(ϕ)) for i = 1:N_slices+1]
-    ψ_store[1] .= ψ
-    ϕ_store[N_slices+1] .= ϕ
-    # will need zeros for the state
-    zerofs = zero(ψ)
-    # and a temp state
-    temp_state = [zerofs; zerofs]
-    # and for the internals of the aux matrix
-    zeromat = zeros(eltype(ψ), (dim, dim))
-    # you also need somewhere to store the auxil matrix
-    aux_mat = [zeromat zeromat; zeromat zeromat]
-    # finally somewhere to store the directional derivative vector
-    directderiv_store = [[zeros(eltype(ψ), size(ψ)) for i = 1:N_slices] for k = 1:K_controls]
-    H_store = [zeros(eltype(ψ), (dim, dim)) for i = 1:N_slices]
-    return dim, ψ_store, ϕ_store, temp_state, aux_mat, directderiv_store, H_store
+    return GrapeWrk(objective, pulse_mapping, H_store, ψ_store, aux_state, aux_mat, dP_du)
 end
 
 function optimize(wrk, pulse_options, tlist, propagator, )
-    @unpack objectives, pulse_mapping, H_store, ψ_store, ϕ_store, temp_state,aux_store, dd_store = wrk
+    @unpack objectives, pulse_mapping, H_store, ψ_store, aux_state,aux_store, dP_du = wrk
 
     # now we need to make a fn of F, G, x
     function test_grape(F, G, x, dim, ψ_store, ϕ_store, temp_state, aux_store, dd_store, grad, H_func, H_K_super)
@@ -73,10 +63,6 @@ function optimize(wrk, pulse_options, tlist, propagator, )
     
         for n = reverse(1:N)
             ϕ = ϕ_store[n+1]
-            # H_n_temp = H_func(x, n * dt, T, N)
-            # id = I(size(H_n_temp,1))
-            
-            # H_n = kron(id, H_n_temp) - kron(H_n_temp', id)
             ϕ_store[n] .= expv(1.0im * dt, H_store[n], ϕ)
         end
     
