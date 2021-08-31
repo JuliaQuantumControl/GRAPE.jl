@@ -167,3 +167,71 @@ zz = [real(tr(sz * reshape(i, (2,2)))) for i in z]
 
 
 
+
+using QuantumPropagators
+
+# lets pretend we want to evolve a state forward under some Hamiltonian
+
+using LinearAlgebra
+# initial state
+ρ0 = [1 0;0 0] .+ 0.0im
+ρT = [0 0;0 1] .+ 0.0im
+
+ρ0vec = reshape(ρ0, (4))
+
+# we have only sx drive
+const sx = [0 1;1 0] .+ 0.0im
+const sz = [1 0;0 -1] .+ 0.0im
+const sy = [0 -1.0im; 1.0im 0]
+const eye2 = I(2)
+
+T = 1.0
+dt = 0.1
+N = floor(Int, T/dt)
+K = 2 # number of controls
+
+drive = rand(K, N) .* 0.0 .+ 0.5 * pi
+
+# we should remember that our Hamiltonian is some callable type
+# we need to convert time to index inside right now
+super_sx = kron(eye2, sx) - kron(sx', eye2)
+super_sy = kron(eye2, sy) - kron(sy', eye2)
+
+
+function get_genfunc(drive, sx, sy)
+    gen_func = (tlist, i; kwargs...) -> (drive[1, i] * sx )
+end
+
+gen_func = get_genfunc(drive, super_sx, super_sy)
+
+tlist = collect(0:dt:T)
+
+
+wrk = initpropwrk(ρ0vec, tlist, nothing; method=:newton)
+
+test = propagate(ρ0vec, gen_func, tlist; wrk = wrk)
+
+
+using BenchmarkTools
+
+@benchmark propagate($ρ0vec, $gen_func, $tlist; wrk = $wrk)
+
+
+using ExponentialUtilities
+
+
+function test_prop(state, gen_func, tlist)
+    ev = copy(state)
+
+    for i = 1:length(tlist)
+        H = gen_func(tlist, i)
+        ev .= expv(-1.0im * dt, H, ev)
+    end
+    ev
+end
+
+
+test2 = test_prop(ρ0vec, gen_func, tlist)
+
+
+@benchmark test_prop($ρ0vec, $gen_func, $tlist)
