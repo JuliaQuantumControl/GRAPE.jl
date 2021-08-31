@@ -3,6 +3,7 @@
 
 # lets assume that first of all we want to start with simple population transfer
 
+using QuantumPropagators
 using LinearAlgebra
 # initial state
 ρ0 = [1 0;0 0] .+ 0.0im
@@ -160,3 +161,9 @@ end
 # function mul!(ψ_out::SchirmerState, H::SchirmerOp, ψ::SchirmerState)
 
 # end
+zz = [real(tr(sz * reshape(i, (2,2)))) for i in z]
+
+
+
+
+
