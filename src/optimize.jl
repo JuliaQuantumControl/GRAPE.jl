@@ -3,7 +3,7 @@ using QuantumPropagators
 using Parameters
 using ConcreteStructs
 
-@concrete struct GrapeWrk
+@concrete struct GrapeWrk3
     objectives # copy of objectives
     pulse_mapping # as michael describes, similar to c_ops
     H_store # store for Hamiltonian
@@ -11,25 +11,34 @@ using ConcreteStructs
     aux_state # store for [psi 0]
     aux_store # store for auxiliary matrix
     dP_du # store for directional derivative
+    tlist # tlist 
+    prop_wrk # prop wrk
 end
 
-function GrapeWrk(objective, n_slices, n_controls, T; pulse_mapping="")
-    @unpack initial_state, H, target = objective
-    # lets think about what we really need here
-    dt = T/n_slices
+function GrapeWrk3(objectives, tlist, pulse_mapping="")
+    N = length(objectives)
+    
+    @unpack initial_state, generator, target = objectives[1]
+    ψ = initial_state
+    controls = getcontrols(generator)
+    N_slices = length(controls[1])
     # tlist = collect(0.0:dt:T)
     dim = size(initial_state, 1)
     # store forward evolution
-    ψ_store = init_storage(initial_state, n_slices+1)
+    ψ_store = [init_storage(initial_state, n_slices+1) for i = 1:N]
     # ask Michael
-    H_store = init_storage(H(0.0), n_slices)
+    H_store = [init_storage(generator[1], n_slices) for i = 1:N]
     # aux matrix store
-    aux_mat = zeros(eltype(initial_state), 2*dim, 2*dim)
-    aux_state = zeros(eltype(initial_state), 2*dim)
+    aux_mat = [zeros(eltype(initial_state), 2*dim, 2*dim) for i = 1:N]
+    aux_state = [zeros(eltype(initial_state), 2*dim) for i = 1:N]
     # storage for directional derivative, is this needed?
-    dP_du = [[zeros(eltype(ψ), size(ψ)) for i = 1:N_slices] for k = 1:K_controls]
+    dP_du = [[[zeros(eltype(ψ), size(ψ)) for i = 1:N_slices] for k = 1:length(controls)] for ii = 1:N]
 
-    return GrapeWrk(objective, pulse_mapping, H_store, ψ_store, aux_state, aux_mat, dP_du)
+    prop_wrk = [
+        initpropwrk(obj, tlist; method=prop_method)
+        for obj in objectives
+    ]
+    return GrapeWrk3(objectives, pulse_mapping, H_store, ψ_store, aux_state, aux_mat, dP_du, tlist, prop_wrk)
 end
 
 function optimize(wrk, pulse_options, tlist, propagator, )

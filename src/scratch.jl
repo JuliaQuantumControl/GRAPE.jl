@@ -2,12 +2,83 @@
 # basically a scratch file for now as I figure out how I want this to work 
 
 # lets assume that first of all we want to start with simple population transfer
-
 using QuantumPropagators
 using LinearAlgebra
+using QuantumControlBase
+
+
+"""Two-level-system Hamiltonian."""
+function hamiltonian(drive_array, Ω=1.0)
+    σ̂_z = ComplexF64[1 0; 0 -1];
+    σ̂_x = ComplexF64[0 1; 1  0];
+    Ĥ₀ = -0.5 * Ω * σ̂_z
+    Ĥ₁ = σ̂_x
+    return (Ĥ₀, (Ĥ₁, drive_array))
+end
+
 # initial state
-ρ0 = [1 0;0 0] .+ 0.0im
-ρT = [0 0;0 1] .+ 0.0im
+ρ0 = [1, 0] .+ 0.0im
+ρT = [0, 1] .+ 0.0im
+
+
+n_slices = 10
+tlist = collect(range(0, T, length=n_slices))
+
+
+H = hamiltonian(rand(n_slices))
+
+objectives = [Objective(initial_state = ρ0, generator = H, target = ρT)]
+
+
+# propagate final state backwards
+# propagate initial state forwards step by step
+# compute the result
+# compute the gradient
+
+problem = ControlProblem(objectives = objectives, pulse_options = nothing, tlist=tlist, prop_method = :newton)
+
+
+
+# imagine we are inside optimize_pulses
+
+
+
+@unpack objectives, pulse_options, tlist = problem
+prop_method = get(problem.kwargs, :prop_method, :auto)
+# then we create the storage arrays and things that we need
+wrk = GrapeWrk3(objectives, tlist)
+
+# now we do the forward evolution
+
+"""
+forward evolution for a specific thing
+"""
+function _fwd_evolution(wrk, )
+end
+
+
+
+
+GrapeWrk(objectives[1])
+
+
+
+wrk = GrapeWrk(problem, problem.kwargs.nslices, problem)
+
+function optimize_pulses2(problem)
+   
+
+end
+
+
+optimize_pulses2(problem)
+
+
+
+
+
+
+
 
 # we have only sx drive
 const sx = [0 1;1 0] .+ 0.0im
