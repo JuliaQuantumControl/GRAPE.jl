@@ -19,19 +19,24 @@ function GrapeWrk3(objectives, tlist, pulse_mapping="")
     N = length(objectives)
     
     @unpack initial_state, generator, target = objectives[1]
+ 
     ψ = initial_state
+ 
     controls = getcontrols(generator)
-    N_slices = length(controls[1])
-    # tlist = collect(0.0:dt:T)
+    N_slices = length(tlist)
     dim = size(initial_state, 1)
     # store forward evolution
-    ψ_store = [init_storage(initial_state, n_slices+1) for i = 1:N]
-    # ask Michael
-    H_store = [init_storage(generator[1], n_slices) for i = 1:N]
-    # aux matrix store
+    ψ_store = [[similar(initial_state) for i = 1:N_slices] for ii = 1:N]
+    
+    for i = 1:N
+        ψ_store[i][1] = objectives[i].initial_state
+    end
+
+    H_store = [[similar(generator[1]) for i = 1:N_slices] for ii = 1:N]
+ 
     aux_mat = [zeros(eltype(initial_state), 2*dim, 2*dim) for i = 1:N]
     aux_state = [zeros(eltype(initial_state), 2*dim) for i = 1:N]
-    # storage for directional derivative, is this needed?
+ 
     dP_du = [[[zeros(eltype(ψ), size(ψ)) for i = 1:N_slices] for k = 1:length(controls)] for ii = 1:N]
 
     prop_wrk = [

@@ -5,6 +5,10 @@
 using QuantumPropagators
 using LinearAlgebra
 using QuantumControlBase
+using Parameters
+
+
+# most of this is a terrible idea
 
 
 """Two-level-system Hamiltonian."""
@@ -22,11 +26,27 @@ end
 
 
 n_slices = 10
+T = 5.0
+
+function my_ham(drive, Ω, t, T, N)
+    σ̂_z = ComplexF64[1 0; 0 -1];
+    σ̂_x = ComplexF64[0 1; 1  0];
+    Ĥ₀ = -0.5 * Ω * σ̂_z
+    Ĥ₁ = σ̂_x
+    idx = floor(Int, t/T * N)
+    if idx == 0
+        idx = 1
+    end
+    Ĥ₀ + Ĥ₁ * drive[idx]
+end
+
+
 tlist = collect(range(0, T, length=n_slices))
 
+doo = t -> Hdrive(rand(10), t, T, n_slices)
 
-H = hamiltonian(rand(n_slices))
-
+# H = hamiltonian(doo)
+H = t -> my_ham(rand(10), 1.0, t)
 objectives = [Objective(initial_state = ρ0, generator = H, target = ρT)]
 
 
@@ -38,24 +58,40 @@ objectives = [Objective(initial_state = ρ0, generator = H, target = ρT)]
 problem = ControlProblem(objectives = objectives, pulse_options = nothing, tlist=tlist, prop_method = :newton)
 
 
-
-# imagine we are inside optimize_pulses
-
-
-
 @unpack objectives, pulse_options, tlist = problem
 prop_method = get(problem.kwargs, :prop_method, :auto)
 # then we create the storage arrays and things that we need
 wrk = GrapeWrk3(objectives, tlist)
 
-# now we do the forward evolution
+# propagate(
+#     state, genfunc, tlist; method=:auto
+#     # backwards=false; storage=true, observables=observables,
+#     hook=nothing, kwargs...)
 
-"""
-forward evolution for a specific thing
-"""
-function _fwd_evolution(wrk, )
-end
+# now we set up a function to optimize
+N_obj = length(objectives)
+# for obj = 1:N_obj
+# end
 
+
+obj = 1
+data = propagate(objectives[obj].initial_state, objectives[obj].generator, tlist, storage = wrk.ψ_store[obj])
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# end
 
 
 
