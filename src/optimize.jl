@@ -16,7 +16,7 @@ using ConcreteStructs
 end
 
 function GrapeWrk3(objectives, tlist, pulse_mapping="")
-    N = length(objectives)
+    N_obj = length(objectives)
     
     @unpack initial_state, generator, target = objectives[1]
  
@@ -28,7 +28,7 @@ function GrapeWrk3(objectives, tlist, pulse_mapping="")
     # store forward evolution
     ψ_store = [[similar(initial_state) for i = 1:N_slices] for ii = 1:N]
     
-    for i = 1:N
+    for i = 1:N_obj
         ψ_store[i][1] = objectives[i].initial_state
     end
 

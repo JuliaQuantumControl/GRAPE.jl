@@ -28,6 +28,10 @@ end
 n_slices = 10
 T = 5.0
 
+drive = rand(n_slices)
+
+H = hamiltonian(drive)
+
 function my_ham(drive, Ω, t, T, N)
     σ̂_z = ComplexF64[1 0; 0 -1];
     σ̂_x = ComplexF64[0 1; 1  0];
@@ -42,11 +46,6 @@ end
 
 
 tlist = collect(range(0, T, length=n_slices))
-
-doo = t -> Hdrive(rand(10), t, T, n_slices)
-
-# H = hamiltonian(doo)
-H = t -> my_ham(rand(10), 1.0, t)
 objectives = [Objective(initial_state = ρ0, generator = H, target = ρT)]
 
 
@@ -56,58 +55,35 @@ objectives = [Objective(initial_state = ρ0, generator = H, target = ρT)]
 # compute the gradient
 
 problem = ControlProblem(objectives = objectives, pulse_options = nothing, tlist=tlist, prop_method = :newton)
-
-
 @unpack objectives, pulse_options, tlist = problem
 prop_method = get(problem.kwargs, :prop_method, :auto)
 # then we create the storage arrays and things that we need
 wrk = GrapeWrk3(objectives, tlist)
 
-# propagate(
-#     state, genfunc, tlist; method=:auto
-#     # backwards=false; storage=true, observables=observables,
-#     hook=nothing, kwargs...)
-
 # now we set up a function to optimize
 N_obj = length(objectives)
+obj = 1
 # for obj = 1:N_obj
 # end
-
-
-obj = 1
-data = propagate(objectives[obj].initial_state, objectives[obj].generator, tlist, storage = wrk.ψ_store[obj])
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-# end
-
-
-
-GrapeWrk(objectives[1])
-
-
-
-wrk = GrapeWrk(problem, problem.kwargs.nslices, problem)
-
-function optimize_pulses2(problem)
-   
-
+controls = getcontrols(objectives)
+pulses = [
+    discretize_on_midpoints(control, tlist) for control in controls
+]
+# obviously need to convert this to Michaels if I ever understand it
+ψ = objectives[obj].initial_state
+dt = tlist[2] - tlist[1]
+# now loop over time
+for i = 1:size(pulses[1])[1]
+    # because the propstep! method replaces ψ_store
+    wrk.ψ_store[obj][i+1] .= wrk.ψ_store[obj][i]
+    # we end up in this horrific situation
+    gen = H[1] + H[2][1] .* pulses[1][i]
+    ψ = wrk.ψ_store[obj][i+1]
+    propstep!(ψ, gen, dt, wrk.prop_wrk[obj])
+    # then we need to take a propstep
 end
+# then at some point we have a hot loop where all this happens
 
-
-optimize_pulses2(problem)
 
 
 
