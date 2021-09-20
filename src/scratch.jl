@@ -32,19 +32,6 @@ drive = rand(n_slices)
 
 H = hamiltonian(drive)
 
-function my_ham(drive, Ω, t, T, N)
-    σ̂_z = ComplexF64[1 0; 0 -1];
-    σ̂_x = ComplexF64[0 1; 1  0];
-    Ĥ₀ = -0.5 * Ω * σ̂_z
-    Ĥ₁ = σ̂_x
-    idx = floor(Int, t/T * N)
-    if idx == 0
-        idx = 1
-    end
-    Ĥ₀ + Ĥ₁ * drive[idx]
-end
-
-
 tlist = collect(range(0, T, length=n_slices))
 objectives = [Objective(initial_state = ρ0, generator = H, target = ρT)]
 
@@ -54,7 +41,7 @@ objectives = [Objective(initial_state = ρ0, generator = H, target = ρT)]
 # compute the result
 # compute the gradient
 
-problem = ControlProblem(objectives = objectives, pulse_options = nothing, tlist=tlist, prop_method = :newton)
+problem = ControlProblem(objectives = objectives, pulse_options = nothing, tlist=tlist, prop_method = :expprop)
 @unpack objectives, pulse_options, tlist = problem
 prop_method = get(problem.kwargs, :prop_method, :auto)
 # then we create the storage arrays and things that we need
@@ -72,23 +59,32 @@ pulses = [
 # obviously need to convert this to Michaels if I ever understand it
 ψ = objectives[obj].initial_state
 dt = tlist[2] - tlist[1]
+
+dim = 2
 # now loop over time
 for i = 1:size(pulses[1])[1]
     # because the propstep! method replaces ψ_store
     wrk.ψ_store[obj][i+1] .= wrk.ψ_store[obj][i]
+
+    # we store the aux_state
+    wrk.aux_state[obj][dim+1:end] .= ψ
     # we end up in this horrific situation
     gen = H[1] + H[2][1] .* pulses[1][i]
     ψ = wrk.ψ_store[obj][i+1]
     propstep!(ψ, gen, dt, wrk.prop_wrk[obj])
+    # and lets compute the forward evolution of the aux state
+
+    for k = 1:2
+        wrk.aux_store[obj][1:dim, dim+1:end] .= 
+    end
     # then we need to take a propstep
 end
+
+# so we have the forward evolved states, now we backwards evolve our final state
+# and we also evolve our auxilliary state using the auxilliary matrix
+
+
 # then at some point we have a hot loop where all this happens
-
-
-
-
-
-
 
 
 

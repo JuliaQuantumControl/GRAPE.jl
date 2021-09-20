@@ -26,18 +26,18 @@ function GrapeWrk3(objectives, tlist, pulse_mapping="")
     N_slices = length(tlist)
     dim = size(initial_state, 1)
     # store forward evolution
-    ψ_store = [[similar(initial_state) for i = 1:N_slices] for ii = 1:N]
+    ψ_store = [[similar(initial_state) for i = 1:N_slices] for ii = 1:N_obj]
     
     for i = 1:N_obj
         ψ_store[i][1] = objectives[i].initial_state
     end
 
-    H_store = [[similar(generator[1]) for i = 1:N_slices] for ii = 1:N]
+    H_store = [[similar(generator[1]) for i = 1:N_slices] for ii = 1:N_obj]
  
-    aux_mat = [zeros(eltype(initial_state), 2*dim, 2*dim) for i = 1:N]
-    aux_state = [zeros(eltype(initial_state), 2*dim) for i = 1:N]
+    aux_mat = [zeros(eltype(initial_state), 2*dim, 2*dim) for i = 1:N_obj]
+    aux_state = [zeros(eltype(initial_state), 2*dim) for i = 1:N_obj]
  
-    dP_du = [[[zeros(eltype(ψ), size(ψ)) for i = 1:N_slices] for k = 1:length(controls)] for ii = 1:N]
+    dP_du = [[[zeros(eltype(ψ), size(ψ)) for i = 1:N_slices] for k = 1:length(controls)] for ii = 1:N_obj]
 
     prop_wrk = [
         initpropwrk(obj, tlist; method=prop_method)
@@ -47,7 +47,7 @@ function GrapeWrk3(objectives, tlist, pulse_mapping="")
 end
 
 function optimize(wrk, pulse_options, tlist, propagator, )
-    @unpack objectives, pulse_mapping, H_store, ψ_store, aux_state,aux_store, dP_du = wrk
+    @unpack objectives, pulse_mapping, H_store, ψ_store, aux_state,aux_store, dP_du, tlist, prop_wrk = wrk
 
     # now we need to make a fn of F, G, x
     function test_grape(F, G, x, dim, ψ_store, ϕ_store, temp_state, aux_store, dd_store, grad, H_func, H_K_super)
