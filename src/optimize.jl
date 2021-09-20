@@ -15,7 +15,7 @@ using ConcreteStructs
     prop_wrk # prop wrk
 end
 
-function GrapeWrk3(objectives, tlist, pulse_mapping="")
+function GrapeWrk3(objectives, tlist, prop_method, pulse_mapping="")
     N_obj = length(objectives)
     
     @unpack initial_state, generator, target = objectives[1]
@@ -49,27 +49,37 @@ end
 function optimize(wrk, pulse_options, tlist, propagator, )
     @unpack objectives, pulse_mapping, H_store, ψ_store, aux_state,aux_store, dP_du, tlist, prop_wrk = wrk
 
+    controls = getcontrols(objectives)
+    pulses = [discretize_on_midpoints(control, tlist) for control in controls]
+
+    N_obj = length(objectives)
+    N_slices = length(tlist) - 1
+    N_controls = size(controls, 1)
+    dim = size(H_store[1][1], 1)
+    obj = 1
     # now we need to make a fn of F, G, x
     function test_grape(F, G, x, dim, ψ_store, ϕ_store, temp_state, aux_store, dd_store, grad, H_func, H_K_super)
-        for n = 1:N
-            ψ = ψ_store[n]
-            # could compute Hamiltonian once and store it
-            H_store[n] .= H_func(x, n * dt, T, N)
+        @inbounds for n = 1:N_slices
+            # save the initial state in each timestep
+            ψ_not_mutated = copy(ψ_store[obj][n])
+            # copy the state into the next slice since propstep! will mutate it
+            ψ_store[obj][n+1] .= ψ_store[obj][n]
+            # save the Hamiltonian for computation later
+            H_store[obj][n] .= H[1] + H[2][1] .* pulses[1][n]
+            ψ = wrk.ψ_store[obj][n+1]
+            propstep!(ψ, H_store[obj][n], dt, prop_wrk[obj])
             
-            # U * ψ
-            ψ_store[n+1] .= expv(-1.0im * dt, H_store[n], ψ)
+            aux_state[obj][dim+1:end] .= ψ_not_mutated
         
-            # compute and store the directional derivative
-            # set up the temp_state 
             temp_state[dim+1:end] .= ψ
-            for k = 1:K
-                # set up augmented matrix
-                H_k = H_K_super[k]
-                aux_store[1:dim, dim+1:end] .= H_k
-                # then on the diagonal we want H_store[n]
-                aux_store[1:dim, 1:dim] .= H_store[n]
-                aux_store[dim+1:end, dim+1:end] .= H_store[n]
-                dd_store[k][n] .= expv(-1.0im * dt, aux_store, temp_state)[1:dim]
+            @inbounds for k = 1:N_controls
+                aux_store[obj][1:dim, dim+1:end] .= H[2][1]
+                aux_store[obj][1:dim, 1:dim] .= H_store[obj][n]
+                aux_store[obj][dim+1:end, dim+1:end] .= H_store[obj][n]
+                propstep!(aux_state, aux_store[obj], dt, prop_wrk[obj])
+                dP_du[obj][k][n] .= aux_state[1:dim]
+                aux_state .= 0.0
+        
             end
         end
     
