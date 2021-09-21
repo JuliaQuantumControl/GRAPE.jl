@@ -83,7 +83,6 @@ function optimize(wrk, pulse_options, tlist, propagator)
 
     controls = getcontrols(objectives)
     pulses = [discretize_on_midpoints(control, tlist) for control in controls]
-
     N_obj = length(objectives)
     N_slices = length(tlist) - 1
     N_controls = size(controls, 1)
