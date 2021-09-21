@@ -4,17 +4,17 @@ using Parameters
 using ConcreteStructs
 
 @concrete struct GrapeWrk
-    objectives # copy of objectives
-    pulse_mapping # as michael describes, similar to c_ops
-    H_store # store for Hamiltonian
-    ψ_store # store for forward states
-    ϕ_store # store for forward states
-    aux_state # store for [psi 0]
-    aux_store # store for auxiliary matrix
-    dP_du # store for directional derivative
-    tlist # tlist 
-    prop_wrk # prop wrk
-    aux_prop_wrk # aux prop wrk
+    objectives::Any # copy of objectives
+    pulse_mapping::Any # as michael describes, similar to c_ops
+    H_store::Any # store for Hamiltonian
+    ψ_store::Any # store for forward states
+    ϕ_store::Any # store for forward states
+    aux_state::Any # store for [psi 0]
+    aux_store::Any # store for auxiliary matrix
+    dP_du::Any # store for directional derivative
+    tlist::Any # tlist 
+    prop_wrk::Any # prop wrk
+    aux_prop_wrk::Any # aux prop wrk
 end
 
 function GrapeWrk(objectives, tlist, prop_method, pulse_mapping = "")
@@ -90,18 +90,7 @@ function optimize(wrk, pulse_options, tlist, propagator)
     dt = tlist[2] - tlist[1]
     obj = 1
     # now we need to make a fn of F, G, x
-    function test_grape(
-        F,
-        G,
-        x,
-        dim,
-        ψ_store,
-        ϕ_store,
-        temp_state,
-        aux_store,
-        dd_store,
-        grad,
-    )
+    function test_grape(F, G, x, dim, ψ_store, ϕ_store, temp_state, aux_store, dP_du, grad)
         @inbounds for n = 1:N_slices
             # save the initial state in each timestep
             ψ_not_mutated = copy(ψ_store[obj][n])
@@ -127,21 +116,24 @@ function optimize(wrk, pulse_options, tlist, propagator)
                 aux_state[obj] .= 0.0 + 0.0im
             end
         end
-
-        # @show abs2.(ψ_store[end])
-
-        for n in reverse(1:N_slices)
-            ϕ = ϕ_store[n+1]
-            ϕ_store[n] .= expv(1.0im * dt, H_store[n], ϕ)
+        @inbounds for n in reverse(1:N_slices)
+            # copy your current state into this slot so it can be mutated
+            ϕ_store[obj][n] .= ϕ_store[obj][n+1]
+            ϕ = ϕ_store[obj][n]
+            # and then prop and mutate
+            # we pass a negative dt in the hope we can move it the opposite direction in time
+            propstep!(ϕ, H_store[obj][n], -1.0 * dt, prop_wrk[obj])
         end
 
-        fid = abs2(ϕ_store[N]' * ψ_store[N])
-        for n = 1:N
-            for k = 1:K
-                grad[k, n] =
-                    2 * real(ϕ_store[n]' * dd_store[k][n] * ψ_store[n]' * ϕ_store[N])
+
+        fid = abs2(ϕ_store[obj][N_slices]' * ψ_store[obj][N_slices])
+
+        @inbounds for n = 1:N_slices
+            @inbounds for k = 1:N_controls
+                grad[k][n] = 2 * real(ϕ_store[obj][n]' * dP_du[obj][k][n])
             end
         end
+
 
         if G !== nothing
             G .= grad
