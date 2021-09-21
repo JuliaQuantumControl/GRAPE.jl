@@ -5,17 +5,17 @@ using ConcreteStructs
 using Optim
 
 @concrete struct GrapeWrk
-    objectives::Any # copy of objectives
-    pulse_mapping::Any # as michael describes, similar to c_ops
-    H_store::Any # store for Hamiltonian
-    ψ_store::Any # store for forward states
-    ϕ_store::Any # store for forward states
-    aux_state::Any # store for [psi 0]
-    aux_store::Any # store for auxiliary matrix
-    dP_du::Any # store for directional derivative
-    tlist::Any # tlist 
-    prop_wrk::Any # prop wrk
-    aux_prop_wrk::Any # aux prop wrk
+    objectives # copy of objectives
+    pulse_mapping # as michael describes, similar to c_ops
+    H_store # store for Hamiltonian
+    ψ_store # store for forward states
+    ϕ_store # store for forward states
+    aux_state # store for [psi 0]
+    aux_store # store for auxiliary matrix
+    dP_du # store for directional derivative
+    tlist # tlist 
+    prop_wrk # prop wrk
+    aux_prop_wrk # aux prop wrk
 end
 
 function GrapeWrk(objectives, tlist, prop_method, pulse_mapping = "")
