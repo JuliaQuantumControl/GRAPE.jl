@@ -90,7 +90,6 @@ function optimize(wrk, pulse_options, tlist, propagator)
     N_controls = size(controls, 1)
     dim = size(H_store[1][1], 1)
     dt = tlist[2] - tlist[1]
-    # now we need to make a fn of F, G, x
 
     function grape_all_obj(
         F,
@@ -175,7 +174,7 @@ function optimize(wrk, pulse_options, tlist, propagator)
 
     topt = (F, G, x) -> grape_all_obj(F, G, x, N_obj, N_slices, N_controls, dim, ψ_store, ϕ_store, H_store, aux_state, aux_store, dP_du, dt, grad)
 
-    minimize(topt, pulses, LBFGS())
+    minimize(Optim.onlyfg!(topt), pulses, LBFGS())
 
 
 end
