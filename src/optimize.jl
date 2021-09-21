@@ -20,7 +20,7 @@ end
 function GrapeWrk(objectives, tlist, prop_method, pulse_mapping = "")
     N_obj = length(objectives)
 
-    @unpack initial_state, generator, target = objectives[1]
+    @unpack initial_state, generator, target_state = objectives[1]
 
     ψ = initial_state
 
@@ -37,7 +37,7 @@ function GrapeWrk(objectives, tlist, prop_method, pulse_mapping = "")
     ϕ_store = [[similar(initial_state) for i = 1:N_slices] for ii = 1:N_obj]
 
     for i = 1:N_obj
-        ϕ_store[i][N_slices] = objectives[i].target
+        ϕ_store[i][N_slices] = objectives[i].target_state
     end
 
     H_store = [[similar(generator[1]) for i = 1:N_slices] for ii = 1:N_obj]
@@ -50,7 +50,7 @@ function GrapeWrk(objectives, tlist, prop_method, pulse_mapping = "")
         ii = 1:N_obj
     ]
 
-    prop_wrk = [initpropwrk(obj, tlist; prop_method) for obj in objectives]
+    prop_wrk = [initpropwrk(obj.initial_state, tlist; prop_method) for obj in objectives]
 
     aux_prop_wrk = [initpropwrk(aux_state[1], tlist; prop_method) for obj in objectives]
     return GrapeWrk(
@@ -88,6 +88,7 @@ function optimize(wrk, pulse_options, tlist, propagator)
     N_slices = length(tlist) - 1
     N_controls = size(controls, 1)
     dim = size(H_store[1][1], 1)
+    dt = tlist[2] - tlist[1]
     obj = 1
     # now we need to make a fn of F, G, x
     function test_grape(
