@@ -54,9 +54,11 @@ Manifest.toml: Project.toml $(DEV_PROJECT_TOMLS)
 	julia --project=. -e "$$DEV_PACKAGES;Pkg.instantiate()"
 
 
-test:  Manifest.toml ## Run the test suite
-	cp test/Project.toml.unregistered test/Project.toml # TODO: register GRAPE package
-	julia -e 'using Pkg; Pkg.activate("test"); Pkg.develop(PackageSpec(path=pwd()))' # TODO: register GRAPE package
+#test:  Manifest.toml ## Run the test suite
+test:
+	rm -f test/Project.toml # TODO: register GRAPE package
+	rm -f Manifest.toml  # TODO: register GRAPE Package
+	julia --project=. -e "$$DEV_PACKAGES" # TODO: register GRAPE Package
 	@rm -f test/Manifest.toml  # Pkg.test cannot handle existing test/Manifest.toml
 	julia --startup-file=yes -e 'using Pkg;Pkg.activate(".");Pkg.test(coverage=true)'
 	@echo "Done. Consider using 'make devrepl'"
