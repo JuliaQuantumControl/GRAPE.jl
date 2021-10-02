@@ -1,0 +1,105 @@
+name: CI
+on:
+  - push
+  - pull_request
+jobs:
+  test:
+    name: Julia ${{ matrix.version }} - ${{ matrix.os }} - ${{ matrix.arch }} - ${{ github.event_name }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        version:
+          - '1.6'
+          - 'nightly'
+        os:
+          - ubuntu-latest
+        arch:
+          - x64
+    steps:
+      - uses: actions/checkout@v2
+      - uses: julia-actions/setup-julia@v1
+        with:
+          version: ${{ matrix.version }}
+          arch: ${{ matrix.arch }}
+      - uses: actions/cache@v1
+        env:
+          cache-name: cache-artifacts
+        with:
+          path: ~/.julia/artifacts
+          key: ${{ runner.os }}-test-${{ env.cache-name }}-${{ hashFiles('**/Project.toml') }}
+          restore-keys: |
+            ${{ runner.os }}-test-${{ env.cache-name }}-
+            ${{ runner.os }}-test-
+            ${{ runner.os }}-
+      - run: |
+          # Install matplotlib into system Python
+          set -x
+          /usr/bin/python3 -m pip install matplotlib
+      - run: |
+          # Instantiate Pkg
+          julia --project=@. -e '
+            using Pkg
+            println("Dev-install QuantumControlBase")
+            Pkg.develop(url="https://github.com/JuliaQuantumControl/QuantumControlBase.jl.git#master")
+            println("Dev-install QuantumPropagators")
+            Pkg.develop(url="https://github.com/JuliaQuantumControl/QuantumPropagators.jl.git#master")
+            println("Dev-install Krotov")
+            Pkg.develop(url="https://github.com/JuliaQuantumControl/Krotov.jl.git#master")
+            println("Dev-install QuantumControl")
+            Pkg.develop(url="https://github.com/JuliaQuantumControl/QuantumControl.jl.git#master")
+            println("Pkg.instantiate()")
+            Pkg.instantiate()'
+      - run: |
+          # Run tests
+          julia --threads auto --project=@. -e '
+            using Pkg
+            Pkg.activate(".")
+            Pkg.test(coverage=true)'
+      - uses: julia-actions/julia-processcoverage@v1
+      - uses: codecov/codecov-action@v1
+        with:
+          file: lcov.info
+  docs:
+    name: Documentation
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: julia-actions/setup-julia@v1
+        with:
+          version: '1'
+      - run: |
+          # Install matplotlib into system Python
+          set -x
+          /usr/bin/python3 -m pip install matplotlib
+      - run: |
+          # Instantiate Pkg
+          cp docs/Project.toml.unregistered docs/Project.toml # TODO Register GRAPE
+          julia --project=docs -e '
+            using Pkg
+            println("Dev-install QuantumControlBase")
+            Pkg.develop(url="https://github.com/JuliaQuantumControl/QuantumControlBase.jl.git#master")
+            println("Dev-install QuantumPropagators")
+            Pkg.develop(url="https://github.com/JuliaQuantumControl/QuantumPropagators.jl.git#master")
+            println("Dev-install Krotov")
+            Pkg.develop(url="https://github.com/JuliaQuantumControl/Krotov.jl.git#master")
+            println("Dev-install QuantumControl")
+            Pkg.develop(url="https://github.com/JuliaQuantumControl/QuantumControl.jl.git#master")
+            println("Dev-install package")
+            Pkg.develop(PackageSpec(path=pwd()))
+            println("Pkg.instantiate()")
+            Pkg.instantiate()'
+      - run: |
+          # Run doctests
+          julia  --threads auto --project=docs -e '
+            using Documenter: DocMeta, doctest
+            using GRAPE
+            DocMeta.setdocmeta!(GRAPE, :DocTestSetup, :(using GRAPE); recursive=true)
+            doctest(GRAPE)'
+      - run: |
+          # Make documentation
+          julia  --threads auto --project=docs docs/make.jl
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          DOCUMENTER_KEY: ${{ secrets.DOCUMENTER_KEY }}
+          JULIA_DEBUG: Documenter
