@@ -1,7 +1,7 @@
 name = "GRAPE"
 uuid = "6b52fcaf-80fe-489a-93e9-9f92080510be"
 authors = ["Alastair <alastair@nvision-imaging.com> and contributors"]
-version = "0.1.0"
+version = "0.0.1"
 
 [deps]
 ConcreteStructs = "2569d6c7-a4a2-43d3-a901-331e8e4be471"
