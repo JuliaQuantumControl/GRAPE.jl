@@ -18,6 +18,7 @@ QuantumControlBase = "0.0"
 ConcreteStructs = "0.2"
 Parameters = "0.12"
 QuantumPropagators = "0.0"
+QuantumControl = "0.0"
 julia = "1.6"
 
 [extras]
