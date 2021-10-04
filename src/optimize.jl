@@ -5,17 +5,17 @@ using ConcreteStructs
 using Optim
 
 @concrete struct GrapeWrk
-    objectives # copy of objectives
-    pulse_mapping # as michael describes, similar to c_ops
-    H_store # store for Hamiltonian
-    ψ_store # store for forward states
-    ϕ_store # store for forward states
-    aux_state # store for [psi 0]
-    aux_store # store for auxiliary matrix
-    dP_du # store for directional derivative
-    tlist # tlist 
-    prop_wrk # prop wrk
-    aux_prop_wrk # aux prop wrk
+    objectives::Any # copy of objectives
+    pulse_mapping::Any # as michael describes, similar to c_ops
+    H_store::Any # store for Hamiltonian
+    ψ_store::Any # store for forward states
+    ϕ_store::Any # store for forward states
+    aux_state::Any # store for [psi 0]
+    aux_store::Any # store for auxiliary matrix
+    dP_du::Any # store for directional derivative
+    tlist::Any # tlist 
+    prop_wrk::Any # prop wrk
+    aux_prop_wrk::Any # aux prop wrk
 end
 
 function GrapeWrk(objectives, tlist, prop_method, pulse_mapping = "")
@@ -117,39 +117,24 @@ function optimize(wrk, pulse_options, tlist, propagator)
         end
         # for each objective
         @inbounds for obj = 1:N_obj
-            # do the following stuff
-            @inbounds for n = 1:N_slices
-                # save the initial state in each timestep
-                ψ_not_mutated = copy(ψ_store[obj][n])
-                # copy the state into the next slice since propstep! will mutate it
-                ψ_store[obj][n+1] .= ψ_store[obj][n]
-                # save the Hamiltonian for computation later
-                H_store[obj][n] .= H[1] + H[2][1] .* x[1][n]
-                ψ = ψ_store[obj][n+1]
-                propstep!(ψ, H_store[obj][n], dt, prop_wrk[obj])
+            # forward prop all states for current objective
+            ψ_store_copy = copy(ψ_store[obj])
+            _fw_prop!(x, ψ_store[obj], H_store[obj], N_slices, dt, prop_wrk[obj], H)
+            _fw_prop_aux!(
+                aux_state[obj],
+                aux_store[obj],
+                dim,
+                H[2][:],
+                H_store[obj],
+                N_controls,
+                N_slices,
+                dt,
+                ψ_store_copy,
+                aux_prop_wrk[obj],
+                dP_du[obj],
+            )
 
-                aux_state[obj][dim+1:end] .= ψ_not_mutated
-                @inbounds for k = 1:N_controls
-                    # will tidy up using a struct later
-                    aux_store[obj][1:dim, dim+1:end] .= H[2][1]
-                    aux_store[obj][1:dim, 1:dim] .= H_store[obj][n]
-                    aux_store[obj][dim+1:end, dim+1:end] .= H_store[obj][n]
-                    # propagate the auxilliary state forwards in time using the auxilliary matrix
-                    propstep!(aux_state[obj], aux_store[obj], dt, aux_prop_wrk[obj])
-                    # we only save the small part that we care about
-                    dP_du[obj][k][n] .= aux_state[obj][1:dim]
-                    aux_state[obj] .= 0.0 + 0.0im
-                end
-            end
-            @inbounds for n in reverse(1:N_slices)
-                # copy your current state into this slot so it can be mutated
-                ϕ_store[obj][n] .= ϕ_store[obj][n+1]
-                ϕ = ϕ_store[obj][n]
-                # and then prop and mutate
-                # we pass a negative dt in the hope we can move it the opposite direction in time
-                propstep!(ϕ, H_store[obj][n], -1.0 * dt, prop_wrk[obj])
-            end
-
+            _bw_prop!(ϕ_store[obj], H_store[obj], N_slices, dt, prop_wrk[obj])
 
             fid = abs2(ϕ_store[obj][N_slices]' * ψ_store[obj][N_slices])
 
@@ -172,9 +157,80 @@ function optimize(wrk, pulse_options, tlist, propagator)
     end
 
 
-    topt = (F, G, x) -> grape_all_obj(F, G, x, N_obj, N_slices, N_controls, dim, ψ_store, ϕ_store, H_store, aux_state, aux_store, dP_du, dt, grad)
+    topt =
+        (F, G, x) -> grape_all_obj(
+            F,
+            G,
+            x,
+            N_obj,
+            N_slices,
+            N_controls,
+            dim,
+            ψ_store,
+            ϕ_store,
+            H_store,
+            aux_state,
+            aux_store,
+            dP_du,
+            dt,
+            grad,
+        )
 
     minimize(Optim.onlyfg!(topt), pulses, LBFGS())
 
 
+end
+
+
+"""
+Propagate system forward in time and store states at a constant objective index
+"""
+function _fw_prop!(x, ψ_store, H_store, N_slices, dt, prop_wrk, H)
+    @inbounds for i = 1:N_slices
+        ψ_store[n+1] .= ψ_store[n]
+        H_store[n] .= H[1] + H[2][1] .* x[1][n]
+        ψ = ψ_store[n+1]
+        propstep!(ψ, H_store[n], dt, prop_wrk)
+    end
+end
+
+"""
+Propagate auxilliary system forward in time and then store the states at a constant objective index
+"""
+function _fw_prop_aux!(
+    aux_state,
+    aux_store,
+    dim,
+    Hc,
+    H_store,
+    N_controls,
+    N_slices,
+    dt,
+    ψ_store,
+    aux_prop_wrk,
+    dP_du,
+)
+    @inbounds for i = 1:N_slices
+        aux_state[obj][dim+1:end] .= ψ_store[n]
+        @inbounds for k = 1:N_controls
+            aux_store[1:dim, dim+1:end] .= Hc
+            aux_store[1:dim, 1:dim] .= H_store[n]
+            aux_store[dim+1:end, dim+1:end] = H_store[n]
+            propstep!(aux_state, aux_store, dt, aux_prop_wrk)
+
+            dP_du[k][n] .= aux_state[1:dim]
+            aux_state[obj] .= 0.0 + 0.0im
+        end
+    end
+end
+
+"""
+Backwards propagate the states ϕ and store them
+"""
+function _bw_prop!(ϕ_store, H_store, N_slices, dt, prop_wrk)
+    @inbounds for n in reverse(1:N_slices)
+        ϕ_store[n] .= ϕ_store[n+1]
+        ϕ = ϕ_store[n]
+        propstep!(ϕ, H_store[n], -1.0 * dt, prop_wrk)
+    end
 end

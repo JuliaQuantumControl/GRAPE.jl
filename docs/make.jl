@@ -1,27 +1,27 @@
 using Pkg # TODO: remove after GRAPE is registered
-Pkg.develop(PackageSpec(path=pwd())) # TODO: remove after GRAPE is registered
+Pkg.develop(PackageSpec(path = pwd())) # TODO: remove after GRAPE is registered
 using GRAPE
 using Documenter
 
 # Generate examples
 include("generate.jl")
 
-DocMeta.setdocmeta!(GRAPE, :DocTestSetup, :(using GRAPE); recursive=true)
+DocMeta.setdocmeta!(GRAPE, :DocTestSetup, :(using GRAPE); recursive = true)
 
 println("Starting makedocs")
 
 makedocs(;
-    modules=[GRAPE],
-    authors="Alastair Marshall <alastair@nvision-imaging.com> and contributors",
-    repo="https://github.com/JuliaQuantumControl/GRAPE.jl/blob/{commit}{path}#{line}",
-    sitename="GRAPE.jl",
-    format=Documenter.HTML(;
-        prettyurls=true,
-        canonical="https://juliaquantumcontrol.github.io/GRAPE.jl",
-        assets=String[],
-        mathengine=KaTeX(),
+    modules = [GRAPE],
+    authors = "Alastair Marshall <alastair@nvision-imaging.com> and contributors",
+    repo = "https://github.com/JuliaQuantumControl/GRAPE.jl/blob/{commit}{path}#{line}",
+    sitename = "GRAPE.jl",
+    format = Documenter.HTML(;
+        prettyurls = true,
+        canonical = "https://juliaquantumcontrol.github.io/GRAPE.jl",
+        assets = String[],
+        mathengine = KaTeX(),
     ),
-    pages=[
+    pages = [
         "Home" => "index.md",
         "Overview" => "overview.md",
         "Examples" => [
@@ -37,6 +37,6 @@ println("Finished makedocs")
 rm(joinpath(@__DIR__, "build", "examples", ".gitignore"))
 
 deploydocs(;
-    repo="github.com/JuliaQuantumControl/GRAPE.jl",
-    devbranch="main", # TODO: switch to "master"
+    repo = "github.com/JuliaQuantumControl/GRAPE.jl",
+    devbranch = "main", # TODO: switch to "master"
 )
