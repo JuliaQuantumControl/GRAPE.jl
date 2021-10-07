@@ -10,24 +10,24 @@ import LinearAlgebra
 @doc raw"""Extended generator for the standard dynamic gradient.
 
 ```julia
-GG = GradGenerator(G)
+G̃ = GradGenerator(G)
 ```
 
-contains the original generator `G` (a Hamiltonian or Liouvillian) in `GG.G`, a
+contains the original generator `G` (a Hamiltonian or Liouvillian) in `G̃.G`, a
 vector of control generators ``∂G/∂ϵᵢ`` (static operators for linear controls,
-and functions for non-linear controls) in `GG.control_generators`, and the
-controls in `GG.controls`.
+and functions for non-linear controls) in `G̃.control_generators`, and the
+controls in `G̃.controls`.
 
 For a generator ``G = Ĥ = Ĥ₀ + ϵ₁(t) Ĥ₁ + … +  ϵₙ(t) Ĥₙ``, this extended
 generator encodes the block-matrix
 
 ```math
 G̃ = \begin{pmatrix}
-    Ĥ      & 0 & \dots  & 0 & Ĥ₁   \\
-    0      & Ĥ & \dots  & 0 & Ĥ₂   \\
-    \vdots &   & \ddots &  & \vdots \\
-    0      & 0 & \dots  & Ĥ & Ĥₙ    \\
-    0      & 0 & \dots  & 0 & Ĥ
+         Ĥ  &  0 &  \dots   &  0  &  Ĥ₁     \\
+         0  &  Ĥ &  \dots   &  0  &  Ĥ₂     \\
+    \vdots  &    &  \ddots  &     &  \vdots \\
+         0  &  0 &  \dots   &  Ĥ  &  Ĥₙ     \\
+         0  &  0 &  \dots   &  0  &  Ĥ
 \end{pmatrix}
 ```
 """
@@ -72,7 +72,7 @@ Ĥ |Ψ⟩
 and
 
 ```math
-e^{-i Ĝ dt} \begin{pmatrix} 0 \\ \vdots \\ 0 \\ |Ψ⟩ \end{pmatrix}
+e^{-i G̃ dt} \begin{pmatrix} 0 \\ \vdots \\ 0 \\ |Ψ⟩ \end{pmatrix}
 = \begin{pmatrix}
 \frac{∂}{∂ϵ₁} e^{-i Ĥ dt} |Ψ⟩ \\
 \vdots \\
