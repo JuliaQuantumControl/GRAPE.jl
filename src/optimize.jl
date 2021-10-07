@@ -148,17 +148,17 @@ end
 
 
 @concrete struct GrapeWrk
-    objectives::Any # copy of objectives
-    pulse_mapping::Any # as michael describes, similar to c_ops
-    H_store::Any # store for Hamiltonian
-    ψ_store::Any # store for forward states
-    ϕ_store::Any # store for forward states
-    aux_state::Any # store for [psi 0]
-    aux_store::Any # store for auxiliary matrix
-    dP_du::Any # store for directional derivative
-    tlist::Any # tlist
-    prop_wrk::Any # prop wrk
-    aux_prop_wrk::Any # aux prop wrk
+    objectives # copy of objectives
+    pulse_mapping # as michael describes, similar to c_ops
+    H_store # store for Hamiltonian
+    ψ_store # store for forward states
+    ϕ_store # store for forward states
+    aux_state # store for [psi 0]
+    aux_store # store for auxiliary matrix
+    dP_du # store for directional derivative
+    tlist # tlist
+    prop_wrk # prop wrk
+    aux_prop_wrk # aux prop wrk
 end
 
 function GrapeWrk(objectives, tlist, prop_method, pulse_mapping = "")
@@ -171,31 +171,35 @@ function GrapeWrk(objectives, tlist, prop_method, pulse_mapping = "")
     controls = getcontrols(generator)
     N_slices = length(tlist)
     dim = size(initial_state, 1)
-    # store forward evolution
+    # store for forward evolution
     ψ_store = [[similar(initial_state) for i = 1:N_slices] for ii = 1:N_obj]
 
+    # set the state in each first entry to be the initial state
     for i = 1:N_obj
         ψ_store[i][1] = objectives[i].initial_state
     end
 
+    # store for the backward evolution
     ϕ_store = [[similar(initial_state) for i = 1:N_slices] for ii = 1:N_obj]
 
+    # similarly we set the final entry of each to the target state
     for i = 1:N_obj
         ϕ_store[i][N_slices] = objectives[i].target_state
     end
 
+    # storage for the Hamiltonian
     H_store = [[similar(generator[1]) for i = 1:N_slices] for ii = 1:N_obj]
 
-    aux_mat = [zeros(eltype(initial_state), 2 * dim, 2 * dim) for i = 1:N_obj]
-    aux_state = [zeros(eltype(initial_state), 2 * dim) for i = 1:N_obj]
-
+    # store for the directional derivative
     dP_du = [
         [[zeros(eltype(ψ), size(ψ)) for i = 1:N_slices] for k = 1:length(controls)] for
         ii = 1:N_obj
     ]
 
+    # propagator working structs, many for each objective
     prop_wrk = [initpropwrk(obj.initial_state, tlist; prop_method) for obj in objectives]
 
+    # similar propagator working structs but for the auxilliary matrix
     aux_prop_wrk = [initpropwrk(aux_state[1], tlist; prop_method) for obj in objectives]
     return GrapeWrk(
         objectives,
@@ -212,7 +216,7 @@ function GrapeWrk(objectives, tlist, prop_method, pulse_mapping = "")
     )
 end
 
-function optimize(wrk, pulse_options, tlist, propagator)
+function optimize(wrk, pulse_options)
     @unpack objectives,
     pulse_mapping,
     H_store,
@@ -259,10 +263,12 @@ function optimize(wrk, pulse_options, tlist, propagator)
             G .= G .* 0.0
         end
         # for each objective
+        # we can do this in parallel
         @inbounds for obj = 1:N_obj
             # forward prop all states for current objective
             ψ_store_copy = copy(ψ_store[obj])
             _fw_prop!(x, ψ_store[obj], H_store[obj], N_slices, dt, prop_wrk[obj], H)
+            # forward propagate the aux matrix
             _fw_prop_aux!(
                 aux_state[obj],
                 aux_store[obj],
@@ -276,21 +282,23 @@ function optimize(wrk, pulse_options, tlist, propagator)
                 aux_prop_wrk[obj],
                 dP_du[obj],
             )
-
+            # backward propagate the costate and store it at each point in time
             _bw_prop!(ϕ_store[obj], H_store[obj], N_slices, dt, prop_wrk[obj])
-
+            # compute the fidelity 
             fid = abs2(ϕ_store[obj][N_slices]' * ψ_store[obj][N_slices])
-
+            
+            # then compute the gradient
             @inbounds for n = 1:N_slices
                 @inbounds for k = 1:N_controls
                     grad[k][n] = 2 * real(ϕ_store[obj][n]' * dP_du[obj][k][n])
                 end
             end
 
-
+            # add scaled gradient
             if G !== nothing
                 G .= +grad / N_obj
             end
+            # sum figure of merit, needs weights
             if F !== nothing
                 F = F + fid / N_obj
             end
@@ -299,7 +307,7 @@ function optimize(wrk, pulse_options, tlist, propagator)
 
     end
 
-
+    # closure over the variables so that we can optimise 
     topt =
         (F, G, x) -> grape_all_obj(
             F,
@@ -318,7 +326,7 @@ function optimize(wrk, pulse_options, tlist, propagator)
             dt,
             grad,
         )
-
+    # we minimize the result and return
     minimize(Optim.onlyfg!(topt), pulses, LBFGS())
 
 
