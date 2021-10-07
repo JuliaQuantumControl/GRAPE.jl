@@ -38,5 +38,5 @@ rm(joinpath(@__DIR__, "build", "examples", ".gitignore"))
 
 deploydocs(;
     repo = "github.com/JuliaQuantumControl/GRAPE.jl",
-    devbranch = "main", # TODO: switch to "master"
+    devbranch = "master",
 )
