@@ -39,7 +39,7 @@ struct GradGenerator{T, CGT, CT}
     function GradGenerator(G::T) where T
         control_generators = G -> [] # TODO implement alongside getcontrols
         G_ctrl = control_generators(G)
-        controls = getcontrols(G)
+        controls = collect(getcontrols(G))
         new{T, eltype(G_ctrl), eltype(controls)}(G, G_ctrl, controls)
     end
 
@@ -84,11 +84,14 @@ e^{-i Ĥ dt} |Ψ⟩
 struct GradVector{T}
     state :: T
     grad_states :: Vector{T}
+end
 
-    GradVector(Ψ::T, G::GradGenerator) where T = new{T}(
-                Ψ, [similar(Ψ) for _ in 1:length(G.control_generators)]
-    )
-
+function GradVector(Ψ::T, G::GradGenerator) where T
+    grad_states = [similar(Ψ) for _ in 1:length(G.control_generators)]
+    for i = 1 : length(grad_states)
+        LinearAlgebra.lmul!(0.0, grad_states[i])
+    end
+    GradVector{T}(Ψ, grad_states)
 end
 
 
@@ -100,6 +103,7 @@ function LinearAlgebra.mul!(Φ::GradVector, G::GradGenerator, Ψ::GradVector)
     end
 end
 
+
 function LinearAlgebra.lmul!(c, Ψ::GradVector)
     LinearAlgebra.lmul!(c, Ψ.state)
     for i = 1:length(Ψ.grad_states)
@@ -107,11 +111,40 @@ function LinearAlgebra.lmul!(c, Ψ::GradVector)
     end
 end
 
+function LinearAlgebra.axpy!(a, X::GradVector, Y::GradVector)
+    LinearAlgebra.axpy(a, X.state, Y.state)
+    for i = 1:length(X.grad_states)
+        LinearAlgebra.axpy(a, X.grad_states[i], Y.grad_states[i])
+    end
+end
 
-# TODO: LinearAlgebra.axpy!
-# TODO: LinearAlgebra.norm
-# TODO: LinearAlgebra.dot
-# TODO: copyto!
+
+function LinearAlgebra.norm(Ψ::GradVector)
+    nrm = LinearAlgebra.norm(Ψ.state)
+    for i = 1:length(Ψ.grad_states)
+        nrm += LinearAlgebra.norm(Ψ.grad_states[i])
+    end
+    return nrm
+end
+
+
+function Base.copyto!(dest::GradVector, src::GradVector)
+    copyto!(dest.state, src.state)
+    for i = 1:length(src.grad_states)
+        copyto!(dest.grad_states[i], src.grad_states[i])
+    end
+    return dest
+end
+
+
+function Base.length(Ψ::GradVector)
+    return length(Ψ.state) * (1 + length(Ψ.grad_states))
+end
+
+
+function Base.similar(Ψ::GradVector)
+    return GradVector(similar(Ψ.state), [similar(ϕ) for ϕ ∈ Ψ.grad_states])
+end
 
 
 @concrete struct GrapeWrk
