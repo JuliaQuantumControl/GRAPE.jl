@@ -224,11 +224,11 @@ end
 function optimize(wrk, pulse_options)
     @unpack objectives,
     pulse_mapping,
-    H_store,
+    N_slices,
     ψ_store,
     ϕ_store,
-    aux_state,
-    aux_store,
+    G,
+    vals_dict,
     dP_du,
     tlist,
     prop_wrk,
@@ -250,12 +250,9 @@ function optimize(wrk, pulse_options)
         N_obj,
         N_slices,
         N_controls,
-        dim,
         ψ_store,
         ϕ_store,
-        H_store,
-        aux_state,
-        aux_store,
+        Gen,
         dP_du,
         dt,
         grad,
@@ -272,26 +269,14 @@ function optimize(wrk, pulse_options)
         @inbounds for obj = 1:N_obj
             # forward prop all states for current objective
             ψ_store_copy = copy(ψ_store[obj])
-            _fw_prop!(x, ψ_store[obj], N_slices, obj, wrk, prop_wrk[obj])
 
-            # forward propagate the aux matrix
-            _fw_prop_aux!(
-                aux_state[obj],
-                aux_store[obj],
-                dim,
-                H[2][:],
-                H_store[obj],
-                N_controls,
-                N_slices,
-                dt,
-                ψ_store_copy,
-                aux_prop_wrk[obj],
-                dP_du[obj],
-            )
             # backward propagate the costate and store it at each point in time
-            _bw_prop!(ϕ_store[obj], H_store[obj], N_slices, dt, prop_wrk[obj])
+            _bw_prop!(x, ϕ_store[obj], N_slices, prop_wrk[obj])
+
+            # forward propagate the Schirmer state and use that to extract our forward evolved state
+
             # compute the fidelity 
-            fid = abs2(ϕ_store[obj][N_slices]' * ψ_store[obj][N_slices])
+            τ = real(abs2(ϕ_store[obj][N_slices]' * ψ_store[obj][N_slices]))
             
             # then compute the gradient
             @inbounds for n = 1:N_slices
@@ -302,11 +287,11 @@ function optimize(wrk, pulse_options)
 
             # add scaled gradient
             if G !== nothing
-                G .= +grad / N_obj
+                G .=+ grad / N_obj
             end
             # sum figure of merit, needs weights
             if F !== nothing
-                F = F + fid / N_obj
+                F = F + τ / N_obj
             end
 
         end
@@ -343,12 +328,13 @@ end
 """
 Evaluate the total Generator (composed of static and ϵ*dynamic) at a time index [n] and at objective index [k]
 """
-function _fw_gen(ϵ, k, n, wrk)
+function _eval_gen(ϵ, k, n, wrk)
     vals_dict = wrk.vals_dict[k]
     t = wrk.tlist
     for (l, control) in enumerate(wrk.controls)
         vals_dict[control] = ϵ[l][n]
     end
+    # will this ever go out of bounds? TODO check
     dt = t[n+1] - t[n]
     setcontrolvals!(wrk.G[k][n], wrk.objectives[k].generator, vals_dict)
     return wrk.G[k][n], dt
@@ -400,11 +386,12 @@ end
 """
 Backwards propagate the states ϕ and store them
 """
-function _bw_prop!(ϕ_store, H_store, N_slices, dt, prop_wrk)
+function _bw_prop!(x, ϕ_store, N_slices, prop_wrk)
     @inbounds for n in reverse(1:N_slices)
         ϕ_store[n] .= ϕ_store[n+1]
+        G, dt = _eval_gen(x[n, :], k, n, grapewrk)
         ϕ = ϕ_store[n]
-        propstep!(ϕ, H_store[n], -1.0 * dt, prop_wrk)
+        propstep!(ϕ, G, -1.0 * dt, prop_wrk)
     end
 end
 
