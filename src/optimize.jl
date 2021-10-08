@@ -336,7 +336,7 @@ end
 Propagate system forward in time and store states at a constant objective index
 """
 function _fw_prop!(x, ψ_store, H_store, N_slices, dt, prop_wrk, H)
-    @inbounds for i = 1:N_slices
+    @inbounds for n = 1:N_slices
         ψ_store[n+1] .= ψ_store[n]
         H_store[n] .= H[1] + H[2][1] .* x[1][n]
         ψ = ψ_store[n+1]
@@ -360,7 +360,7 @@ function _fw_prop_aux!(
     aux_prop_wrk,
     dP_du,
 )
-    @inbounds for i = 1:N_slices
+    @inbounds for n = 1:N_slices
         aux_state[obj][dim+1:end] .= ψ_store[n]
         @inbounds for k = 1:N_controls
             aux_store[1:dim, dim+1:end] .= Hc
