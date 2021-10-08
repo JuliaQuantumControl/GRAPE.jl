@@ -371,25 +371,28 @@ end
 Propagate auxilliary system forward in time and then store the states at a constant objective index
 """
 function _fw_prop_aux!(
-    Hc,
+    Hk,
     wrk,
     N_controls,
     N_slices,
+    n_obj,
     dt,
     ψ_store,
     aux_prop_wrk,
     dP_du,
 )
+    dim = length(ψ_store[n])
     @inbounds for n = 1:N_slices
-        aux_state[obj][dim+1:end] .= ψ_store[n]
+        # we allocate an auxilliary state 
         @inbounds for k = 1:N_controls
-            aux_store[1:dim, dim+1:end] .= Hc
-            aux_store[1:dim, 1:dim] .= H_store[n]
-            aux_store[dim+1:end, dim+1:end] = H_store[n]
-            propstep!(aux_state, aux_store, dt, aux_prop_wrk)
+            aux_state = [zero(ψ_store[n]); ψ_store[n]]
+            # we then allocate an auxilliary matrix 
+            Hn = wrk.G[n_obj, n]
+            L2 = [Hn Hk; zero(Hn) Hn]
+
+            propstep!(aux_state, L2, dt, aux_prop_wrk)
 
             dP_du[k][n] .= aux_state[1:dim]
-            aux_state[obj] .= 0.0 + 0.0im
         end
     end
 end
