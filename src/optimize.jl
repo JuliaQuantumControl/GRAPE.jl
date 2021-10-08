@@ -150,11 +150,11 @@ end
 @concrete struct GrapeWrk
     objectives # copy of objectives
     pulse_mapping # as michael describes, similar to c_ops
-    H_store # store for Hamiltonian
+    N_slices # number of slices because its nice to store
     ψ_store # store for forward states
     ϕ_store # store for forward states
-    # aux_state # store for [psi 0]
-    # aux_store # store for auxiliary matrix
+    G # store for the generator
+    vals_dict # dictionary that will store the array mapping at each point in time
     dP_du # store for directional derivative
     tlist # tlist
     prop_wrk # prop wrk
@@ -163,14 +163,20 @@ end
 
 function GrapeWrk(objectives, tlist, prop_method, pulse_mapping = "")
     N_obj = length(objectives)
-
     @unpack initial_state, generator, target_state = objectives[1]
 
     ψ = initial_state
-
+    # copy from Krotov
     controls = getcontrols(generator)
-    N_slices = length(tlist)
-    dim = size(initial_state, 1)
+    
+    pulses0 = [discretize_on_midpoints(control, tlist) for control in controls]
+    
+    N_slices = size(pulses0[1], 1)
+    
+    zero_vals = IdDict(control => zero(pulses0[i][1]) for (i, control) in enumerate(controls))
+    G = [[setcontrolvals(obj.generator, zero_vals) for i =1:N_slices] for obj in objectives]
+    vals_dict = [copy(zero_vals) for _ in objectives]
+
     # store for forward evolution
     ψ_store = [[similar(initial_state) for i = 1:N_slices] for ii = 1:N_obj]
 
@@ -187,9 +193,6 @@ function GrapeWrk(objectives, tlist, prop_method, pulse_mapping = "")
         ϕ_store[i][N_slices] = objectives[i].target_state
     end
 
-    # storage for the Hamiltonian
-    H_store = [[similar(generator[1]) for i = 1:N_slices] for ii = 1:N_obj]
-
     # store for the directional derivative
     dP_du = [
         [[zeros(eltype(ψ), size(ψ)) for i = 1:N_slices] for k = 1:length(controls)] for
@@ -202,12 +205,15 @@ function GrapeWrk(objectives, tlist, prop_method, pulse_mapping = "")
     # similar propagator working structs but for the auxilliary matrix
     aux_state_dummy = similar([objectives[1].initial_state; objectives[1].initial_state])
     aux_prop_wrk = [initpropwrk(aux_state_dummy, tlist; prop_method) for obj in objectives]
+
     return GrapeWrk(
         objectives,
         pulse_mapping,
-        H_store,
+        N_slices,
         ψ_store,
         ϕ_store,
+        G,
+        vals_dict,
         dP_du,
         tlist,
         prop_wrk,
@@ -266,7 +272,8 @@ function optimize(wrk, pulse_options)
         @inbounds for obj = 1:N_obj
             # forward prop all states for current objective
             ψ_store_copy = copy(ψ_store[obj])
-            _fw_prop!(x, ψ_store[obj], H_store[obj], N_slices, dt, prop_wrk[obj], H)
+            _fw_prop!(x, ψ_store[obj], N_slices, obj, wrk, prop_wrk[obj])
+
             # forward propagate the aux matrix
             _fw_prop_aux!(
                 aux_state[obj],
@@ -332,15 +339,31 @@ function optimize(wrk, pulse_options)
 end
 
 
+
+"""
+Evaluate the total Generator (composed of static and ϵ*dynamic) at a time index [n] and at objective index [k]
+"""
+function _fw_gen(ϵ, k, n, wrk)
+    vals_dict = wrk.vals_dict[k]
+    t = wrk.tlist
+    for (l, control) in enumerate(wrk.controls)
+        vals_dict[control] = ϵ[l][n]
+    end
+    dt = t[n+1] - t[n]
+    setcontrolvals!(wrk.G[k][n], wrk.objectives[k].generator, vals_dict)
+    return wrk.G[k][n], dt
+end
+
+
 """
 Propagate system forward in time and store states at a constant objective index
 """
-function _fw_prop!(x, ψ_store, H_store, N_slices, dt, prop_wrk, H)
+function _fw_prop!(x, ψ_store, N_slices, k, grapewrk, prop_wrk)
     @inbounds for n = 1:N_slices
         ψ_store[n+1] .= ψ_store[n]
-        H_store[n] .= H[1] + H[2][1] .* x[1][n]
+        G, dt = _fw_gen(x[n, :], k, n, grapewrk)
         ψ = ψ_store[n+1]
-        propstep!(ψ, H_store[n], dt, prop_wrk)
+        propstep!(ψ, G, dt, prop_wrk)
     end
 end
 
@@ -348,11 +371,8 @@ end
 Propagate auxilliary system forward in time and then store the states at a constant objective index
 """
 function _fw_prop_aux!(
-    aux_state,
-    aux_store,
-    dim,
     Hc,
-    H_store,
+    wrk,
     N_controls,
     N_slices,
     dt,
@@ -384,3 +404,5 @@ function _bw_prop!(ϕ_store, H_store, N_slices, dt, prop_wrk)
         propstep!(ϕ, H_store[n], -1.0 * dt, prop_wrk)
     end
 end
+
+
