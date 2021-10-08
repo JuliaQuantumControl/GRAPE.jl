@@ -153,8 +153,8 @@ end
     H_store # store for Hamiltonian
     ψ_store # store for forward states
     ϕ_store # store for forward states
-    aux_state # store for [psi 0]
-    aux_store # store for auxiliary matrix
+    # aux_state # store for [psi 0]
+    # aux_store # store for auxiliary matrix
     dP_du # store for directional derivative
     tlist # tlist
     prop_wrk # prop wrk
@@ -200,15 +200,14 @@ function GrapeWrk(objectives, tlist, prop_method, pulse_mapping = "")
     prop_wrk = [initpropwrk(obj.initial_state, tlist; prop_method) for obj in objectives]
 
     # similar propagator working structs but for the auxilliary matrix
-    aux_prop_wrk = [initpropwrk(aux_state[1], tlist; prop_method) for obj in objectives]
+    aux_state_dummy = similar([objectives[1].initial_state; objectives[1].initial_state])
+    aux_prop_wrk = [initpropwrk(aux_state_dummy, tlist; prop_method) for obj in objectives]
     return GrapeWrk(
         objectives,
         pulse_mapping,
         H_store,
         ψ_store,
         ϕ_store,
-        aux_state,
-        aux_mat,
         dP_du,
         tlist,
         prop_wrk,
