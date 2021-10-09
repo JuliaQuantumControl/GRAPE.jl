@@ -87,7 +87,9 @@ struct GradVector{T}
 end
 
 function GradVector(Ψ::T, G::GradGenerator) where T
-    grad_states = [similar(Ψ) for _ in 1:length(G.control_generators)]
+    # grad_states = [similar(Ψ) for _ in 1:length(G.control_generators)]
+    # for now we need to do this so we don't get a 0D array
+    grad_states = [similar(Ψ) for _ in 1:length(G.controls)]
     for i = 1 : length(grad_states)
         LinearAlgebra.lmul!(0.0, grad_states[i])
     end
@@ -274,6 +276,7 @@ function optimize(wrk, pulse_options)
             _bw_prop!(x, ϕ_store[obj], N_slices, prop_wrk[obj])
 
             # forward propagate the Schirmer state and use that to extract our forward evolved state
+            _fw_prop_w_grad!()
 
             # compute the fidelity 
             τ = real(abs2(ϕ_store[obj][N_slices]' * ψ_store[obj][N_slices]))
@@ -341,52 +344,14 @@ function _eval_gen(ϵ, k, n, wrk)
 end
 
 
-"""
-Propagate system forward in time and store states at a constant objective index
-"""
-function _fw_prop!(x, ψ_store, N_slices, k, grapewrk, prop_wrk)
-    @inbounds for n = 1:N_slices
-        ψ_store[n+1] .= ψ_store[n]
-        G, dt = _fw_gen(x[n, :], k, n, grapewrk)
-        ψ = ψ_store[n+1]
-        propstep!(ψ, G, dt, prop_wrk)
-    end
+function _fw_prop_w_grad!()
 end
 
-"""
-Propagate auxilliary system forward in time and then store the states at a constant objective index
-"""
-function _fw_prop_aux!(
-    Hk,
-    wrk,
-    N_controls,
-    N_slices,
-    n_obj,
-    dt,
-    ψ_store,
-    aux_prop_wrk,
-    dP_du,
-)
-    dim = length(ψ_store[n])
-    @inbounds for n = 1:N_slices
-        # we allocate an auxilliary state 
-        @inbounds for k = 1:N_controls
-            aux_state = [zero(ψ_store[n]); ψ_store[n]]
-            # we then allocate an auxilliary matrix 
-            Hn = wrk.G[n_obj, n]
-            L2 = [Hn Hk; zero(Hn) Hn]
-
-            propstep!(aux_state, L2, dt, aux_prop_wrk)
-
-            dP_du[k][n] .= aux_state[1:dim]
-        end
-    end
-end
 
 """
 Backwards propagate the states ϕ and store them
 """
-function _bw_prop!(x, ϕ_store, N_slices, prop_wrk)
+function _bw_prop!(x, ϕ_store, N_slices, grapewrk, prop_wrk)
     @inbounds for n in reverse(1:N_slices)
         ϕ_store[n] .= ϕ_store[n+1]
         G, dt = _eval_gen(x[n, :], k, n, grapewrk)
@@ -394,5 +359,6 @@ function _bw_prop!(x, ϕ_store, N_slices, prop_wrk)
         propstep!(ϕ, G, -1.0 * dt, prop_wrk)
     end
 end
+
 
 
