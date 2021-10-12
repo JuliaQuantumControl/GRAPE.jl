@@ -1,6 +1,6 @@
 name = "GRAPE"
 uuid = "6b52fcaf-80fe-489a-93e9-9f92080510be"
-authors = ["Alastair Marshall <alastair@nvision-imaging.com> and contributors"]
+authors = ["Alastair Marshall <alastair@nvision-imaging.com>", "Michael Goerz <mail@michaelgoerz.net>"]
 version = "0.0.1"
 
 [deps]
