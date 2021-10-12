@@ -34,7 +34,7 @@ function GrapeWrk(objectives, tlist, prop_method, pulse_mapping = "")
     N_slices = size(pulses0[1], 1)
 
     zero_vals = IdDict(control => zero(pulses0[i][1]) for (i, control) in enumerate(controls))
-    G = [[evalcontrols(obj.generator, zero_vals) for i =1:N_slices] for obj in objectives]
+    G = [setcontrolvals(obj.generator, zero_vals) for obj in objectives]
     vals_dict = [copy(zero_vals) for _ in objectives]
 
     # store for forward evolution
@@ -127,33 +127,38 @@ function optimize(wrk, pulse_options)
         # for each objective
         # we can do this in parallel
         @inbounds for obj = 1:N_obj
-            # forward prop all states for current objective
-            ψ_store_copy = copy(ψ_store[obj])
 
-            # backward propagate the costate and store it at each point in time
-            _bw_prop!(x, ϕ_store[obj], N_slices, prop_wrk[obj])
-
-            # forward propagate the Schirmer state and use that to extract our forward evolved state
-            _fw_prop_w_grad!()
-
-            # compute the fidelity
-            τ = real(abs2(ϕ_store[obj][N_slices]' * ψ_store[obj][N_slices]))
-
-            # then compute the gradient
+            # now do the time loop
             @inbounds for n = 1:N_slices
-                @inbounds for k = 1:N_controls
-                    grad[k][n] = 2 * real(ϕ_store[obj][n]' * dP_du[obj][k][n])
-                end
-            end
 
-            # add scaled gradient
-            if G !== nothing
-                G .=+ grad / N_obj
-            end
-            # sum figure of merit, needs weights
-            if F !== nothing
-                F = F + τ / N_obj
-            end
+                # forward prop all states for current objective
+                ψ_store_copy = copy(ψ_store[obj])
+
+                # backward propagate the costate and store it at each point in time
+                _bw_prop!(x, ϕ_store[obj], N_slices, prop_wrk[obj])
+
+                # forward propagate the Schirmer state and use that to extract our forward evolved state
+                _fw_prop_w_grad!()
+
+                # compute the fidelity 
+                τ = real(abs2(ϕ_store[obj][N_slices]' * ψ_store[obj][N_slices]))
+                
+                # then compute the gradient
+                @inbounds for n = 1:N_slices
+                    @inbounds for k = 1:N_controls
+                        grad[k][n] = 2 * real(ϕ_store[obj][n]' * dP_du[obj][k][n])
+                    end
+                end
+
+                # add scaled gradient
+                if G !== nothing
+                    G .=+ grad / N_obj
+                end
+                # sum figure of merit, needs weights
+                if F !== nothing
+                    F = F + τ / N_obj
+                end
+        end
 
         end
 
@@ -197,8 +202,8 @@ function _eval_gen(ϵ, k, n, wrk)
     end
     # will this ever go out of bounds? TODO check
     dt = t[n+1] - t[n]
-    evalcontrols!(wrk.G[k][n], wrk.objectives[k].generator, vals_dict)
-    return wrk.G[k][n], dt
+    setcontrolvals!(wrk.G[n], wrk.objectives[k].generator, vals_dict)
+    return wrk.G[n], dt
 end
 
 
