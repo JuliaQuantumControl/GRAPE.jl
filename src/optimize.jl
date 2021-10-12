@@ -7,11 +7,11 @@ using Optim
 import LinearAlgebra
 
 
-@concrete struct GrapeWrk2
+@concrete struct GrapeWrk
     objectives # copy of objectives
     pulse_mapping # as michael describes, similar to c_ops
     N_slices # number of slices because its nice to store
-    ψ_store # store for forward states
+    Ψ_store # store for forward states
     ϕ_store # store for forward states
     G # store for the generator
     vals_dict # dictionary that will store the array mapping at each point in time
@@ -20,16 +20,19 @@ import LinearAlgebra
     prop_wrk # prop wrk
     aux_prop_wrk # aux prop wrk
     controls
-    td_gradgens
+    td_gradgens # time dependent grad generators, one for each objective
+    gradvecs # gradvecs for each objective
 end
 
-function GrapeWrk2(objectives, tlist, prop_method, pulse_mapping = "")
+function GrapeWrk(objectives, tlist, prop_method, pulse_mapping = "")
     N_obj = length(objectives)
     @unpack initial_state, generator, target_state = objectives[1]
 
-    ψ = initial_state
+    Ψ = initial_state
     # copy from Krotov
     controls = getcontrols(generator)
+
+    N_controls = size(controls, 1)
 
     pulses0 = [discretize_on_midpoints(control, tlist) for control in controls]
 
@@ -40,10 +43,10 @@ function GrapeWrk2(objectives, tlist, prop_method, pulse_mapping = "")
     vals_dict = [copy(zero_vals) for _ in objectives]
 
     # store for forward evolution
-    ψ_store = [[similar(initial_state) for i = 1:N_slices] for ii = 1:N_obj]
+    Ψ_store = [[similar(initial_state) for i = 1:N_slices] for ii = 1:N_obj]
     # set the state in each first entry to be the initial state
     for i = 1:N_obj
-        ψ_store[i][1] = objectives[i].initial_state
+        Ψ_store[i][1] = objectives[i].initial_state
     end
 
     # store for the backward evolution
@@ -57,26 +60,33 @@ function GrapeWrk2(objectives, tlist, prop_method, pulse_mapping = "")
     
     # store for the directional derivative
     dP_du = [
-        [[zeros(eltype(ψ), size(ψ)) for i = 1:N_slices] for k = 1:length(controls)] for
+        [[zeros(eltype(Ψ), size(Ψ)) for i = 1:N_slices] for k = 1:length(controls)] for
         ii = 1:N_obj
     ]
 
     # propagator working structs, many for each objective
     prop_wrk = [initpropwrk(obj.initial_state, tlist; prop_method) for obj in objectives]
 
-    return GrapeWrk2(
+    Ψ_grad = GradVector(Ψ_store[1][1], N_controls)
+    aux_prop = [initpropwrk(Ψ_grad, tlist, :newton) for _ in objectives]
+
+    gradvecs = [GradVector(Ψ_store[i][1], N_controls) for i = 1:N_obj]
+
+    return GrapeWrk(
         objectives,
         pulse_mapping,
         N_slices,
-        ψ_store,
+        Ψ_store,
         ϕ_store,
         G,
         vals_dict,
         dP_du,
         tlist,
         prop_wrk,
+        aux_prop,
         controls,
         td_gradgens,
+        gradvecs,
     )
 end
 
@@ -84,7 +94,7 @@ function optimize(wrk, pulse_options)
     @unpack objectives,
     pulse_mapping,
     N_slices,
-    ψ_store,
+    Ψ_store,
     ϕ_store,
     G,
     vals_dict,
@@ -96,7 +106,7 @@ function optimize(wrk, pulse_options)
 
     N_obj = length(objectives)
     N_controls = size(controls, 1)
-    dim = size(H_store[1][1], 1)
+    dim = size(Ψ_store[1][1], 1)
 
     function grape_all_obj(
         F,
@@ -105,7 +115,7 @@ function optimize(wrk, pulse_options)
         N_obj,
         N_slices,
         N_controls,
-        ψ_store,
+        Ψ_store,
         ϕ_store,
         dP_du,
         grad,
@@ -121,24 +131,23 @@ function optimize(wrk, pulse_options)
         # we can do this in parallel
         @inbounds for obj = 1:N_obj
             timedepgradgen = td_gradgens[obj]
-            # now do the time loop
-            Ψ_grad = GradVector(ψ_store[1], N_controls)
+            Ψ_grad = gradvec[obj]
+            
             @inbounds for n = 1:N_slices
-
-                # evaluate the generator in this timestep
-                # G, dt = _eval_gen(x, obj, n, wrk)
-                
+                # reset the gradvec so its ready for mutation during evolution
+                resetgradvec!(Ψ_grad, Ψ_store[obj][n])
                 # get the vals dict at this timeslice
                 vals_dict = _get_vals_dict(x[:, n], obj, n, wrk)
                 dt = tlist[n+1] - tlist[n]
+                # and then get the grad generator
                 grad_generator = evalcontrols(timedepgradgen, vals_dict)
-                # now we propstep Ψ_grad forward in time, this gets us state and derivative
-                propstep!()
-
-                # then we want to evolve the state backwards in time
+                # propagate the state and the gradient forward in time
+                propstep!(Ψ_grad, grad_generator, dt, aux_prop_wrk[obj])
+                # copy the forward evoled state into the Ψ_store
+                Ψ_store[obj][n+1] .= Ψ_grad.state
 
                 # compute the fidelity 
-                τ = real(abs2(ϕ_store[obj][N_slices]' * ψ_store[obj][N_slices]))
+                τ = real(abs2(ϕ_store[obj][N_slices]' * Ψ_store[obj][N_slices]))
                 
                 # then compute the gradient
                 @inbounds for n = 1:N_slices
@@ -171,7 +180,7 @@ function optimize(wrk, pulse_options)
             N_slices,
             N_controls,
             dim,
-            ψ_store,
+            Ψ_store,
             ϕ_store,
             H_store,
             aux_state,
