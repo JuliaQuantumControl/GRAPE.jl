@@ -43,14 +43,14 @@ function GrapeWrk(objectives, tlist, prop_method, pulse_mapping = "")
     vals_dict = [copy(zero_vals) for _ in objectives]
 
     # store for forward evolution
-    Ψ_store = [[similar(initial_state) for i = 1:N_slices] for ii = 1:N_obj]
+    Ψ_store = [[similar(initial_state) for i = 1:N_slices+1] for ii = 1:N_obj]
     # set the state in each first entry to be the initial state
     for i = 1:N_obj
         Ψ_store[i][1] = objectives[i].initial_state
     end
 
     # store for the backward evolution
-    ϕ_store = [[similar(initial_state) for i = 1:N_slices] for ii = 1:N_obj]
+    ϕ_store = [[similar(initial_state) for i = 1:N_slices+1] for ii = 1:N_obj]
     # similarly we set the final entry of each to the target state
     for i = 1:N_obj
         ϕ_store[i][N_slices] = objectives[i].target_state
@@ -60,7 +60,7 @@ function GrapeWrk(objectives, tlist, prop_method, pulse_mapping = "")
     
     # store for the directional derivative
     dP_du = [
-        [[zeros(eltype(Ψ), size(Ψ)) for i = 1:N_slices] for k = 1:length(controls)] for
+        [[zeros(eltype(Ψ), size(Ψ)) for i = 1:N_slices+1] for k = 1:length(controls)] for
         ii = 1:N_obj
     ]
 
@@ -202,10 +202,11 @@ Evaluate the total Generator (composed of static and ϵ*dynamic) at a time index
 """
 function _eval_gen(ϵ, k, n, wrk)
     vals_dict = _get_vals_dict(ϵ, k, n, wrk)
+    tlist = wrk.tlist
     # will this ever go out of bounds? TODO check
-    dt = t[n+1] - t[n]
-    evalcontrols!(wrk.G[n], wrk.objectives[k].generator, vals_dict)
-    return wrk.G[n], dt
+    dt = tlist[n+1] - tlist[n]
+    evalcontrols!(wrk.G[k], wrk.objectives[k].generator, vals_dict)
+    return wrk.G[k], dt
 end
 
 function _get_vals_dict(ϵ, k, n, wrk)
@@ -225,10 +226,10 @@ end
 """
 Backwards propagate the states ϕ and store them
 """
-function _bw_prop!(x, ϕ_store, N_slices, grapewrk, prop_wrk)
+function _bw_prop!(x, ϕ_store, N_slices, k_ens, grapewrk, prop_wrk)
     @inbounds for n in reverse(1:N_slices)
         ϕ_store[n] .= ϕ_store[n+1]
-        G, dt = _eval_gen(x[n, :], k, n, grapewrk)
+        G, dt = _eval_gen(x, k_ens, n, grapewrk)
         ϕ = ϕ_store[n]
         propstep!(ϕ, G, -1.0 * dt, prop_wrk)
     end
