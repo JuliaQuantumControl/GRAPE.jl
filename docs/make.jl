@@ -36,7 +36,4 @@ println("Finished makedocs")
 
 rm(joinpath(@__DIR__, "build", "examples", ".gitignore"))
 
-deploydocs(;
-    repo = "github.com/JuliaQuantumControl/GRAPE.jl",
-    devbranch = "master",
-)
+deploydocs(; repo = "github.com/JuliaQuantumControl/GRAPE.jl", devbranch = "master")
