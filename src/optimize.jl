@@ -46,14 +46,14 @@ function GrapeWrk(objectives, tlist, prop_method, pulse_mapping = "")
     Ψ_store = [[similar(initial_state) for i = 1:N_slices+1] for ii = 1:N_obj]
     # set the state in each first entry to be the initial state
     for i = 1:N_obj
-        Ψ_store[i][1] = objectives[i].initial_state
+        Ψ_store[i][1] .= copy(objectives[i].initial_state)
     end
 
     # store for the backward evolution
     ϕ_store = [[similar(initial_state) for i = 1:N_slices+1] for ii = 1:N_obj]
     # similarly we set the final entry of each to the target state
     for i = 1:N_obj
-        ϕ_store[i][N_slices] = objectives[i].target_state
+        ϕ_store[i][N_slices+1] .= copy(objectives[i].target_state)
     end
 
     td_gradgens = [TimeDependentGradGenerator(obj.generator) for obj in objectives]
@@ -230,8 +230,7 @@ function _bw_prop!(x, ϕ_store, N_slices, k_ens, grapewrk, prop_wrk)
     @inbounds for n in reverse(1:N_slices)
         ϕ_store[n] .= ϕ_store[n+1]
         G, dt = _eval_gen(x, k_ens, n, grapewrk)
-        ϕ = ϕ_store[n]
-        propstep!(ϕ, G, -1.0 * dt, prop_wrk)
+        propstep!(ϕ_store[n], G, -1.0 * dt, prop_wrk)
     end
 end
 
