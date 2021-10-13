@@ -15,6 +15,7 @@ QuantumPropagators = "7bf12567-5742-4b91-a078-644e72a65fc1"
 
 [compat]
 ConcreteStructs = "0.2"
+Krotov = "0.0.2"
 Optim = "1"
 Parameters = "0.12"
 QuantumControl = "0.0"
