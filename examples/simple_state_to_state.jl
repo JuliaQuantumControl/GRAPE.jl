@@ -49,6 +49,7 @@
 
 using QuantumControl
 using LinearAlgebra
+using GRAPE # XXX
 
 #jl using Test
 
@@ -129,22 +130,11 @@ objectives = [Objective(initial_state = ket(0), generator = H, target_state = ke
 
 problem = ControlProblem(
     objectives = objectives,
-    pulse_options = IdDict(
-        ϵ => Dict(
-            :lambda_a => 5,
-            :update_shape =>
-                t -> QuantumControl.shapes.flattop(
-                    t,
-                    T = 5,
-                    t_rise = 0.3,
-                    func = :blackman,
-                ),
-        ),
-    ),
     tlist = tlist,
+    pulse_options=Dict(),
     iter_stop = 50,
-    chi = QuantumControl.functionals.chi_ss!,
-    J_T = QuantumControl.functionals.J_T_ss,
+    J_T = QuantumControl.functionals.J_T_sm,
+    gradient=QuantumControl.functionals.grad_J_T_sm!,
     check_convergence = res -> begin
         ((res.J_T < 1e-3) && (res.converged = true) && (res.message = "J_T < 10⁻³"))
     end,
@@ -182,13 +172,10 @@ end
 
 # In the following we optimize the guess field $\epsilon_{0}(t)$ such
 # that the intended state-to-state transfer $\ket{\Psi_{\init}} \rightarrow
-# \ket{\Psi_{\tgt}}$ is solved, via the `krotov` package's central
-# `optimize_pulses` routine.  It requires, besides the previously defined
-# `objectives`, information about the optimization functional $J_T$ (implicitly,
-# via `chi_constructor`, which calculates the states $\ket{\chi} =
-# \frac{J_T}{\bra{\Psi}}$).
+# \ket{\Psi_{\tgt}}$ is solved.
 
-opt_result = optimize(problem, method = :krotov);
+#jl println("")
+opt_result = optimize_grape(problem);
 #-
 opt_result
 #-

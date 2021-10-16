@@ -1,211 +1,453 @@
 using QuantumControlBase
+using QuantumControlBase.ConditionalThreads: @threadsif
 using QuantumPropagators
-using Parameters
-using ConcreteStructs
-using Optim
+using LinearAlgebra
+import Optim
+using Dates
+using Printf
 
-import LinearAlgebra
 
+"""Result object returned by [`optimize_grape`](@ref)."""
+mutable struct GrapeResult{STST}
+    tlist :: Vector{Float64}
+    iter_start :: Int64  # the starting iteration number
+    iter_stop :: Int64 # the maximum iteration number
+    iter :: Int64  # the current iteration number
+    secs :: Float64  # seconds that the last iteration took
+    tau_vals :: Vector{ComplexF64}
+    J_T :: Float64  # the current value of the final-time functional J_T
+    J_T_prev :: Float64  # previous value of J_T
+    guess_controls :: Vector{Vector{Float64}}
+    optimized_controls :: Vector{Vector{Float64}}
+    states :: Vector{STST}
+    start_local_time :: DateTime
+    end_local_time :: DateTime
+    records :: Vector{Tuple}  # storage for info_hook to write data into at each iteration
+    converged :: Bool
+    message :: String
 
-@concrete struct GrapeWrk
-    objectives # copy of objectives
-    pulse_mapping # as michael describes, similar to c_ops
-    N_slices # number of slices because its nice to store
-    ϕ_store # store for forward states
-    G # store for the generator
-    vals_dict # dictionary that will store the array mapping at each point in time
-    tlist # tlist
-    prop_wrk # prop wrk
-    aux_prop_wrk # aux prop wrk
-    controls
-    td_gradgens # time dependent grad generators, one for each objective
-    gradvecs # gradvecs for each objective
+    function GrapeResult(problem)
+        tlist = problem.tlist
+        controls = getcontrols(problem.objectives)
+        iter_start = get(problem.kwargs, :iter_start, 0)
+        iter_stop = get(problem.kwargs, :iter_stop, 5000)
+        iter = iter_start
+        secs = 0
+        tau_vals = zeros(ComplexF64, length(problem.objectives))
+        guess_controls = [
+            discretize(control, tlist) for control in controls
+        ]
+        J_T = 0.0
+        J_T_prev = 0.0
+        optimized_controls = [copy(guess) for guess in guess_controls]
+        states = [similar(obj.initial_state) for obj in problem.objectives]
+        start_local_time = now()
+        end_local_time = now()
+        records = Vector{Tuple}()
+        converged = false
+        message = "in progress"
+        new{eltype(states)}(
+            tlist, iter_start, iter_stop, iter, secs, tau_vals, J_T, J_T_prev,
+            guess_controls, optimized_controls, states, start_local_time,
+            end_local_time, records, converged, message)
+    end
 end
 
-function GrapeWrk(objectives, tlist, prop_method, pulse_mapping = "")
-    N_obj = length(objectives)
-    @unpack initial_state, generator, target_state = objectives[1]
-    # copy from Krotov
-    controls = getcontrols(generator)
 
-    N_controls = size(controls, 1)
 
-    pulses0 = [discretize_on_midpoints(control, tlist) for control in controls]
+Base.show(io::IO, r::GrapeResult) = print(io, "GrapeResult<$(r.message)>")
+Base.show(io::IO, ::MIME"text/plain", r::GrapeResult) = print(io, """
+GRAPE Optimization Result
+-------------------------
+- Started at $(r.start_local_time)
+- Number of objectives: $(length(r.states))
+- Number of iterations: $(max(r.iter - r.iter_start, 0))
+- Reason for termination: $(r.message)
+- Ended at $(r.end_local_time) ($(r.end_local_time - r.start_local_time))""")
 
-    N_slices = size(pulses0[1], 1)
 
-    zero_vals =
-        IdDict(control => zero(pulses0[i][1]) for (i, control) in enumerate(controls))
-    G = [evalcontrols(obj.generator, zero_vals) for obj in objectives]
-    vals_dict = [copy(zero_vals) for _ in objectives]
+# GRAPE workspace (for internal use)
+struct GrapeWrk{
+        OT<:QuantumControlBase.AbstractControlObjective,
+        AOT<:QuantumControlBase.AbstractControlObjective,
+        KWT,
+        CTRST<:Tuple,
+        POT<:AbstractDict,
+        STST,
+        VDT,
+        STORT,
+        PRWT,
+        PRGWT,
+        GT,
+        TDGT,
+        GGT
+    }
 
-    # store for the backward evolution
-    ϕ_store = [[similar(initial_state) for i = 1:N_slices+1] for ii = 1:N_obj]
-    # similarly we set the final entry of each to the target state
-    for i = 1:N_obj
-        ϕ_store[i][N_slices+1] .= copy(objectives[i].target_state)
-    end
+    # a copy of the objectives
+    objectives :: Vector{OT}
 
-    td_gradgens = [TimeDependentGradGenerator(obj.generator) for obj in objectives]
+    # the adjoint objectives, containing the adjoint generators for the
+    # backward propagation
+    adjoint_objectives :: Vector{AOT}
 
-    # propagator working structs, many for each objective
-    prop_wrk = [initpropwrk(obj.initial_state, tlist; prop_method) for obj in objectives]
+    # The kwargs from the control problem
+    kwargs :: KWT
 
-    Ψ_grad = GradVector(copy(initial_state), N_controls)
-    aux_prop = [initpropwrk(Ψ_grad, tlist, :newton) for _ in objectives]
+    # Tuple of the original controls (probably functions)
+    controls :: CTRST
 
-    gradvecs = [GradVector(Ψ_store[i][1], N_controls) for i = 1:N_obj]
+    optimizer :: Any # TODO
 
-    return GrapeWrk(
-        objectives,
-        pulse_mapping,
-        N_slices,
-        ϕ_store,
-        G,
-        vals_dict,
-        tlist,
-        prop_wrk,
-        aux_prop,
-        controls,
-        td_gradgens,
-        gradvecs,
-    )
-end
+    pulsevals :: Vector{Float64}
 
-function optimize(wrk, pulse_options)
-    @unpack objectives,
-    pulse_mapping,
-    N_slices,
-    Ψ_store,
-    ϕ_store,
-    G,
-    vals_dict,
-    dP_du,
-    tlist,
-    prop_wrk,
-    controls,
-    td_gradgens = wrk
+    # Result object
+    result :: GrapeResult{STST}
 
-    N_obj = length(objectives)
-    N_controls = size(controls, 1)
-    dim = size(Ψ_store[1][1], 1)
+    #################################
+    # scratch objects, per objective:
 
-    function grape_all_obj(
-        F,
-        G,
-        x,
-        N_obj,
-        N_slices,
-        N_controls,
-        Ψ_store,
-        ϕ_store,
-        grad,
-        wrk,
-        prop_wrk,
-        td_gradgens,
-        gradvec,
-    )
-        # in the cases where we want to use these just ensure that they're 0
-        if F !== nothing
-            F = 0.0
-        end
-        if G !== nothing
-            G .= G .* 0.0
-        end
-        # for each objective
-        # we can do this in parallel
-        @inbounds for obj = 1:N_obj
-            timedepgradgen = td_gradgens[obj]
-            Ψ_grad = gradvec[obj]
+    # backward-propagated states
+    # note: storage for fw-propagated states is in result.states
+    bw_states :: Vector{STST}
 
-            _bw_prop!(x, ϕ_store[obj], N_slices, obj, wrk, prop_wrk[obj])
+    # forward-propagated states (functional evaluation only)
+    fw_states :: Vector{STST}
 
-            @inbounds for n = 1:N_slices
-                # reset the gradvec so its ready for mutation during evolution
-                resetgradvec!(Ψ_grad, Ψ_store[obj][n])
-                # get the vals dict at this timeslice
-                vals_dict = _get_vals_dict(x[:, n], obj, n, wrk)
-                dt = tlist[n+1] - tlist[n]
-                # and then get the grad generator
-                grad_generator = evalcontrols(timedepgradgen, vals_dict)
-                # propagate the state and the gradient forward in time
-                propstep!(Ψ_grad, grad_generator, dt, aux_prop_wrk[obj])
+    # foward-propagated grad-vectors
+    fw_grad_states :: Vector{GradVector{STST}}
 
-                # compute the gradient
-                for ctrl = 1:N_controls
-                    grad[ctrl, n] = 2 * imag(ϕ_store[obj][n]' * Ψ_grad.grad_states[ctrl])
-                end
+    # gradients ∂τₖ/ϵₗ(tₙ)
+    tau_grads :: Vector{Matrix{ComplexF64}}
 
+    # dynamical generator (normal propagation) at a particular point in time
+    G :: Vector{GT}
+
+    # dynamica generator for grad-propagation, time-dependent
+    TDgradG :: Vector{TDGT}
+
+    # dynamical generator for grad-propagation at a particular point in time
+    gradG :: Vector{GGT}
+
+    control_derivs :: Vector{Vector{Union{Function, Nothing}}}
+
+    vals_dict :: Vector{VDT}
+
+    bw_storage :: Vector{STORT}  # backward storage array (per objective)
+
+    prop_wrk :: Vector{PRWT}  # for normal propagation
+
+    prop_grad_wrk :: Vector{PRGWT}  # for gradient propagation
+
+    use_threads :: Bool
+
+    function GrapeWrk(problem::QuantumControlBase.ControlProblem)
+        prop_method = get(problem.kwargs, :prop_method, Val(:auto))
+        use_threads = get(problem.kwargs, :use_threads, false)
+        objectives = [obj for obj in problem.objectives]
+        adjoint_objectives = [adjoint(obj) for obj in problem.objectives]
+        controls = getcontrols(objectives)
+        control_derivs = [
+            getcontrolderivs(obj.generator, controls) for obj in objectives
+        ]
+        tlist = problem.tlist
+        # interleave the pulse values as [ϵ₁(t̃₁), ϵ₂(t̃₁), ..., ϵ₁(t̃₂), ϵ₂(t̃₂), ...]
+        # to allow access as reshape(pulsevals0, L :)[l, n] where l is the control
+        # index and n is the time index
+        pulsevals = reshape(transpose(hcat(
+            [discretize_on_midpoints(control, tlist)
+            for control in controls]...
+        )), :)
+        kwargs = Dict(problem.kwargs)
+        pulse_options = problem.pulse_options
+        if haskey(kwargs, :continue_from)
+            @info "Continuing previous optimization"
+            result = kwargs[:continue_from]
+            if !(result isa GrapeResult)
+                # account for continuing from a different optimization method
+                result = convert(GrapeResult, result)
             end
-            # compute the final fidelity
-            τ = real(abs2(ϕ_store[obj][N_slices+1]' * Ψ_grad.state))
-            # add scaled gradient
-            if G !== nothing
-                G .= +grad / N_obj
-            end
-            # sum figure of merit, needs weights
-            if F !== nothing
-                F = F + τ / N_obj
-            end
-
+            result.iter_stop = get(problem.kwargs, :iter_stop, 5000)
+            result.converged = false
+            result.start_local_time = now()
+            result.message = "in progress"
+            pulsevals = reshape(transpose(hcat(
+                [discretize_on_midpoints(control, wrk.result.tlist)
+                for control in result.optimized_controls]...
+            )), :)
+        else
+            result = GrapeResult(problem)
         end
-
-    end
-
-    # closure over the variables so that we can optimise
-    topt =
-        (F, G, x) -> grape_all_obj(
-            F,
+        bw_states = [similar(obj.initial_state) for obj in objectives]
+        fw_states = [similar(obj.initial_state) for obj in objectives]
+        fw_grad_states = [
+            GradVector(obj.initial_state, length(controls))
+            for obj in objectives
+        ]
+        dummy_vals = IdDict(control => 1.0 for (i, control) in enumerate(controls))
+        G = [evalcontrols(obj.generator, dummy_vals) for obj in objectives]
+        vals_dict = [copy(dummy_vals) for _ in objectives]
+        bw_storage = [init_storage(obj.initial_state, tlist) for obj in objectives]
+        prop_wrk = [
+            QuantumControlBase.initobjpropwrk(obj, tlist, prop_method;
+                                              initial_state=obj.initial_state,
+                                              kwargs...)
+            for obj in objectives
+        ]
+        optimizer = Optim.LBFGS()
+        TDgradG = [TimeDependentGradGenerator(obj.generator) for obj in objectives]
+        gradG = [evalcontrols(G̃_of_t, dummy_vals) for G̃_of_t ∈ TDgradG]
+        prop_grad_wrk = [
+            initpropwrk(Ψ̃, tlist, prop_method, gradG[k]; kwargs...)
+            for (k, Ψ̃) in enumerate(fw_grad_states)
+        ]
+        tau_grads :: Vector{Matrix{ComplexF64}} = [
+            zeros(ComplexF64, length(controls), length(tlist)-1)
+            for _ in objectives
+        ]
+        new{
+            eltype(objectives), # OT
+            eltype(adjoint_objectives), # AOT
+            typeof(kwargs), # KWT
+            typeof(controls), # CTRST
+            typeof(pulse_options), # POT
+            typeof(objectives[1].initial_state), # STST
+            eltype(vals_dict), # VDT
+            eltype(bw_storage), # STORT
+            eltype(prop_wrk), # PRWT
+            eltype(prop_grad_wrk), # PRGWT
+            eltype(G), # GT
+            eltype(TDgradG), # TDGT
+            eltype(gradG) # GGT
+        }(
+            objectives,
+            adjoint_objectives,
+            kwargs,
+            controls,
+            optimizer,
+            pulsevals,
+            result,
+            bw_states,
+            fw_states,
+            fw_grad_states,
+            tau_grads,
             G,
-            x,
-            N_obj,
-            N_slices,
-            N_controls,
-            Ψ_store,
-            ϕ_store,
-            grad,
-            wrk,
+            TDgradG,
+            gradG,
+            control_derivs,
+            vals_dict,
+            bw_storage,
             prop_wrk,
-            td_gradgens,
-            gradvec,
+            prop_grad_wrk,
+            use_threads
         )
-    # we minimize the result and return
-    minimize(Optim.onlyfg!(topt), pulses, LBFGS())
-
+    end
 
 end
 
 
+function optimize_grape(problem; kwargs...)
+    merge!(problem.kwargs, kwargs)
+    update_hook! = get(problem.kwargs, :update_hook, (args...) -> nothing)
+    info_hook = get(problem.kwargs, :info_hook, print_table)
+    check_convergence! = get(problem.kwargs, :check_convergence, res -> res)
 
-"""
-Evaluate the total Generator (composed of static and ϵ*dynamic) at a time index [n] and at objective index [k]
-"""
-function _eval_gen(ϵ, k, n, wrk)
-    vals_dict = _get_vals_dict(ϵ, k, n, wrk)
-    tlist = wrk.tlist
-    # will this ever go out of bounds? TODO check
-    dt = tlist[n+1] - tlist[n]
+    wrk = GrapeWrk(problem)
+
+    χ = wrk.bw_states
+    Ψ = wrk.fw_states
+    Ψ̃ = wrk.fw_grad_states
+    τ = wrk.result.tau_vals
+    ∇τ = wrk.tau_grads
+    N_T = length(wrk.result.tlist) - 1
+    N = length(wrk.objectives)
+    L = length(wrk.controls)
+    X = wrk.bw_storage
+
+    gradfunc! = wrk.kwargs[:gradient]
+    J_T_func = wrk.kwargs[:J_T]
+
+    # calculate the functional only
+    function f(F, G, pulsevals)
+        @assert !isnothing(F)
+        @assert isnothing(G)
+        @threadsif wrk.use_threads for k = 1:N
+            copyto!(Ψ[k], wrk.objectives[k].initial_state)
+            for n = 1:N_T  # `n` is the index for the time interval
+                local (G, dt) = _fw_gen(pulsevals, k, n, wrk)
+                propstep!(Ψ[k], G, dt, wrk.prop_wrk[k])
+            end
+        end
+        return J_T_func(Ψ, wrk.objectives; τ=τ)
+    end
+
+    # calculate the functional and the gradient
+    function fg!(F, G, pulsevals)
+        if isnothing(G)  # functional only
+            return f(F, G, pulsevals)
+        end
+        # backward propagation of states
+        @threadsif wrk.use_threads for k = 1:N
+            copyto!(χ[k], wrk.objectives[k].target_state)
+            write_to_storage!(X[k], N_T+1, χ[k])
+            for n = N_T:-1:1
+                local (G, dt) = _bw_gen(pulsevals, k, n, wrk)
+                propstep!(χ[k], G, dt, wrk.prop_wrk[k])
+                write_to_storage!(X[k], n, χ[k])
+            end
+        end
+        # forward propagation of gradients
+        @threadsif wrk.use_threads for k = 1:N
+            resetgradvec!(Ψ̃[k], wrk.objectives[k].initial_state)
+            for n = 1:N_T  # `n` is the index for the time interval
+                local (G̃, dt) = _fw_gradgen(pulsevals, k, n, wrk)
+                propstep!(Ψ̃[k], G̃, dt, wrk.prop_grad_wrk[k])
+                get_from_storage!(χ[k], X[k], n+1)
+                for l = 1:L
+                    ∇τ[k][l, n] = dot(χ[k], Ψ̃[k].grad_states[l])
+                end
+                resetgradvec!(Ψ̃[k])
+            end
+            τ[k] = dot(wrk.objectives[k].target_state, Ψ̃[k].state)
+        end
+        gradfunc!(G, τ, ∇τ)
+        # TODO: set wrk.result.states
+        return J_T_func([Ψ̃[k].state for k in 1:N], wrk.objectives; τ=τ)
+    end
+
+    # update the result object and check convergence
+    function callback(optim_state)
+        iter = wrk.result.iter_start + optim_state.iteration
+        update_result!(wrk, optim_state, iter)
+        #update_hook!(...) # TODO
+        info_tuple = info_hook(wrk, optim_state, wrk.result.iter)
+        (info_tuple !== nothing) && push!(wrk.result.records, info_tuple)
+        check_convergence!(wrk.result)
+        return wrk.result.converged
+    end
+
+    res = Optim.optimize(
+        Optim.only_fg!(fg!),
+        wrk.pulsevals,
+        wrk.optimizer,
+        Optim.Options(
+            callback=callback,
+            iterations=wrk.result.iter_stop-wrk.result.iter_start, # TODO
+            x_tol=0.0,
+            f_tol=0.0,
+            g_tol=1e-8,
+        )
+    )
+
+    finalize_result!(wrk, res) # TODO
+
+    return wrk.result
+
+end
+
+
+# The dynamical generator for the forward propagation (functional evaluation)
+function _fw_gen(pulse_vals, k, n, wrk)
+    vals_dict = wrk.vals_dict[k]
+    t = wrk.result.tlist
+    L = length(wrk.controls)
+    ϵ = reshape(pulse_vals, L, :)
+    for (l, control) in enumerate(wrk.controls)
+        vals_dict[control] = ϵ[l, n]
+    end
+    dt = t[n+1] - t[n]
     evalcontrols!(wrk.G[k], wrk.objectives[k].generator, vals_dict)
     return wrk.G[k], dt
 end
 
-function _get_vals_dict(ϵ, k, n, wrk)
+
+# The dynamical generator for the gradient propagation
+function _fw_gradgen(pulse_vals, k, n, wrk)
     vals_dict = wrk.vals_dict[k]
-    t = wrk.tlist
+    t = wrk.result.tlist
+    L = length(wrk.controls)
+    ϵ = reshape(pulse_vals, L, :)
     for (l, control) in enumerate(wrk.controls)
-        vals_dict[control] = ϵ[l][n]
+        vals_dict[control] = ϵ[l, n]
     end
-    vals_dict
+    dt = t[n+1] - t[n]
+    evalcontrols!(wrk.gradG[k], wrk.TDgradG[k], vals_dict)
+    return wrk.gradG[k], dt
 end
 
 
-"""
-Backwards propagate the states ϕ and store them, this will propagate over every single timestep
-"""
-function _bw_prop!(x, ϕ_store, N_slices, k_ens, grapewrk, prop_wrk)
-    @inbounds for n in reverse(1:N_slices)
-        ϕ_store[n] .= ϕ_store[n+1]
-        G, dt = _eval_gen(x, k_ens, n, grapewrk)
-        propstep!(ϕ_store[n], G, -1.0 * dt, prop_wrk)
+# The dynamical generator for the backward propagation
+function _bw_gen(pulse_vals, k, n, wrk)
+    vals_dict = wrk.vals_dict[k]
+    L = length(wrk.controls)
+    ϵ = reshape(pulse_vals, L, :)
+    t = wrk.result.tlist
+    for (l, control) in enumerate(wrk.controls)
+        vals_dict[control] = ϵ[l, n]
     end
+    dt = t[n+1] - t[n]
+    evalcontrols!(wrk.G[k], wrk.adjoint_objectives[k].generator, vals_dict)
+    return wrk.G[k], -dt
+end
+
+
+function update_result!(wrk::GrapeWrk, optim_state, i::Int64)
+    res = wrk.result
+    res.J_T_prev = res.J_T
+    res.J_T = optim_state.value
+    (i > 0) && (res.iter = i)
+    if i >= res.iter_stop
+        res.converged = true
+        res.message = "Reached maximum number of iterations"
+        # Note: other convergence checks are done in user-supplied
+        # check_convergence routine
+    end
+    prev_time = res.end_local_time
+    res.end_local_time = now()
+    res.secs = Dates.toms(res.end_local_time - prev_time) / 1000.0
+end
+
+
+function finalize_result!(wrk::GrapeWrk, optim_res::Optim.MultivariateOptimizationResults)
+    L = length(wrk.controls)
+    res = wrk.result
+    res.end_local_time = now()
+    ϵ_opt = reshape(Optim.minimizer(optim_res), L, :)
+    for l in 1:L
+        res.optimized_controls[l] = discretize(ϵ_opt[l, :], res.tlist)
+    end
+end
+
+
+"""Print optimization progress as a table.
+
+This functions serves as the default `info_hook` for an optimization with
+GRAPE.
+"""
+function print_table(wrk, optim_state, iteration, args...)
+    J_T = wrk.result.J_T
+    ΔJ_T = J_T - wrk.result.J_T_prev
+    secs = wrk.result.secs
+
+    iter_stop = "$(get(wrk.kwargs, :iter_stop, 5000))"
+    widths = [max(length("$iter_stop"), 6), 11, 11, 11, 8]
+
+    if iteration == 0
+        header = ["iter.", "J_T", "|∇J_T|", "ΔJ_T", "secs"]
+        for (header, w) in zip(header, widths)
+            print(lpad(header, w))
+        end
+        print("\n")
+    end
+
+    strs = (
+        "$iteration",
+        @sprintf("%.2e", J_T),
+        @sprintf("%.2e", optim_state.g_norm),
+        (iteration > 0) ? @sprintf("%.2e", ΔJ_T) : "n/a",
+        @sprintf("%.1f", secs),
+    )
+    for (str, w) in zip(strs, widths)
+        print(lpad(str, w))
+    end
+    print("\n")
 end
