@@ -28,44 +28,38 @@ help:  ## show this help
 QUANTUMCONTROLBASE ?= ../QuantumControlBase.jl
 QUANTUMPROPAGATORS ?= ../QuantumPropagators.jl
 QUANTUMCONTROL ?= ../QuantumControl.jl
-KROTOV ?= ../Krotov.jl
 
 
 define DEV_PACKAGES
 using Pkg;
 Pkg.develop(path="$(QUANTUMCONTROLBASE)");
 Pkg.develop(path="$(QUANTUMPROPAGATORS)");
-Pkg.develop(path="$(KROTOV)");
 Pkg.develop(path="$(QUANTUMCONTROL)");
 endef
 export DEV_PACKAGES
 
 define ENV_PACKAGES
+using Pkg;
 $(DEV_PACKAGES)
-#Pkg.develop(PackageSpec(path=pwd()));  # TODO: Requires GRAPE to be registered
+Pkg.develop(PackageSpec(path=pwd()));
 Pkg.instantiate()
 endef
 export ENV_PACKAGES
 
 
-DEV_PROJECT_TOMLS = $(QUANTUMCONTROLBASE)/Project.toml $(QUANTUMPROPAGATORS)/Project.toml $(KROTOV)/Project.toml $(QUANTUMCONTROL)/Project.toml
+DEV_PROJECT_TOMLS = $(QUANTUMCONTROLBASE)/Project.toml $(QUANTUMPROPAGATORS)/Project.toml $(QUANTUMCONTROL)/Project.toml
 
 Manifest.toml: Project.toml $(DEV_PROJECT_TOMLS)
 	julia --project=. -e "$$DEV_PACKAGES;Pkg.instantiate()"
 
 
-#test:  Manifest.toml ## Run the test suite
-test:
-	rm -f test/Project.toml # TODO: register GRAPE package
-	rm -f Manifest.toml  # TODO: register GRAPE Package
-	julia --project=. -e "$$DEV_PACKAGES" # TODO: register GRAPE Package
+test:  Manifest.toml ## Run the test suite
 	@rm -f test/Manifest.toml  # Pkg.test cannot handle existing test/Manifest.toml
 	julia --startup-file=yes -e 'using Pkg;Pkg.activate(".");Pkg.test(coverage=true)'
 	@echo "Done. Consider using 'make devrepl'"
 
 
-test/Manifest.toml: test/Project.toml.unregistered  $(DEV_PROJECT_TOMLS)
-	cp test/Project.toml.unregistered test/Project.toml # TODO: register GRAPE package
+test/Manifest.toml: test/Project.toml $(DEV_PROJECT_TOMLS)
 	julia --project=test -e "$$ENV_PACKAGES"
 
 
@@ -73,8 +67,7 @@ devrepl: test/Manifest.toml ## Start an interactive REPL for testing and buildin
 	@julia --threads auto --project=test --banner=no --startup-file=yes -e 'include("test/init.jl")' -i
 
 
-docs/Manifest.toml: docs/Project.toml.unregistered  $(DEV_PROJECT_TOMLS)
-	cp docs/Project.toml.unregistered docs/Project.toml # TODO: register GRAPE package
+docs/Manifest.toml: docs/Project.toml  $(DEV_PROJECT_TOMLS)
 	julia --project=docs -e "$$ENV_PACKAGES"
 
 

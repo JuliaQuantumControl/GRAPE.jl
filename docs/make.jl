@@ -1,5 +1,3 @@
-using Pkg # TODO: remove after GRAPE is registered
-Pkg.develop(PackageSpec(path = pwd())) # TODO: remove after GRAPE is registered
 using GRAPE
 using Documenter
 
