@@ -1,5 +1,6 @@
 using QuantumControl
 using LinearAlgebra
+using GRAPE # XXX
 
 using Test
 
@@ -45,22 +46,11 @@ objectives = [Objective(initial_state = ket(0), generator = H, target_state = ke
 
 problem = ControlProblem(
     objectives = objectives,
-    pulse_options = IdDict(
-        ϵ => Dict(
-            :lambda_a => 5,
-            :update_shape =>
-                t -> QuantumControl.shapes.flattop(
-                    t,
-                    T = 5,
-                    t_rise = 0.3,
-                    func = :blackman,
-                ),
-        ),
-    ),
     tlist = tlist,
+    pulse_options=Dict(),
     iter_stop = 50,
-    chi = QuantumControl.functionals.chi_ss!,
-    J_T = QuantumControl.functionals.J_T_ss,
+    J_T = QuantumControl.functionals.J_T_sm,
+    gradient=QuantumControl.functionals.grad_J_T_sm!,
     check_convergence = res -> begin
         ((res.J_T < 1e-3) && (res.converged = true) && (res.message = "J_T < 10⁻³"))
     end,
@@ -83,7 +73,8 @@ function plot_population(pop0::Vector, pop1::Vector, tlist)
     return fig
 end
 
-opt_result = optimize(problem, method = :krotov);
+println("")
+opt_result = optimize_grape(problem);
 
 opt_result
 
