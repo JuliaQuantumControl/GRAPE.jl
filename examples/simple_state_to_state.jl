@@ -175,7 +175,7 @@ end
 # \ket{\Psi_{\tgt}}$ is solved.
 
 #jl println("")
-opt_result = optimize_grape(problem);
+opt_result = optimize_grape(problem, show_trace=true, extended_trace=true, info_hook=(args...) -> nothing);
 #-
 opt_result
 #-
