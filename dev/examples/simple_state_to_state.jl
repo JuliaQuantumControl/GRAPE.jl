@@ -74,7 +74,7 @@ function plot_population(pop0::Vector, pop1::Vector, tlist)
 end
 
 println("")
-opt_result = optimize_grape(problem);
+opt_result = optimize_grape(problem, show_trace=true, extended_trace=true, info_hook=(args...) -> nothing);
 
 opt_result
 
