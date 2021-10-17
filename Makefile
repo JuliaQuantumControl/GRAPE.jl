@@ -34,13 +34,13 @@ define DEV_PACKAGES
 using Pkg;
 Pkg.develop(path="$(QUANTUMCONTROLBASE)");
 Pkg.develop(path="$(QUANTUMPROPAGATORS)");
-Pkg.develop(path="$(QUANTUMCONTROL)");
 endef
 export DEV_PACKAGES
 
 define ENV_PACKAGES
 using Pkg;
 $(DEV_PACKAGES)
+Pkg.develop(path="$(QUANTUMCONTROL)");
 Pkg.develop(PackageSpec(path=pwd()));
 Pkg.instantiate()
 endef
@@ -53,9 +53,8 @@ Manifest.toml: Project.toml $(DEV_PROJECT_TOMLS)
 	julia --project=. -e "$$DEV_PACKAGES;Pkg.instantiate()"
 
 
-test:  Manifest.toml ## Run the test suite
-	@rm -f test/Manifest.toml  # Pkg.test cannot handle existing test/Manifest.toml
-	julia --startup-file=yes -e 'using Pkg;Pkg.activate(".");Pkg.test(coverage=true)'
+test:  test/Manifest.toml ## Run the test suite
+	julia --project=test --threads auto --color=auto --startup-file=yes --code-coverage="user" --depwarn="yes" --check-bounds="yes" -e 'include("test/runtests.jl")'
 	@echo "Done. Consider using 'make devrepl'"
 
 

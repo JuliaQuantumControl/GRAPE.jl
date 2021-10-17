@@ -42,13 +42,16 @@ jobs:
           # Instantiate Pkg
           julia --project=@. -e '
             using Pkg
-            println("Dev-install QuantumControlBase")
-            Pkg.develop(url="https://github.com/JuliaQuantumControl/QuantumControlBase.jl.git#master")
             println("Dev-install QuantumPropagators")
             Pkg.develop(url="https://github.com/JuliaQuantumControl/QuantumPropagators.jl.git#master")
+            println("Dev-install QuantumControlBase")
+            Pkg.develop(url="https://github.com/JuliaQuantumControl/QuantumControlBase.jl.git#master")
+            println("Dev-install Krotov")
+            Pkg.develop(url="https://github.com/JuliaQuantumControl/Krotov.jl.git#master")
             println("Dev-install QuantumControl")
             Pkg.develop(url="https://github.com/JuliaQuantumControl/QuantumControl.jl.git#master")
             println("Pkg.instantiate()")
+            Pkg.precompile()
             Pkg.instantiate()'
       - run: |
           # Run tests
@@ -78,15 +81,16 @@ jobs:
           # Instantiate Pkg
           julia --project=docs -e '
             using Pkg
-            println("Dev-install QuantumControlBase")
-            Pkg.develop(url="https://github.com/JuliaQuantumControl/QuantumControlBase.jl.git#master")
             println("Dev-install QuantumPropagators")
             Pkg.develop(url="https://github.com/JuliaQuantumControl/QuantumPropagators.jl.git#master")
+            println("Dev-install QuantumControlBase")
+            Pkg.develop(url="https://github.com/JuliaQuantumControl/QuantumControlBase.jl.git#master")
+            println("Dev-install Krotov")
+            Pkg.develop(url="https://github.com/JuliaQuantumControl/Krotov.jl.git#master")
             println("Dev-install QuantumControl")
             Pkg.develop(url="https://github.com/JuliaQuantumControl/QuantumControl.jl.git#master")
-            println("Dev-install package")
-            Pkg.develop(PackageSpec(path=pwd()))
             println("Pkg.instantiate()")
+            Pkg.precompile()
             Pkg.instantiate()'
       - run: |
           # Run doctests

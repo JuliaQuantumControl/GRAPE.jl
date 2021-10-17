@@ -1,1 +1,11 @@
+*.jl.*.cov
+*.jl.cov
+*.jl.mem
 /Manifest.toml
+/examples/dump/
+/test/Manifest.toml
+/test/examples/dump/
+/docs/Manifest.toml
+/docs/build/
+/docs/src/examples/dump/
+/gh-pages/
