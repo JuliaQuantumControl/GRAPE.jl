@@ -49,7 +49,9 @@
 
 using QuantumControl
 using LinearAlgebra
+using Optim
 using GRAPE # XXX
+using LineSearches
 
 #jl using Test
 
@@ -132,7 +134,7 @@ problem = ControlProblem(
     objectives = objectives,
     tlist = tlist,
     pulse_options=Dict(),
-    iter_stop = 50,
+    iter_stop = 500,
     J_T = QuantumControl.functionals.J_T_sm,
     gradient=QuantumControl.functionals.grad_J_T_sm!,
     check_convergence = res -> begin
@@ -175,7 +177,14 @@ end
 # \ket{\Psi_{\tgt}}$ is solved.
 
 #jl println("")
-opt_result = optimize_grape(problem, show_trace=true, extended_trace=true, info_hook=(args...) -> nothing);
+opt_result = optimize_grape(
+        problem,
+        show_trace=true, extended_trace=false,
+        info_hook=(args...) -> nothing,
+        alphaguess=LineSearches.InitialStatic(alpha=0.2),
+        linesearch=LineSearches.HagerZhang(alphamax=2.0),
+        allow_f_increases=true,
+);
 #-
 opt_result
 #-
@@ -187,6 +196,9 @@ opt_result
 #-
 #!jl plot_control(opt_result.optimized_controls[1], tlist)
 #-
+
+#jl using UnicodePlots
+#jl println(lineplot(tlist, opt_result.optimized_controls[1]))
 
 # ## Simulate the dynamics under the optimized field
 

@@ -193,7 +193,20 @@ struct GrapeWrk{
                                               kwargs...)
             for obj in objectives
         ]
-        optimizer = Optim.LBFGS()
+        lbfgs_kwargs = Dict{Symbol, Any}()
+        lbfgs_keys = (:memory_length, :alphaguess, :linesearch, :P, :precond,
+                      :manifold, :scaleinvH0)
+        for key in lbfgs_keys
+            if key in keys(kwargs)
+                if :optimizer in keys(kwargs)
+                    @warn "keyword argument $(String(key)) will be ignored because due to custom optimizer"
+                end
+                val = kwargs[key]
+                (key == :memory_length) && (key = :m)
+                lbfgs_kwargs[key] = val
+            end
+        end
+        optimizer = get(kwargs, :optimizer, Optim.LBFGS(;lbfgs_kwargs...))
         TDgradG = [TimeDependentGradGenerator(obj.generator) for obj in objectives]
         gradG = [evalcontrols(G̃_of_t, dummy_vals) for G̃_of_t ∈ TDgradG]
         prop_grad_wrk = [
@@ -245,6 +258,52 @@ struct GrapeWrk{
 end
 
 
+"""Optimize the control problem using GRAPE.
+
+```julia
+result = optimize_grape(problem; kwargs...)
+```
+
+optimizes the given control problem, see
+[`QuantumControlBase.ControlProblem`](@ref).
+
+Keyword arguments that control the optimization are taken from the keyword
+arguments used in the instantiation of `problem`. Any `kwargs` passed directly
+to `optimize_pulses` will update (overwrite) the parameters in `problem`.
+
+# Required problem keyword arguments
+
+* `J_T`: A function `J_T(ϕ, objectives, τ=τ)` that evaluates the final time
+  functional from a list `ϕ` of forward-propagated states and
+  `problem.objectives`.
+* `gradient`:  A function `gradient!(G, τ, ∇τ)` that stores the gradient of
+  `J_T` in `G`.
+
+# Optional problem keyword arguments
+
+* `update_hook`
+* `info_hook`
+* `check_convergence`
+* `x_tol`
+* `f_tol`
+* `g_tol`
+* `show_trace`
+* `extended_trace`
+* `show_every`
+* `allow_f_increases`
+* `optimizer`
+
+The following optional keyword arguments tune the default LBFGS optimizer. They
+are ignored if a custom `optimizer` is passed.
+
+* `memory_length`
+* `alphaguess`
+* `linesearch`
+* `P`
+* `precond`
+* `manifold`
+* `scaleinvH0`
+"""
 function optimize_grape(problem; kwargs...)
     merge!(problem.kwargs, kwargs)
     update_hook! = get(problem.kwargs, :update_hook, (args...) -> nothing)
