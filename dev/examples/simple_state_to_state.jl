@@ -82,11 +82,13 @@ opt_result = optimize_grape(
         info_hook=(args...) -> nothing,
         alphaguess=LineSearches.InitialStatic(alpha=0.2),
         linesearch=LineSearches.HagerZhang(alphamax=2.0),
+        #=linesearch=LineSearches.BackTracking(), # fails=#
         allow_f_increases=true,
 );
 
 opt_result
 
+display(opt_result)
 @test opt_result.J_T < 1e-3
 
 using UnicodePlots
