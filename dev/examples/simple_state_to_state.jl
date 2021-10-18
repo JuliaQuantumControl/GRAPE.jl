@@ -1,6 +1,8 @@
 using QuantumControl
 using LinearAlgebra
+using Optim
 using GRAPE # XXX
+using LineSearches
 
 using Test
 
@@ -48,7 +50,7 @@ problem = ControlProblem(
     objectives = objectives,
     tlist = tlist,
     pulse_options=Dict(),
-    iter_stop = 50,
+    iter_stop = 500,
     J_T = QuantumControl.functionals.J_T_sm,
     gradient=QuantumControl.functionals.grad_J_T_sm!,
     check_convergence = res -> begin
@@ -74,11 +76,21 @@ function plot_population(pop0::Vector, pop1::Vector, tlist)
 end
 
 println("")
-opt_result = optimize_grape(problem, show_trace=true, extended_trace=true, info_hook=(args...) -> nothing);
+opt_result = optimize_grape(
+        problem,
+        show_trace=true, extended_trace=false,
+        info_hook=(args...) -> nothing,
+        alphaguess=LineSearches.InitialStatic(alpha=0.2),
+        linesearch=LineSearches.HagerZhang(alphamax=2.0),
+        allow_f_increases=true,
+);
 
 opt_result
 
 @test opt_result.J_T < 1e-3
+
+using UnicodePlots
+println(lineplot(tlist, opt_result.optimized_controls[1]))
 
 opt_dynamics = propagate(
     objectives[1],
