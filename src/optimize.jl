@@ -474,6 +474,24 @@ end
 function finalize_result!(wrk::GrapeWrk, optim_res::Optim.MultivariateOptimizationResults)
     L = length(wrk.controls)
     res = wrk.result
+    show_optim_res = false
+    if !optim_res.ls_success
+        @error "optimization failed (linesearch)"
+        res.message = "Failed linesearch"
+        show_optim_res = true
+    end
+    if optim_res.stopped_by.f_increased
+        @error "loss of monotonic convergence (try allow_f_increases=true)"
+        res.message = "Loss of monotonic convergence"
+        show_optim_res = true
+    end
+    if show_optim_res
+        @warn "Optim.jl result:\n$optim_res"
+    end
+    if !res.converged
+        @warn "Optimization failed to converge"
+    end
+    # TODO: store number of function/gradient evaluations in res
     res.end_local_time = now()
     ϵ_opt = reshape(Optim.minimizer(optim_res), L, :)
     for l in 1:L
