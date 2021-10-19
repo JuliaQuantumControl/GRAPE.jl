@@ -1,4 +1,4 @@
-# GRAPE
+# GRAPE.jl
 
 [![Stable](https://img.shields.io/badge/docs-stable-blue.svg)](https://juliaquantumcontrol.github.io/GRAPE.jl/)
 [![Dev](https://img.shields.io/badge/docs-dev-blue.svg)](https://juliaquantumcontrol.github.io/GRAPE.jl/dev)
