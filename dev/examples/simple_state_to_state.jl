@@ -89,6 +89,7 @@ opt_result = optimize_grape(
 opt_result
 
 display(opt_result)
+display(opt_result.optim_res)
 @test opt_result.J_T < 1e-3
 
 using UnicodePlots
