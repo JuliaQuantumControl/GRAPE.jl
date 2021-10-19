@@ -24,6 +24,9 @@ mutable struct GrapeResult{STST}
     end_local_time :: DateTime
     records :: Vector{Tuple}  # storage for info_hook to write data into at each iteration
     converged :: Bool
+    f_calls :: Int64
+    fg_calls :: Int64
+    optim_res :: Union{Nothing, Optim.MultivariateOptimizationResults}
     message :: String
 
     function GrapeResult(problem)
@@ -46,10 +49,14 @@ mutable struct GrapeResult{STST}
         records = Vector{Tuple}()
         converged = false
         message = "in progress"
+        f_calls = 0
+        fg_calls = 0
+        optim_res = nothing
         new{eltype(states)}(
             tlist, iter_start, iter_stop, iter, secs, tau_vals, J_T, J_T_prev,
             guess_controls, optimized_controls, states, start_local_time,
-            end_local_time, records, converged, message)
+            end_local_time, records, converged, f_calls, fg_calls, optim_res,
+            message)
     end
 end
 
@@ -62,6 +69,9 @@ GRAPE Optimization Result
 - Started at $(r.start_local_time)
 - Number of objectives: $(length(r.states))
 - Number of iterations: $(max(r.iter - r.iter_start, 0))
+- Number of pure func evals: $(r.f_calls)
+- Number of func/grad evals: $(r.fg_calls)
+- Value of functional: $(@sprintf("%.5e", r.J_T))
 - Reason for termination: $(r.message)
 - Ended at $(r.end_local_time) ($(r.end_local_time - r.start_local_time))""")
 
@@ -329,6 +339,7 @@ function optimize_grape(problem; kwargs...)
     function f(F, G, pulsevals)
         @assert !isnothing(F)
         @assert isnothing(G)
+        wrk.result.f_calls += 1
         @threadsif wrk.use_threads for k = 1:N
             copyto!(Ψ[k], wrk.objectives[k].initial_state)
             for n = 1:N_T  # `n` is the index for the time interval
@@ -341,6 +352,7 @@ function optimize_grape(problem; kwargs...)
 
     # calculate the functional and the gradient
     function fg!(F, G, pulsevals)
+        wrk.result.fg_calls += 1
         if isnothing(G)  # functional only
             return f(F, G, pulsevals)
         end
@@ -402,7 +414,7 @@ function optimize_grape(problem; kwargs...)
         )
     )
 
-    finalize_result!(wrk, res) # TODO
+    finalize_result!(wrk, res)
 
     return wrk.result
 
@@ -474,29 +486,23 @@ end
 function finalize_result!(wrk::GrapeWrk, optim_res::Optim.MultivariateOptimizationResults)
     L = length(wrk.controls)
     res = wrk.result
-    show_optim_res = false
     if !optim_res.ls_success
         @error "optimization failed (linesearch)"
         res.message = "Failed linesearch"
-        show_optim_res = true
     end
     if optim_res.stopped_by.f_increased
         @error "loss of monotonic convergence (try allow_f_increases=true)"
         res.message = "Loss of monotonic convergence"
-        show_optim_res = true
-    end
-    if show_optim_res
-        @warn "Optim.jl result:\n$optim_res"
     end
     if !res.converged
         @warn "Optimization failed to converge"
     end
-    # TODO: store number of function/gradient evaluations in res
     res.end_local_time = now()
     ϵ_opt = reshape(Optim.minimizer(optim_res), L, :)
     for l in 1:L
         res.optimized_controls[l] = discretize(ϵ_opt[l, :], res.tlist)
     end
+    res.optim_res = optim_res
 end
 
 

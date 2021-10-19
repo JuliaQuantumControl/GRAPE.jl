@@ -190,6 +190,7 @@ opt_result = optimize_grape(
 opt_result
 #-
 #jl display(opt_result)
+#jl display(opt_result.optim_res)
 #jl @test opt_result.J_T < 1e-3
 #-
 
