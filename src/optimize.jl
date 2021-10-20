@@ -279,7 +279,7 @@ optimizes the given control problem, see
 
 Keyword arguments that control the optimization are taken from the keyword
 arguments used in the instantiation of `problem`. Any `kwargs` passed directly
-to `optimize_pulses` will update (overwrite) the parameters in `problem`.
+to `optimize_grape` will update (overwrite) the parameters in `problem`.
 
 # Required problem keyword arguments
 

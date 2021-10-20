@@ -2,6 +2,6 @@ module GRAPE
 
 include("optimize.jl")
 
-export GRAPEWrk, optimize_grape
+export GrapeWrk, optimize_grape
 
 end
