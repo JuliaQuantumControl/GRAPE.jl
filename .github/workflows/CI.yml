@@ -88,6 +88,8 @@ jobs:
             Pkg.develop(url="https://github.com/JuliaQuantumControl/Krotov.jl.git#master")
             println("Dev-install QuantumControl")
             Pkg.develop(url="https://github.com/JuliaQuantumControl/QuantumControl.jl.git#master")
+            println("Dev-install package")
+            Pkg.develop(PackageSpec(path=pwd()))
             println("Pkg.instantiate()")
             Pkg.precompile()
             Pkg.instantiate()'
