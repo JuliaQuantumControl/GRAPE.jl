@@ -1,8 +1,12 @@
+using Printf
 using QuantumControl
 using LinearAlgebra
 using Optim
 using GRAPE # XXX
+using GRAPELinesearchAnalysis
 using LineSearches
+using PyPlot: matplotlib
+matplotlib.use("Agg")
 
 using Test
 
@@ -21,9 +25,6 @@ H = hamiltonian();
 @test length(H) == 2
 
 tlist = collect(range(0, 5, length = 500));
-
-using PyPlot
-matplotlib.use("Agg")
 
 function plot_control(pulse::Vector, tlist)
     fig, ax = matplotlib.pyplot.subplots(figsize = (6, 3))
@@ -79,7 +80,7 @@ println("")
 opt_result = optimize_grape(
         problem,
         show_trace=true, extended_trace=false,
-        info_hook=(args...) -> nothing,
+        info_hook=GRAPELinesearchAnalysis.plot_linesearch(@__DIR__),
         alphaguess=LineSearches.InitialStatic(alpha=0.2),
         linesearch=LineSearches.HagerZhang(alphamax=2.0),
         #=linesearch=LineSearches.BackTracking(), # fails=#
