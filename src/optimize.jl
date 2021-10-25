@@ -61,7 +61,6 @@ mutable struct GrapeResult{STST}
 end
 
 
-
 Base.show(io::IO, r::GrapeResult) = print(io, "GrapeResult<$(r.message)>")
 Base.show(io::IO, ::MIME"text/plain", r::GrapeResult) = print(io, """
 GRAPE Optimization Result
@@ -346,16 +345,17 @@ function optimize_grape(problem; kwargs...)
                 local (G, dt) = _fw_gen(pulsevals, k, n, wrk)
                 propstep!(Ψ[k], G, dt, wrk.prop_wrk[k])
             end
+            τ[k] = dot(wrk.objectives[k].target_state, Ψ[k])
         end
         return J_T_func(Ψ, wrk.objectives; τ=τ)
     end
 
     # calculate the functional and the gradient
     function fg!(F, G, pulsevals)
-        wrk.result.fg_calls += 1
         if isnothing(G)  # functional only
             return f(F, G, pulsevals)
         end
+        wrk.result.fg_calls += 1
         # backward propagation of states
         @threadsif wrk.use_threads for k = 1:N
             copyto!(χ[k], wrk.objectives[k].target_state)
@@ -385,34 +385,56 @@ function optimize_grape(problem; kwargs...)
         return J_T_func([Ψ̃[k].state for k in 1:N], wrk.objectives; τ=τ)
     end
 
+    tol_options = Optim.Options(
+        # just so we can instantiate `optimizer_state` before `callback`
+        x_tol=get(wrk.kwargs, :x_tol, 0.0),
+        f_tol=get(wrk.kwargs, :f_tol, 0.0),
+        g_tol=get(wrk.kwargs, :g_tol, 1e-8),
+    )
+    initial_x = wrk.pulsevals
+    method = wrk.optimizer
+    objective = Optim.promote_objtype(method, initial_x, :finite, true, Optim.only_fg!(fg!))
+    optimizer_state = Optim.initial_state(method, tol_options, objective, initial_x)
+    # Instantiation of `optimizer_state` calls `fg!` and sets the value of the
+    # functional and gradient for the  `initial_x` in objective.F and
+    # objective.DF, respectively. The `optimizer_state` is set correspondingly:
+    @assert optimizer_state.x == optimizer_state.x_previous == objective.x_f == objective.x_df
+    @assert optimizer_state.g_previous == objective.DF
+    # ... but `f_x_previous` does not match the initial `x_previous`:
+    @assert isnan(optimizer_state.f_x_previous)
+
     # update the result object and check convergence
-    function callback(optim_state)
-        iter = wrk.result.iter_start + optim_state.iteration
-        update_result!(wrk, optim_state, iter)
+    function callback(optimization_state::Optim.OptimizationState)
+        @assert optimization_state.value == objective.F
+        #if optimization_state.iteration > 0
+        #    @assert norm(
+        #       optimizer_state.x .-
+        #       (optimizer_state.x_previous .+ optimizer_state.alpha .* optimizer_state.s)
+        #    ) < 1e-14
+        #end
+        iter = wrk.result.iter_start + optimization_state.iteration
+        update_result!(wrk, optimization_state, optimizer_state, iter)
         #update_hook!(...) # TODO
-        info_tuple = info_hook(wrk, optim_state, wrk.result.iter)
+        info_tuple = info_hook(wrk, optimization_state, optimizer_state, wrk.result.iter)
         (info_tuple !== nothing) && push!(wrk.result.records, info_tuple)
         check_convergence!(wrk.result)
         return wrk.result.converged
     end
 
-    res = Optim.optimize(
-        Optim.only_fg!(fg!),
-        wrk.pulsevals,
-        wrk.optimizer,
-        Optim.Options(
-            callback=callback,
-            iterations=wrk.result.iter_stop-wrk.result.iter_start, # TODO
-            x_tol=get(wrk.kwargs, :x_tol, 0.0),
-            f_tol=get(wrk.kwargs, :f_tol, 0.0),
-            g_tol=get(wrk.kwargs, :g_tol, 1e-8),
-            show_trace=get(wrk.kwargs, :show_trace, false),
-            extended_trace=get(wrk.kwargs, :extended_trace, false),
-            store_trace=get(wrk.kwargs, :store_trace, false),
-            show_every=get(wrk.kwargs, :show_every, 1),
-            allow_f_increases=get(wrk.kwargs, :allow_f_increases, false),
-        )
+    options = Optim.Options(
+        callback=callback,
+        iterations=wrk.result.iter_stop-wrk.result.iter_start, # TODO
+        x_tol=get(wrk.kwargs, :x_tol, 0.0),
+        f_tol=get(wrk.kwargs, :f_tol, 0.0),
+        g_tol=get(wrk.kwargs, :g_tol, 1e-8),
+        show_trace=get(wrk.kwargs, :show_trace, false),
+        extended_trace=get(wrk.kwargs, :extended_trace, false),
+        store_trace=get(wrk.kwargs, :store_trace, false),
+        show_every=get(wrk.kwargs, :show_every, 1),
+        allow_f_increases=get(wrk.kwargs, :allow_f_increases, false),
     )
+
+    res = Optim.optimize(objective, initial_x, method, options, optimizer_state)
 
     finalize_result!(wrk, res)
 
@@ -466,10 +488,10 @@ function _bw_gen(pulse_vals, k, n, wrk)
 end
 
 
-function update_result!(wrk::GrapeWrk, optim_state, i::Int64)
+function update_result!(wrk::GrapeWrk, optimization_state::Optim.OptimizationState, optimizer_state::Optim.AbstractOptimizerState, i::Int64)
     res = wrk.result
     res.J_T_prev = res.J_T
-    res.J_T = optim_state.value
+    res.J_T = optimization_state.value
     (i > 0) && (res.iter = i)
     if i >= res.iter_stop
         res.converged = true
@@ -511,7 +533,7 @@ end
 This functions serves as the default `info_hook` for an optimization with
 GRAPE.
 """
-function print_table(wrk, optim_state, iteration, args...)
+function print_table(wrk, optimization_state::Optim.OptimizationState, optimizer_state::Optim.AbstractOptimizerState, iteration, args...)
     J_T = wrk.result.J_T
     ΔJ_T = J_T - wrk.result.J_T_prev
     secs = wrk.result.secs
@@ -530,7 +552,7 @@ function print_table(wrk, optim_state, iteration, args...)
     strs = (
         "$iteration",
         @sprintf("%.2e", J_T),
-        @sprintf("%.2e", optim_state.g_norm),
+        @sprintf("%.2e", optimization_state.g_norm),
         (iteration > 0) ? @sprintf("%.2e", ΔJ_T) : "n/a",
         @sprintf("%.1f", secs),
     )

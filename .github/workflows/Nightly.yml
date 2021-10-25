@@ -41,6 +41,9 @@ jobs:
           # Instantiate Pkg
           julia --project=@. -e '
             using Pkg
+            println("Set up registries")
+            Pkg.Registry.add(RegistrySpec(url="https://github.com/JuliaRegistries/General.git"))
+            Pkg.Registry.add(RegistrySpec(url="https://github.com/JuliaQuantumControl/QuantumControlRegistry.git"))
             println("Dev-install QuantumPropagators")
             Pkg.develop(url="https://github.com/JuliaQuantumControl/QuantumPropagators.jl.git#master")
             println("Dev-install QuantumControlBase")
@@ -49,6 +52,8 @@ jobs:
             Pkg.develop(url="https://github.com/JuliaQuantumControl/Krotov.jl.git#master")
             println("Dev-install QuantumControl")
             Pkg.develop(url="https://github.com/JuliaQuantumControl/QuantumControl.jl.git#master")
+            println("Dev-install GRAPELinesearchAnalysis")
+            Pkg.develop(url="https://github.com/JuliaQuantumControl/GRAPELinesearchAnalysis.jl.git#master")
             println("Pkg.instantiate()")
             Pkg.precompile()
             Pkg.instantiate()'

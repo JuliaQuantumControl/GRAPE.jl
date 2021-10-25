@@ -28,19 +28,21 @@ help:  ## show this help
 QUANTUMCONTROLBASE ?= ../QuantumControlBase.jl
 QUANTUMPROPAGATORS ?= ../QuantumPropagators.jl
 QUANTUMCONTROL ?= ../QuantumControl.jl
+GRAPELINESEARCHANALYSIS ?= ../GRAPELinesearchAnalysis.jl
 
 
 define DEV_PACKAGES
 using Pkg;
+Pkg.Registry.add(RegistrySpec(url="https://github.com/JuliaQuantumControl/QuantumControlRegistry.git"))
 Pkg.develop(path="$(QUANTUMCONTROLBASE)");
 Pkg.develop(path="$(QUANTUMPROPAGATORS)");
 endef
 export DEV_PACKAGES
 
 define ENV_PACKAGES
-using Pkg;
 $(DEV_PACKAGES)
 Pkg.develop(path="$(QUANTUMCONTROL)");
+Pkg.develop(path="$(GRAPELINESEARCHANALYSIS)");
 Pkg.develop(PackageSpec(path=pwd()));
 Pkg.instantiate()
 endef
