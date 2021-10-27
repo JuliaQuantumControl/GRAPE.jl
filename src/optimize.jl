@@ -72,7 +72,8 @@ GRAPE Optimization Result
 - Number of func/grad evals: $(r.fg_calls)
 - Value of functional: $(@sprintf("%.5e", r.J_T))
 - Reason for termination: $(r.message)
-- Ended at $(r.end_local_time) ($(r.end_local_time - r.start_local_time))""")
+- Ended at $(r.end_local_time) ($(Dates.canonicalize(Dates.CompoundPeriod(r.end_local_time - r.start_local_time))))
+""")
 
 
 # GRAPE workspace (for internal use)
