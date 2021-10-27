@@ -106,8 +106,6 @@ struct GrapeWrk{
     # Tuple of the original controls (probably functions)
     controls :: CTRST
 
-    optimizer :: Any # TODO
-
     pulsevals :: Vector{Float64}
 
     # Result object
@@ -203,20 +201,6 @@ struct GrapeWrk{
                                               kwargs...)
             for obj in objectives
         ]
-        lbfgs_kwargs = Dict{Symbol, Any}()
-        lbfgs_keys = (:memory_length, :alphaguess, :linesearch, :P, :precond,
-                      :manifold, :scaleinvH0)
-        for key in lbfgs_keys
-            if key in keys(kwargs)
-                if :optimizer in keys(kwargs)
-                    @warn "keyword argument $(String(key)) will be ignored because due to custom optimizer"
-                end
-                val = kwargs[key]
-                (key == :memory_length) && (key = :m)
-                lbfgs_kwargs[key] = val
-            end
-        end
-        optimizer = get(kwargs, :optimizer, Optim.LBFGS(;lbfgs_kwargs...))
         TDgradG = [TimeDependentGradGenerator(obj.generator) for obj in objectives]
         gradG = [evalcontrols(G̃_of_t, dummy_vals) for G̃_of_t ∈ TDgradG]
         prop_grad_wrk = [
@@ -246,7 +230,6 @@ struct GrapeWrk{
             adjoint_objectives,
             kwargs,
             controls,
-            optimizer,
             pulsevals,
             result,
             bw_states,
@@ -386,6 +369,36 @@ function optimize_grape(problem; kwargs...)
         return J_T_func([Ψ̃[k].state for k in 1:N], wrk.objectives; τ=τ)
     end
 
+    optimizer = get_optimizer(wrk.kwargs)
+    res = run_optimizer(optimizer, wrk, f, fg!, info_hook, check_convergence!)
+    finalize_result!(wrk, res)
+    return wrk.result
+
+end
+
+
+function get_optimizer(kwargs)
+    lbfgs_kwargs = Dict{Symbol, Any}()
+    lbfgs_keys = (:memory_length, :alphaguess, :linesearch, :P, :precond,
+                    :manifold, :scaleinvH0)
+    for key in lbfgs_keys
+        if key in keys(kwargs)
+            if :optimizer in keys(kwargs)
+                @warn "keyword argument $(String(key)) will be ignored because due to custom optimizer"
+            end
+            val = kwargs[key]
+            (key == :memory_length) && (key = :m)
+            lbfgs_kwargs[key] = val
+        end
+    end
+    optimizer = get(kwargs, :optimizer, Optim.LBFGS(;lbfgs_kwargs...))
+    return optimizer
+end
+
+
+function run_optimizer(optimizer::Optim.AbstractOptimizer,
+                       wrk, f, fg!, info_hook, check_convergence!)
+
     tol_options = Optim.Options(
         # just so we can instantiate `optimizer_state` before `callback`
         x_tol=get(wrk.kwargs, :x_tol, 0.0),
@@ -393,7 +406,7 @@ function optimize_grape(problem; kwargs...)
         g_tol=get(wrk.kwargs, :g_tol, 1e-8),
     )
     initial_x = wrk.pulsevals
-    method = wrk.optimizer
+    method = optimizer
     objective = Optim.promote_objtype(method, initial_x, :finite, true, Optim.only_fg!(fg!))
     optimizer_state = Optim.initial_state(method, tol_options, objective, initial_x)
     # Instantiation of `optimizer_state` calls `fg!` and sets the value of the
@@ -436,10 +449,7 @@ function optimize_grape(problem; kwargs...)
     )
 
     res = Optim.optimize(objective, initial_x, method, options, optimizer_state)
-
-    finalize_result!(wrk, res)
-
-    return wrk.result
+    return res
 
 end
 
@@ -489,7 +499,12 @@ function _bw_gen(pulse_vals, k, n, wrk)
 end
 
 
-function update_result!(wrk::GrapeWrk, optimization_state::Optim.OptimizationState, optimizer_state::Optim.AbstractOptimizerState, i::Int64)
+function update_result!(
+        wrk::GrapeWrk,
+        optimization_state::Optim.OptimizationState,
+        optimizer_state::Optim.AbstractOptimizerState,
+        i::Int64
+    )
     res = wrk.result
     res.J_T_prev = res.J_T
     res.J_T = optimization_state.value
