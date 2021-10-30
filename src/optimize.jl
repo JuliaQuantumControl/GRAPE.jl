@@ -2,7 +2,6 @@ using QuantumControlBase
 using QuantumControlBase.ConditionalThreads: @threadsif
 using QuantumPropagators
 using LinearAlgebra
-import Optim
 using Dates
 using Printf
 
@@ -26,7 +25,7 @@ mutable struct GrapeResult{STST}
     converged :: Bool
     f_calls :: Int64
     fg_calls :: Int64
-    optim_res :: Union{Nothing, Optim.MultivariateOptimizationResults}
+    optim_res :: Any
     message :: String
 
     function GrapeResult(problem)
@@ -106,7 +105,12 @@ struct GrapeWrk{
     # Tuple of the original controls (probably functions)
     controls :: CTRST
 
+    # TODO: pulsevals0 and pulsevals1
     pulsevals :: Vector{Float64}
+
+    gradient :: Vector{Float64}  # gradient for guess in iterations
+
+    searchdirection :: Vector{Float64}  # search-direction for guess in iterations
 
     # Result object
     result :: GrapeResult{STST}
@@ -185,6 +189,8 @@ struct GrapeWrk{
         else
             result = GrapeResult(problem)
         end
+        gradient = zeros(length(pulsevals))
+        searchdirection = zeros(length(pulsevals))
         bw_states = [similar(obj.initial_state) for obj in objectives]
         fw_states = [similar(obj.initial_state) for obj in objectives]
         fw_grad_states = [
@@ -231,6 +237,8 @@ struct GrapeWrk{
             kwargs,
             controls,
             pulsevals,
+            gradient,
+            searchdirection,
             result,
             bw_states,
             fw_states,
@@ -285,17 +293,6 @@ to `optimize_grape` will update (overwrite) the parameters in `problem`.
 * `show_every`
 * `allow_f_increases`
 * `optimizer`
-
-The following optional keyword arguments tune the default LBFGS optimizer. They
-are ignored if a custom `optimizer` is passed.
-
-* `memory_length`
-* `alphaguess`
-* `linesearch`
-* `P`
-* `precond`
-* `manifold`
-* `scaleinvH0`
 """
 function optimize_grape(problem; kwargs...)
     merge!(problem.kwargs, kwargs)
@@ -369,18 +366,22 @@ function optimize_grape(problem; kwargs...)
         return J_T_func([Ψ̃[k].state for k in 1:N], wrk.objectives; τ=τ)
     end
 
-    optimizer = get_optimizer(wrk.kwargs)
-    res = run_optimizer(optimizer, wrk, f, fg!, info_hook, check_convergence!)
+    optimizer = get_optimizer(wrk)
+    res = run_optimizer(optimizer, wrk, fg!, info_hook, check_convergence!)
     finalize_result!(wrk, res)
     return wrk.result
 
 end
 
 
-function get_optimizer(kwargs)
+function get_optimizer_optim_lbfgs(wrk) # TODO: get rid of this (not called)
+    kwargs = wrk.kwargs
     lbfgs_kwargs = Dict{Symbol, Any}()
     lbfgs_keys = (:memory_length, :alphaguess, :linesearch, :P, :precond,
                     :manifold, :scaleinvH0)
+    # TODO: get if of optim.jl-specific keywords: we'll default to LBFGS, and
+    # if you want to use Optim.jl, you'll have to pass in a fully initialized
+    # optimizer
     for key in lbfgs_keys
         if key in keys(kwargs)
             if :optimizer in keys(kwargs)
@@ -396,61 +397,11 @@ function get_optimizer(kwargs)
 end
 
 
-function run_optimizer(optimizer::Optim.AbstractOptimizer,
-                       wrk, f, fg!, info_hook, check_convergence!)
-
-    tol_options = Optim.Options(
-        # just so we can instantiate `optimizer_state` before `callback`
-        x_tol=get(wrk.kwargs, :x_tol, 0.0),
-        f_tol=get(wrk.kwargs, :f_tol, 0.0),
-        g_tol=get(wrk.kwargs, :g_tol, 1e-8),
-    )
-    initial_x = wrk.pulsevals
-    method = optimizer
-    objective = Optim.promote_objtype(method, initial_x, :finite, true, Optim.only_fg!(fg!))
-    optimizer_state = Optim.initial_state(method, tol_options, objective, initial_x)
-    # Instantiation of `optimizer_state` calls `fg!` and sets the value of the
-    # functional and gradient for the  `initial_x` in objective.F and
-    # objective.DF, respectively. The `optimizer_state` is set correspondingly:
-    @assert optimizer_state.x == optimizer_state.x_previous == objective.x_f == objective.x_df
-    @assert optimizer_state.g_previous == objective.DF
-    # ... but `f_x_previous` does not match the initial `x_previous`:
-    @assert isnan(optimizer_state.f_x_previous)
-
-    # update the result object and check convergence
-    function callback(optimization_state::Optim.OptimizationState)
-        @assert optimization_state.value == objective.F
-        #if optimization_state.iteration > 0
-        #    @assert norm(
-        #       optimizer_state.x .-
-        #       (optimizer_state.x_previous .+ optimizer_state.alpha .* optimizer_state.s)
-        #    ) < 1e-14
-        #end
-        iter = wrk.result.iter_start + optimization_state.iteration
-        update_result!(wrk, optimization_state, optimizer_state, iter)
-        #update_hook!(...) # TODO
-        info_tuple = info_hook(wrk, optimization_state, optimizer_state, wrk.result.iter)
-        (info_tuple !== nothing) && push!(wrk.result.records, info_tuple)
-        check_convergence!(wrk.result)
-        return wrk.result.converged
-    end
-
-    options = Optim.Options(
-        callback=callback,
-        iterations=wrk.result.iter_stop-wrk.result.iter_start, # TODO
-        x_tol=get(wrk.kwargs, :x_tol, 0.0),
-        f_tol=get(wrk.kwargs, :f_tol, 0.0),
-        g_tol=get(wrk.kwargs, :g_tol, 1e-8),
-        show_trace=get(wrk.kwargs, :show_trace, false),
-        extended_trace=get(wrk.kwargs, :extended_trace, false),
-        store_trace=get(wrk.kwargs, :store_trace, false),
-        show_every=get(wrk.kwargs, :show_every, 1),
-        allow_f_increases=get(wrk.kwargs, :allow_f_increases, false),
-    )
-
-    res = Optim.optimize(objective, initial_x, method, options, optimizer_state)
-    return res
-
+function get_optimizer(wrk)
+    n = length(wrk.pulsevals)
+    m = 10 # TODO: kwarg for number of limited memory corrections
+    optimizer = get(wrk.kwargs, :optimizer, LBFGSB.L_BFGS_B(n, m))
+    return optimizer
 end
 
 
@@ -496,84 +447,4 @@ function _bw_gen(pulse_vals, k, n, wrk)
     dt = t[n+1] - t[n]
     evalcontrols!(wrk.G[k], wrk.adjoint_objectives[k].generator, vals_dict)
     return wrk.G[k], -dt
-end
-
-
-function update_result!(
-        wrk::GrapeWrk,
-        optimization_state::Optim.OptimizationState,
-        optimizer_state::Optim.AbstractOptimizerState,
-        i::Int64
-    )
-    res = wrk.result
-    res.J_T_prev = res.J_T
-    res.J_T = optimization_state.value
-    (i > 0) && (res.iter = i)
-    if i >= res.iter_stop
-        res.converged = true
-        res.message = "Reached maximum number of iterations"
-        # Note: other convergence checks are done in user-supplied
-        # check_convergence routine
-    end
-    prev_time = res.end_local_time
-    res.end_local_time = now()
-    res.secs = Dates.toms(res.end_local_time - prev_time) / 1000.0
-end
-
-
-function finalize_result!(wrk::GrapeWrk, optim_res::Optim.MultivariateOptimizationResults)
-    L = length(wrk.controls)
-    res = wrk.result
-    if !optim_res.ls_success
-        @error "optimization failed (linesearch)"
-        res.message = "Failed linesearch"
-    end
-    if optim_res.stopped_by.f_increased
-        @error "loss of monotonic convergence (try allow_f_increases=true)"
-        res.message = "Loss of monotonic convergence"
-    end
-    if !res.converged
-        @warn "Optimization failed to converge"
-    end
-    res.end_local_time = now()
-    ϵ_opt = reshape(Optim.minimizer(optim_res), L, :)
-    for l in 1:L
-        res.optimized_controls[l] = discretize(ϵ_opt[l, :], res.tlist)
-    end
-    res.optim_res = optim_res
-end
-
-
-"""Print optimization progress as a table.
-
-This functions serves as the default `info_hook` for an optimization with
-GRAPE.
-"""
-function print_table(wrk, optimization_state::Optim.OptimizationState, optimizer_state::Optim.AbstractOptimizerState, iteration, args...)
-    J_T = wrk.result.J_T
-    ΔJ_T = J_T - wrk.result.J_T_prev
-    secs = wrk.result.secs
-
-    iter_stop = "$(get(wrk.kwargs, :iter_stop, 5000))"
-    widths = [max(length("$iter_stop"), 6), 11, 11, 11, 8]
-
-    if iteration == 0
-        header = ["iter.", "J_T", "|∇J_T|", "ΔJ_T", "secs"]
-        for (header, w) in zip(header, widths)
-            print(lpad(header, w))
-        end
-        print("\n")
-    end
-
-    strs = (
-        "$iteration",
-        @sprintf("%.2e", J_T),
-        @sprintf("%.2e", optimization_state.g_norm),
-        (iteration > 0) ? @sprintf("%.2e", ΔJ_T) : "n/a",
-        @sprintf("%.1f", secs),
-    )
-    for (str, w) in zip(strs, widths)
-        print(lpad(str, w))
-    end
-    print("\n")
 end
