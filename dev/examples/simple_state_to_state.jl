@@ -3,6 +3,7 @@ using QuantumControl
 using LinearAlgebra
 using Optim
 using GRAPE # XXX
+using QuantumControlBase: chain_infohooks
 using GRAPELinesearchAnalysis
 using LineSearches
 using PyPlot: matplotlib
@@ -79,12 +80,15 @@ end
 println("")
 opt_result = optimize_grape(
         problem,
-        show_trace=true, extended_trace=false,
-        info_hook=GRAPELinesearchAnalysis.plot_linesearch(@__DIR__),
-        alphaguess=LineSearches.InitialStatic(alpha=0.2),
-        linesearch=LineSearches.HagerZhang(alphamax=2.0),
+        #=show_trace=true, extended_trace=false,=#
+        info_hook=chain_infohooks(
+            GRAPELinesearchAnalysis.plot_linesearch(@__DIR__),
+            GRAPE.print_table,
+        )
+        #=alphaguess=LineSearches.InitialStatic(alpha=0.2),=#
+        #=linesearch=LineSearches.HagerZhang(alphamax=2.0),=#
         #=linesearch=LineSearches.BackTracking(), # fails=#
-        allow_f_increases=true,
+        #=allow_f_increases=true,=#
 );
 
 opt_result
