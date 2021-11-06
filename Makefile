@@ -27,6 +27,7 @@ help:  ## show this help
 # We want to test against checkouts of QuantumControl packages
 QUANTUMCONTROLBASE ?= ../QuantumControlBase.jl
 QUANTUMPROPAGATORS ?= ../QuantumPropagators.jl
+KROTOV ?= ../Krotov.jl
 QUANTUMCONTROL ?= ../QuantumControl.jl
 GRAPELINESEARCHANALYSIS ?= ../GRAPELinesearchAnalysis.jl
 
@@ -41,6 +42,7 @@ export DEV_PACKAGES
 
 define ENV_PACKAGES
 $(DEV_PACKAGES)
+Pkg.develop(path="$(KROTOV)");
 Pkg.develop(path="$(QUANTUMCONTROL)");
 Pkg.develop(path="$(GRAPELINESEARCHANALYSIS)");
 Pkg.develop(PackageSpec(path=pwd()));
