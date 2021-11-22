@@ -366,6 +366,47 @@ function optimize_grape(problem; kwargs...)
         return J_T_func([Ψ̃[k].state for k in 1:N], wrk.objectives; τ=τ)
     end
 
+
+    # calculate the functional and the gradient and the hessian
+    function fgh!(F, G, H, pulsevals)
+        if isnothing(G)  # functional only
+            return f(F, G, pulsevals)
+        end
+        wrk.result.fg_calls += 1
+        # backward propagation of states
+        @threadsif wrk.use_threads for k = 1:N
+            copyto!(χ[k], wrk.objectives[k].target_state)
+            write_to_storage!(X[k], N_T+1, χ[k])
+            for n = N_T:-1:1
+                local (G, dt) = _bw_gen(pulsevals, k, n, wrk)
+                propstep!(χ[k], G, dt, wrk.prop_wrk[k])
+                write_to_storage!(X[k], n, χ[k])
+            end
+        end
+        # forward propagation of gradients
+        @threadsif wrk.use_threads for k = 1:N
+            resetgradvec!(Ψ̃[k], wrk.objectives[k].initial_state)
+            for n = 1:N_T  # `n` is the index for the time interval
+                local (G̃, dt) = _fw_gradgen(pulsevals, k, n, wrk)
+                propstep!(Ψ̃[k], G̃, dt, wrk.prop_grad_wrk[k])
+                get_from_storage!(χ[k], X[k], n+1)
+                for l = 1:L
+                    ∇τ[k][l, n] = dot(χ[k], Ψ̃[k].grad_states[l])
+                end
+                resetgradvec!(Ψ̃[k])
+            end
+            τ[k] = dot(wrk.objectives[k].target_state, Ψ̃[k].state)
+        end
+        gradfunc!(G, τ, ∇τ)
+
+        # now we compute the hessian
+        hessianfunc!(...)
+
+        # TODO: set wrk.result.states
+        return J_T_func([Ψ̃[k].state for k in 1:N], wrk.objectives; τ=τ)
+    end
+
+
     optimizer = get_optimizer(wrk)
     res = run_optimizer(optimizer, wrk, fg!, info_hook, check_convergence!)
     finalize_result!(wrk, res)
