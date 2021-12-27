@@ -1,5 +1,7 @@
 module GRAPE
 
+include("workspace.jl")
+include("result.jl")
 include("optimize.jl")
 
 export GrapeWrk, optimize_grape

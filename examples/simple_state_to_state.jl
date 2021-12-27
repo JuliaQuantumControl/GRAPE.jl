@@ -152,7 +152,7 @@ problem = ControlProblem(
 # defined objective, which contains the initial state $\ket{\Psi_{\init}}$ and
 # the Hamiltonian $\op{H}(t)$ defining its evolution.
 
-guess_dynamics = propagate(
+guess_dynamics = propagate_objective(
     objectives[1],
     problem.tlist;
     storage = true,
@@ -216,7 +216,7 @@ opt_result
 # $\ket{\Psi_{\init}} = \ket{0}$ to the desired target state
 # $\ket{\Psi_{\tgt}} = \ket{1}$.
 
-opt_dynamics = propagate(
+opt_dynamics = propagate_objective(
     objectives[1],
     problem.tlist;
     controls_map = IdDict(ϵ => opt_result.optimized_controls[1]),
