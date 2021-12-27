@@ -60,7 +60,7 @@ problem = ControlProblem(
     end,
 );
 
-guess_dynamics = propagate(
+guess_dynamics = propagate_objective(
     objectives[1],
     problem.tlist;
     storage = true,
@@ -100,7 +100,7 @@ display(opt_result.optim_res)
 using UnicodePlots
 println(lineplot(tlist, opt_result.optimized_controls[1]))
 
-opt_dynamics = propagate(
+opt_dynamics = propagate_objective(
     objectives[1],
     problem.tlist;
     controls_map = IdDict(ϵ => opt_result.optimized_controls[1]),
