@@ -3,24 +3,23 @@ module GRAPE
 include("workspace.jl")
 include("result.jl")
 include("optimize.jl")
-
-export GrapeWrk, optimize_grape
-
 include("backend_optim.jl")
 include("backend_lbfgsb.jl")
 
 
-import QuantumControlBase: optimize
+import QuantumControlBase
 
 """
 ```julia
-opt_result = optimize(problem; method=:grape, kwargs...)
+opt_result = optimize(problem; method=:GRAPE, kwargs...)
 ```
 
-optimizes `problem` using GRadident Ascent Pulse Engineering (GRAPE), see
+optimizes [`problem`](@ref QuantumControlBase.ControlProblem)
+using GRadident Ascent Pulse Engineering (GRAPE), see
 [`GRAPE.optimize_grape`](@ref).
 """
-optimize(problem, method::Val{:grape}; kwargs...) = GRAPE.optimize_grape(problem, kwargs...)
+QuantumControlBase.optimize(problem, method::Val{:GRAPE}; kwargs...) = optimize_grape(problem; kwargs...)
+QuantumControlBase.optimize(problem, method::Val{:grape}; kwargs...) = optimize_grape(problem; kwargs...)
 
 
 end

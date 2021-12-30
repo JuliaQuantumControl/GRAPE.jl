@@ -50,8 +50,6 @@
 using Printf
 using QuantumControl
 using LinearAlgebra
-using Optim
-using GRAPE # XXX
 using QuantumControlBase: chain_infohooks
 using GRAPELinesearchAnalysis
 using LineSearches
@@ -180,12 +178,13 @@ end
 # \ket{\Psi_{\tgt}}$ is solved.
 
 #jl println("")
-opt_result = optimize_grape(
-        problem,
+opt_result = optimize(
+        problem;
+        method=:grape,
         #=show_trace=true, extended_trace=false,=#
         info_hook=chain_infohooks(
             GRAPELinesearchAnalysis.plot_linesearch(@__DIR__),
-            GRAPE.print_table,
+            QuantumControl.GRAPE.print_table,
         )
         #=alphaguess=LineSearches.InitialStatic(alpha=0.2),=#
         #=linesearch=LineSearches.HagerZhang(alphamax=2.0),=#

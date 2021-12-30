@@ -6,14 +6,20 @@ using LinearAlgebra
 using Printf
 
 
-"""Optimize the control problem using GRAPE.
+"""Optimize a control problem using GRAPE.
 
 ```julia
 result = optimize_grape(problem; kwargs...)
 ```
 
-optimizes the given control problem, see
-[`QuantumControlBase.ControlProblem`](@ref).
+optimizes the given
+control [`problem`](@ref QuantumControlBase.ControlProblem),
+returning a [`GrapeResult`](@ref).
+
+!!! note
+
+    It is recommended to call [`optimize`](@ref QuantumControlBase.optimize)
+    with `method=:GRAPE` instead of calling `optimize_grape` directly.
 
 Keyword arguments that control the optimization are taken from the keyword
 arguments used in the instantiation of `problem`. Any `kwargs` passed directly
