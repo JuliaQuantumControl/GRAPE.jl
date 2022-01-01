@@ -18,8 +18,8 @@ optimizes [`problem`](@ref QuantumControlBase.ControlProblem)
 using GRadident Ascent Pulse Engineering (GRAPE), see
 [`GRAPE.optimize_grape`](@ref).
 """
-QuantumControlBase.optimize(problem, method::Val{:GRAPE}; kwargs...) = optimize_grape(problem; kwargs...)
-QuantumControlBase.optimize(problem, method::Val{:grape}; kwargs...) = optimize_grape(problem; kwargs...)
+QuantumControlBase.optimize(problem, method::Val{:GRAPE}) = optimize_grape(problem)
+QuantumControlBase.optimize(problem, method::Val{:grape}) = optimize_grape(problem)
 
 
 end

@@ -9,7 +9,7 @@ using Printf
 """Optimize a control problem using GRAPE.
 
 ```julia
-result = optimize_grape(problem; kwargs...)
+result = optimize_grape(problem)
 ```
 
 optimizes the given
@@ -22,8 +22,7 @@ returning a [`GrapeResult`](@ref).
     with `method=:GRAPE` instead of calling `optimize_grape` directly.
 
 Keyword arguments that control the optimization are taken from the keyword
-arguments used in the instantiation of `problem`. Any `kwargs` passed directly
-to `optimize_grape` will update (overwrite) the parameters in `problem`.
+arguments used in the instantiation of `problem`.
 
 # Required problem keyword arguments
 
@@ -66,8 +65,7 @@ for the forward propagation of the extended gradient vector for each objective
 is determined from `grad_prop_method`, `fw_prop_method`, `prop_method` in order
 of precedence.
 """
-function optimize_grape(problem; kwargs...)
-    merge!(problem.kwargs, kwargs)
+function optimize_grape(problem)
     update_hook! = get(problem.kwargs, :update_hook, (args...) -> nothing)
     info_hook = get(problem.kwargs, :info_hook, print_table)
     check_convergence! = get(problem.kwargs, :check_convergence, res -> res)
