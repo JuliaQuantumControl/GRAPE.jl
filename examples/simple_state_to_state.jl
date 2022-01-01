@@ -69,7 +69,7 @@ matplotlib.use("Agg")
 #
 # We we will use
 
-ϵ(t) = 0.2 * QuantumControl.shapes.flattop(t, T = 5, t_rise = 0.3, func = :blackman);
+ϵ(t) = 0.2 * QuantumControl.Shapes.flattop(t, T = 5, t_rise = 0.3, func = :blackman);
 
 
 #-
@@ -136,8 +136,8 @@ problem = ControlProblem(
     tlist = tlist,
     pulse_options=Dict(),
     iter_stop = 500,
-    J_T = QuantumControl.functionals.J_T_sm,
-    gradient=QuantumControl.functionals.grad_J_T_sm!,
+    J_T = QuantumControl.Functionals.J_T_sm,
+    gradient=QuantumControl.Functionals.grad_J_T_sm!,
     check_convergence = res -> begin
         ((res.J_T < 1e-3) && (res.converged = true) && (res.message = "J_T < 10⁻³"))
     end,
