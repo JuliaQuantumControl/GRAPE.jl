@@ -27,6 +27,7 @@ makedocs(;
             "Example 1 (TLS)" => "examples/simple_state_to_state.md",
         ],
         "API" => "api.md",
+        "History" => "history.md",
     ],
 )
 
