@@ -1,4 +1,5 @@
 using GRAPE
+using Pkg
 using Documenter
 
 # Generate examples
@@ -6,18 +7,25 @@ include("generate.jl")
 
 DocMeta.setdocmeta!(GRAPE, :DocTestSetup, :(using GRAPE); recursive = true)
 
+PROJECT_TOML = Pkg.TOML.parsefile(joinpath(@__DIR__, "..", "Project.toml"))
+VERSION = PROJECT_TOML["version"]
+NAME = PROJECT_TOML["name"]
+AUTHORS = join(PROJECT_TOML["authors"], ", ") * " and contributors"
+GITHUB = "https://github.com/JuliaQuantumControl/GRAPE.jl"
+
 println("Starting makedocs")
 
 makedocs(;
     modules = [GRAPE],
-    authors = "Alastair Marshall <alastair@nvision-imaging.com> and contributors",
-    repo = "https://github.com/JuliaQuantumControl/GRAPE.jl/blob/{commit}{path}#{line}",
+    authors = AUTHORS,
+    repo = "$GITHUB/blob/{commit}{path}#{line}",
     sitename = "GRAPE.jl",
     format = Documenter.HTML(;
         prettyurls = true,
         canonical = "https://juliaquantumcontrol.github.io/GRAPE.jl",
         assets = String[],
         mathengine = KaTeX(),
+        footer="[$NAME.jl]($GITHUB) v$VERSION docs powered by [Documenter.jl](https://github.com/JuliaDocs/Documenter.jl)."
     ),
     pages = [
         "Home" => "index.md",
