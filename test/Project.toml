@@ -1,9 +1,12 @@
+name = "GRAPETests"
+
 [deps]
 BenchmarkTools = "6e4b80f9-dd63-53aa-95a3-0cdb28fa8baf"
 ConcreteStructs = "2569d6c7-a4a2-43d3-a901-331e8e4be471"
 Dates = "ade2ca70-3891-5945-98fb-dc099432e06a"
 Documenter = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
 DocumenterTools = "35a29f4d-8980-5a13-9543-d66fff28ecb8"
+DrWatson = "634d3b9d-ee7a-5ddf-bec9-22491ea816e1"
 GRAPE = "6b52fcaf-80fe-489a-93e9-9f92080510be"
 GRAPELinesearchAnalysis = "290eba36-e2d8-4488-81b6-f66cc44f2186"
 Krotov = "b05dcdc7-62f6-4360-bf2c-0898bba419de"
