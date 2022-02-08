@@ -3,22 +3,24 @@ import LBFGSB
 struct LBFGSB_Result
     # TODO: get rid of this data structure, once we move everything the
     # info-hook needs into wrk
-    f :: Float64
-    x :: Vector{Float64}
-    x_previous :: Vector{Float64}
-    message_in :: String
-    message_out :: String
+    f::Float64
+    x::Vector{Float64}
+    x_previous::Vector{Float64}
+    message_in::String
+    message_out::String
 end
 
-function run_optimizer(optimizer::LBFGSB.L_BFGS_B,
-                       wrk, fg!, info_hook, check_convergence!)
+function run_optimizer(optimizer::LBFGSB.L_BFGS_B, wrk, fg!, info_hook, check_convergence!)
 
-    m=10; factr=1e7; pgtol=1e-5; iprint=-1 # TODO
+    m = 10
+    factr = 1e7
+    pgtol = 1e-5
+    iprint = -1 # TODO
     x = wrk.pulsevals
     x_previous = copy(x)
     n = length(x)
     obj = optimizer
-    bounds = zeros(3,n) # TODO
+    bounds = zeros(3, n) # TODO
     f = 0.0
     message = "n/a"
     # clean up
@@ -35,9 +37,9 @@ function run_optimizer(optimizer::LBFGSB.L_BFGS_B,
     fill!(obj.u, zero(Cdouble))
     # set bounds
     for i = 1:n
-        obj.nbd[i] = bounds[1,i]
-        obj.l[i] = bounds[2,i]
-        obj.u[i] = bounds[3,i]
+        obj.nbd[i] = bounds[1, i]
+        obj.l[i] = bounds[2, i]
+        obj.u[i] = bounds[3, i]
     end
     # start
     obj.task[1:5] = b"START"
@@ -50,9 +52,26 @@ function run_optimizer(optimizer::LBFGSB.L_BFGS_B,
         message_in = strip(String(copy(obj.task)))
         # println("- start of task loop: $message_in")
         # println("Calling setulb with f=$f, |g|=$(norm(obj.g)), |x|=$(norm(x))")
-        LBFGSB.setulb(n, m, x, obj.l, obj.u, obj.nbd, f, obj.g, factr, pgtol,
-                      obj.wa, obj.iwa, obj.task, iprint, obj.csave, obj.lsave,
-                      obj.isave, obj.dsave)
+        LBFGSB.setulb(
+            n,
+            m,
+            x,
+            obj.l,
+            obj.u,
+            obj.nbd,
+            f,
+            obj.g,
+            factr,
+            pgtol,
+            obj.wa,
+            obj.iwa,
+            obj.task,
+            iprint,
+            obj.csave,
+            obj.lsave,
+            obj.isave,
+            obj.dsave
+        )
         message_out = strip(String(copy(obj.task)))
         # println("  task -> $message_out")
 
@@ -105,11 +124,11 @@ end
 
 
 function update_result!(
-        wrk::GrapeWrk,
-        iter_res::LBFGSB_Result,
-        optimizer::LBFGSB.L_BFGS_B,
-        i::Int64
-    )
+    wrk::GrapeWrk,
+    iter_res::LBFGSB_Result,
+    optimizer::LBFGSB.L_BFGS_B,
+    i::Int64
+)
     # TODO: make this depend only on wrk. Should not be backend-dependent
     res = wrk.result
     res.J_T_prev = res.J_T
@@ -132,21 +151,22 @@ function finalize_result!(wrk::GrapeWrk, optim_res::LBFGSB_Result)
     res = wrk.result
     res.end_local_time = now()
     ϵ_opt = reshape(optim_res.x, L, :)
-    for l in 1:L
+    for l = 1:L
         res.optimized_controls[l] = discretize(ϵ_opt[l, :], res.tlist)
     end
     res.optim_res = optim_res
 end
 
 function print_lbfgsb_trace(
-        wrk,
-        optimizer::LBFGSB.L_BFGS_B,
-        message_in :: AbstractString,
-        message_out :: AbstractString;
-        show_details=true,
-    )
+    wrk,
+    optimizer::LBFGSB.L_BFGS_B,
+    message_in::AbstractString,
+    message_out::AbstractString;
+    show_details=true
+)
     n = length(wrk.pulsevals)
     println("- end of task loop: $message_in -> $message_out")
+    #! format: off
     if occursin("NEW_X", message_out) && show_details
         println("   lsave[1] = $(optimizer.lsave[1]):\t initial x has been replaced by its projection in the feasible set?")
         println("   lsave[2] = $(optimizer.lsave[2]):\t problem is constrained?")
@@ -178,16 +198,17 @@ function print_lbfgsb_trace(
         println("   dsave[15] = $(optimizer.dsave[15]):\t the slope of the line search function at the starting point of the line search")
         println("   dsave[16] = $(optimizer.dsave[16]):\t the square of the 2-norm of the line search direction vector")
     end
+    #! format: on
 end
 
 
 function print_table(
-        wrk,
-        iter_res::LBFGSB_Result,
-        optimizer::LBFGSB.L_BFGS_B,
-        iteration,
-        args...
-    )
+    wrk,
+    iter_res::LBFGSB_Result,
+    optimizer::LBFGSB.L_BFGS_B,
+    iteration,
+    args...
+)
     # TODO: make this depend only on wrk. Should not be backend-dependent
     J_T = wrk.result.J_T
     ΔJ_T = J_T - wrk.result.J_T_prev

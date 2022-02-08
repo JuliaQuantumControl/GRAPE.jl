@@ -110,7 +110,7 @@ function optimize_grape(problem)
         # backward propagation of states
         @threadsif wrk.use_threads for k = 1:N
             copyto!(χ[k], wrk.objectives[k].target_state)
-            write_to_storage!(X[k], N_T+1, χ[k])
+            write_to_storage!(X[k], N_T + 1, χ[k])
             for n = N_T:-1:1
                 local (G, dt) = _bw_gen(pulsevals, k, n, wrk)
                 propstep!(χ[k], G, dt, wrk.bw_prop_wrk[k])
@@ -123,7 +123,7 @@ function optimize_grape(problem)
             for n = 1:N_T  # `n` is the index for the time interval
                 local (G̃, dt) = _fw_gradgen(pulsevals, k, n, wrk)
                 propstep!(Ψ̃[k], G̃, dt, wrk.grad_prop_wrk[k])
-                get_from_storage!(χ[k], X[k], n+1)
+                get_from_storage!(χ[k], X[k], n + 1)
                 for l = 1:L
                     ∇τ[k][l, n] = dot(χ[k], Ψ̃[k].grad_states[l])
                 end
@@ -133,7 +133,7 @@ function optimize_grape(problem)
         end
         gradfunc!(G, τ, ∇τ)
         # TODO: set wrk.result.states
-        return J_T_func([Ψ̃[k].state for k in 1:N], wrk.objectives; τ=τ)
+        return J_T_func([Ψ̃[k].state for k = 1:N], wrk.objectives; τ=τ)
     end
 
     optimizer = get_optimizer(wrk)
@@ -146,9 +146,9 @@ end
 
 function get_optimizer_optim_lbfgs(wrk) # TODO: get rid of this (not called)
     kwargs = wrk.kwargs
-    lbfgs_kwargs = Dict{Symbol, Any}()
-    lbfgs_keys = (:memory_length, :alphaguess, :linesearch, :P, :precond,
-                    :manifold, :scaleinvH0)
+    lbfgs_kwargs = Dict{Symbol,Any}()
+    lbfgs_keys =
+        (:memory_length, :alphaguess, :linesearch, :P, :precond, :manifold, :scaleinvH0)
     # TODO: get if of optim.jl-specific keywords: we'll default to LBFGS, and
     # if you want to use Optim.jl, you'll have to pass in a fully initialized
     # optimizer
@@ -162,7 +162,7 @@ function get_optimizer_optim_lbfgs(wrk) # TODO: get rid of this (not called)
             lbfgs_kwargs[key] = val
         end
     end
-    optimizer = get(kwargs, :optimizer, Optim.LBFGS(;lbfgs_kwargs...))
+    optimizer = get(kwargs, :optimizer, Optim.LBFGS(; lbfgs_kwargs...))
     return optimizer
 end
 

@@ -1,5 +1,9 @@
 using Test
 using SafeTestsets
+using Plots
+
+unicodeplots()
+ENV["GRAPE_LINESEARCH_ANALYSIS_VERBOSE"] = "1"
 
 include("generate_example_tests.jl")
 

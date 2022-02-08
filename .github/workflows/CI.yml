@@ -17,6 +17,7 @@ jobs:
           - x64
     env:
       JULIA_PKG_SERVER: ''
+      GKSwstype: '100'
     steps:
       - uses: actions/checkout@v2
       - uses: julia-actions/setup-julia@v1
@@ -39,7 +40,7 @@ jobs:
           /usr/bin/python3 -m pip install matplotlib
       - run: |
           # Instantiate Pkg
-          julia --project=@. -e '
+          julia --project=test -e '
             using Pkg
             println("Set up registries")
             Pkg.Registry.add(RegistrySpec(url="https://github.com/JuliaRegistries/General.git"))
@@ -54,15 +55,14 @@ jobs:
             Pkg.develop(url="https://github.com/JuliaQuantumControl/QuantumControl.jl.git#master")
             println("Dev-install GRAPELinesearchAnalysis")
             Pkg.develop(url="https://github.com/JuliaQuantumControl/GRAPELinesearchAnalysis.jl.git#master")
+            println("Dev-install .")
+            Pkg.develop(PackageSpec(path=pwd()));
             println("Pkg.instantiate()")
             Pkg.precompile()
             Pkg.instantiate()'
       - run: |
           # Run tests
-          julia --threads auto --project=@. -e '
-            using Pkg
-            Pkg.activate(".")
-            Pkg.test(coverage=true)'
+          julia --project=test --color=auto --startup-file=yes --code-coverage="user" --depwarn="yes" --check-bounds="yes" -e 'include("test/runtests.jl")'
       - uses: julia-actions/julia-processcoverage@v1
       - uses: codecov/codecov-action@v1
         with:
@@ -83,7 +83,7 @@ jobs:
           /usr/bin/python3 -m pip install matplotlib
       - run: |
           # Instantiate Pkg
-          julia --project=docs -e '
+          julia --project=test -e '
             using Pkg
             println("Set up registries")
             Pkg.Registry.add(RegistrySpec(url="https://github.com/JuliaRegistries/General.git"))
@@ -105,15 +105,43 @@ jobs:
             Pkg.instantiate()'
       - run: |
           # Run doctests
-          julia  --threads auto --project=docs -e '
+          julia  --threads auto --project=test -e '
             using Documenter: DocMeta, doctest
             using GRAPE
             DocMeta.setdocmeta!(GRAPE, :DocTestSetup, :(using GRAPE); recursive=true)
             doctest(GRAPE)'
       - run: |
           # Make documentation
-          julia  --threads auto --project=docs docs/make.jl
+          julia  --threads auto --project=test docs/make.jl
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           DOCUMENTER_KEY: ${{ secrets.DOCUMENTER_KEY }}
           JULIA_DEBUG: Documenter
+  codestyle:
+    name: Codestyle
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: julia-actions/setup-julia@v1
+        with:
+          version: '1'
+      - name: Get codestyle settings
+        run: wget https://raw.githubusercontent.com/JuliaQuantumControl/JuliaQuantumControl/master/.JuliaFormatter.toml
+      - name: Install JuliaFormatter and format
+        # This will use the latest version by default but you can set the version like so:
+        #
+        # julia  -e 'using Pkg; Pkg.add(PackageSpec(name="JuliaFormatter", version="0.13.0"))'
+        run: |
+          julia  -e 'using Pkg; Pkg.add(PackageSpec(name="JuliaFormatter"))'
+          julia  -e 'using JuliaFormatter; format(".", verbose=true)'
+      - name: Format check
+        run: |
+          julia -e '
+          out = Cmd(`git diff --name-only`) |> read |> String
+          if out == ""
+              exit(0)
+          else
+              @error "Some files have not been formatted !!!"
+              write(stdout, out)
+              exit(1)
+          end'

@@ -1,7 +1,12 @@
 import Optim
 
-function run_optimizer(optimizer::Optim.AbstractOptimizer,
-                       wrk, fg!, info_hook, check_convergence!)
+function run_optimizer(
+    optimizer::Optim.AbstractOptimizer,
+    wrk,
+    fg!,
+    info_hook,
+    check_convergence!
+)
 
     tol_options = Optim.Options(
         # just so we can instantiate `optimizer_state` before `callback`
@@ -16,7 +21,10 @@ function run_optimizer(optimizer::Optim.AbstractOptimizer,
     # Instantiation of `optimizer_state` calls `fg!` and sets the value of the
     # functional and gradient for the  `initial_x` in objective.F and
     # objective.DF, respectively. The `optimizer_state` is set correspondingly:
-    @assert optimizer_state.x == optimizer_state.x_previous == objective.x_f == objective.x_df
+    @assert optimizer_state.x ==
+            optimizer_state.x_previous ==
+            objective.x_f ==
+            objective.x_df
     @assert optimizer_state.g_previous == objective.DF
     # ... but `f_x_previous` does not match the initial `x_previous`:
     @assert isnan(optimizer_state.f_x_previous)
@@ -43,7 +51,7 @@ function run_optimizer(optimizer::Optim.AbstractOptimizer,
 
     options = Optim.Options(
         callback=callback,
-        iterations=wrk.result.iter_stop-wrk.result.iter_start, # TODO
+        iterations=wrk.result.iter_stop - wrk.result.iter_start, # TODO
         x_tol=get(wrk.kwargs, :x_tol, 0.0),
         f_tol=get(wrk.kwargs, :f_tol, 0.0),
         g_tol=get(wrk.kwargs, :g_tol, 1e-8),
@@ -61,11 +69,11 @@ end
 
 
 function update_result!(
-        wrk::GrapeWrk,
-        optimization_state::Optim.OptimizationState,
-        optimizer_state::Optim.AbstractOptimizerState,
-        i::Int64
-    )
+    wrk::GrapeWrk,
+    optimization_state::Optim.OptimizationState,
+    optimizer_state::Optim.AbstractOptimizerState,
+    i::Int64
+)
     # TODO: make this depend only on wrk. Should not be backend-dependent
     res = wrk.result
     res.J_T_prev = res.J_T
@@ -99,7 +107,7 @@ function finalize_result!(wrk::GrapeWrk, optim_res::Optim.MultivariateOptimizati
     end
     res.end_local_time = now()
     ϵ_opt = reshape(Optim.minimizer(optim_res), L, :)
-    for l in 1:L
+    for l = 1:L
         res.optimized_controls[l] = discretize(ϵ_opt[l, :], res.tlist)
     end
     res.optim_res = optim_res
@@ -112,12 +120,12 @@ This functions serves as the default `info_hook` for an optimization with
 GRAPE.
 """
 function print_table(
-        wrk,
-        optimization_state::Optim.OptimizationState,
-        optimizer_state::Optim.AbstractOptimizerState,
-        iteration,
-        args...
-    )
+    wrk,
+    optimization_state::Optim.OptimizationState,
+    optimizer_state::Optim.AbstractOptimizerState,
+    iteration,
+    args...
+)
     # TODO: make this depend only on wrk. Should not be backend-dependent
     J_T = wrk.result.J_T
     ΔJ_T = J_T - wrk.result.J_T_prev
