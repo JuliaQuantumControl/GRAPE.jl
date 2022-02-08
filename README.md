@@ -1,5 +1,6 @@
 # GRAPE.jl
 
+[![Version](https://juliahub.com/docs/GRAPE/version.svg)](https://juliahub.com/ui/Packages/GRAPE/W0mna)
 [![Stable](https://img.shields.io/badge/docs-stable-blue.svg)](https://juliaquantumcontrol.github.io/GRAPE.jl/)
 [![Dev](https://img.shields.io/badge/docs-dev-blue.svg)](https://juliaquantumcontrol.github.io/GRAPE.jl/dev)
 [![Build Status](https://github.com/JuliaQuantumControl/GRAPE.jl/workflows/CI/badge.svg)](https://github.com/JuliaQuantumControl/GRAPE.jl/actions)
