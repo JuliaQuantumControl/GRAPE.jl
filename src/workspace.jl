@@ -2,7 +2,7 @@ import QuantumControlBase
 using QuantumControlBase:
     getcontrols, getcontrolderivs, discretize_on_midpoints, evalcontrols
 using QuantumControlBase: GradVector, TimeDependentGradGenerator
-using QuantumPropagators: init_storage, initpropwrk
+using QuantumControlBase.QuantumPropagators: init_storage, initpropwrk
 using ConcreteStructs
 
 # GRAPE workspace (for internal use)

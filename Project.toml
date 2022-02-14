@@ -11,12 +11,10 @@ Optim = "429524aa-4258-5aef-a3af-852621145aeb"
 Printf = "de0858da-6303-5e67-8744-51eddeeeb8d7"
 ConcreteStructs = "2569d6c7-a4a2-43d3-a901-331e8e4be471"
 QuantumControlBase = "f10a33bc-5a64-497c-be7b-6f86b4f0c2aa"
-QuantumPropagators = "7bf12567-5742-4b91-a078-644e72a65fc1"
 
 [compat]
 Optim = "1"
 QuantumControlBase = ">=0.1.0"
-QuantumPropagators = ">=0.1.0"
 LBFGSB = "^0.4"
 ConcreteStructs = "^0.2"
 julia = "1.6"

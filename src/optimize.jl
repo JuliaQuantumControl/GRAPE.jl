@@ -1,6 +1,5 @@
-using QuantumPropagators: propstep!, write_to_storage!, get_from_storage!
-using QuantumControlBase: evalcontrols!
-using QuantumControlBase: resetgradvec!
+using QuantumControlBase.QuantumPropagators: propstep!, write_to_storage!, get_from_storage!
+using QuantumControlBase: evalcontrols!, resetgradvec!
 using QuantumControlBase.ConditionalThreads: @threadsif
 using LinearAlgebra
 using Printf
@@ -34,17 +33,29 @@ arguments used in the instantiation of `problem`.
 
 # Optional problem keyword arguments
 
-* `update_hook`
-* `info_hook`
-* `check_convergence`
-* `x_tol`
-* `f_tol`
-* `g_tol`
-* `show_trace`
-* `extended_trace`
-* `show_every`
-* `allow_f_increases`
-* `optimizer`
+* `update_hook`: Not immplemented
+* `info_hook`: A function that receives the same argumens as `update_hook`, in
+  order to write information about the current iteration to the screen or to a
+  file. The default `info_hook` prints a table with convergence information to
+  the screen. Runs after `update_hook`. The `info_hook` function may return a
+  tuple, which is stored in the list of `records` inside the
+  [`GrapeResult`](@ref) object.
+* `check_convergence`: A function to check whether convergence has been
+  reached. Receives a [`GrapeResult`](@ref) object `result`, and should set
+  `result.converged` to `true` and `result.message` to an appropriate string in
+  case of convergence. Multiple convergence checks can be performed by chaining
+  functions with `∘`. The convergence check is performed after any calls to
+  `update_hook` and `info_hook`.
+* `x_tol`: Parameter for Optim.jl
+* `f_tol`: Parameter for Optim.jl
+* `g_tol`: Parameter for Optim.jl
+* `show_trace`: Parameter for Optim.jl
+* `extended_trace`:  Parameter for Optim.jl
+* `show_every`: Parameter for Optim.jl
+* `allow_f_increases`: Parameter for Optim.jl
+* `optimizer`: An optional Optim.jl optimizer (`Optim.AbstractOptimizer`
+  instance). If not given, an [L-BFGS-B](https://github.com/Gnimuc/LBFGSB.jl)
+  optimizer will be used.
 * `prop_method`/`fw_prop_method`/`bw_prop_method`: The propagation method to
   use for each objective, see below.
 * `prop_method`/`fw_prop_method`/`grad_prop_method`: The propagation method to
@@ -67,6 +78,9 @@ of precedence.
 """
 function optimize_grape(problem)
     update_hook! = get(problem.kwargs, :update_hook, (args...) -> nothing)
+    # TODO: implement update_hook
+    # TODO: streamline the interface for info_hook
+    # TODO: check if x_tol, f_tol, g_tol are used necessary / used correctly
     info_hook = get(problem.kwargs, :info_hook, print_table)
     check_convergence! = get(problem.kwargs, :check_convergence, res -> res)
 
@@ -141,29 +155,6 @@ function optimize_grape(problem)
     finalize_result!(wrk, res)
     return wrk.result
 
-end
-
-
-function get_optimizer_optim_lbfgs(wrk) # TODO: get rid of this (not called)
-    kwargs = wrk.kwargs
-    lbfgs_kwargs = Dict{Symbol,Any}()
-    lbfgs_keys =
-        (:memory_length, :alphaguess, :linesearch, :P, :precond, :manifold, :scaleinvH0)
-    # TODO: get if of optim.jl-specific keywords: we'll default to LBFGS, and
-    # if you want to use Optim.jl, you'll have to pass in a fully initialized
-    # optimizer
-    for key in lbfgs_keys
-        if key in keys(kwargs)
-            if :optimizer in keys(kwargs)
-                @warn "keyword argument $(String(key)) will be ignored because due to custom optimizer"
-            end
-            val = kwargs[key]
-            (key == :memory_length) && (key = :m)
-            lbfgs_kwargs[key] = val
-        end
-    end
-    optimizer = get(kwargs, :optimizer, Optim.LBFGS(; lbfgs_kwargs...))
-    return optimizer
 end
 
 

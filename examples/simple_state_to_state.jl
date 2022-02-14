@@ -4,8 +4,8 @@
 #md #     This example is also available as a Jupyter notebook:
 #md #     [`simple_state_to_state.ipynb`](@__NBVIEWER_ROOT_URL__/examples/simple_state_to_state.ipynb).
 #md #
-#md #     Compare this example against the [same example using the `krotov`
-#md #     Python package](https://qucontrol.github.io/krotov/v1.2.1/notebooks/01_example_simple_state_to_state.html).
+#md #     Compare this example against the [same example using Krotov's
+#md #     method](https://juliaquantumcontrol.github.io/Krotov.jl/stable/examples/simple_state_to_state/).
 
 #md # ``\gdef\op#1{\hat{#1}}``
 #md # ``\gdef\init{\text{init}}``
@@ -43,38 +43,23 @@
 #nb # $
 
 
-# This first example illustrates the basic use of the `Krotov.jl` by solving a
-# simple canonical optimization problem: the transfer of population in a two
-# level system.
+# This first example illustrates the basic use of the `GRAPE.jl` by solving a simple canonical optimization problem: the transfer of population in a two level system.
 
 using DrWatson
 @quickactivate "GRAPETests"
 #-
-using Printf
 using QuantumControl
-using LinearAlgebra
-using GRAPELinesearchAnalysis
-using LineSearches
-#-
-using Plots
-Plots.default(linewidth=3, size=(550, 300))
-#-
 
 #jl using Test
+#jl println("")
 
 # ## Two-level Hamiltonian
 
-# We consider the Hamiltonian $\op{H}_{0} = - \frac{\omega}{2} \op{\sigma}_{z}$, representing
-# a simple qubit with energy level splitting $\omega$ in the basis
-# $\{\ket{0},\ket{1}\}$. The control field $\epsilon(t)$ is assumed to couple via
-# the Hamiltonian $\op{H}_{1}(t) = \epsilon(t) \op{\sigma}_{x}$ to the qubit,
-# i.e., the control field effectively drives transitions between both qubit
-# states.
+# We consider the Hamiltonian $\op{H}_{0} = - \frac{\omega}{2} \op{\sigma}_{z}$, representing a simple qubit with energy level splitting $\omega$ in the basis $\{\ket{0},\ket{1}\}$. The control field $\epsilon(t)$ is assumed to couple via the Hamiltonian $\op{H}_{1}(t) = \epsilon(t) \op{\sigma}_{x}$ to the qubit, i.e., the control field effectively drives transitions between both qubit states.
 #
 # We we will use
 
 ϵ(t) = 0.2 * QuantumControl.Shapes.flattop(t, T=5, t_rise=0.3, func=:blackman);
-
 
 #-
 """Two-level-system Hamiltonian."""
@@ -104,6 +89,15 @@ H = hamiltonian();
 tlist = collect(range(0, 5, length=500));
 
 #-
+using Plots
+Plots.default(
+    linewidth               = 3,
+    size                    = (550, 300),
+    legend                  = :right,
+    foreground_color_legend = nothing,
+    background_color_legend = RGBA(1, 1, 1, 0.8)
+)
+#-
 function plot_control(pulse::Vector, tlist)
     plot(tlist, pulse, xlabel="time", ylabel="amplitude", legend=false)
 end
@@ -115,11 +109,7 @@ fig = plot_control(H[2][2], tlist)
 
 # ## Optimization target
 
-# The `krotov` package requires the goal of the optimization to be described by a
-# list of `Objective` instances. In this example, there is only a single
-# objective: the state-to-state transfer from initial state $\ket{\Psi_{\init}} =
-# \ket{0}$ to the target state $\ket{\Psi_{\tgt}} = \ket{1}$, under the dynamics
-# of the Hamiltonian $\op{H}(t)$:
+# First, we define a convenience function for the eigenstates.
 
 function ket(label)
     result = Dict("0" => Vector{ComplexF64}([1, 0]), "1" => Vector{ComplexF64}([0, 1]))
@@ -127,14 +117,19 @@ function ket(label)
 end;
 
 #-
+#jl using LinearAlgebra
 #jl @test dot(ket(0), ket(1)) ≈ 0
 #-
 
-objectives = [Objective(initial_state=ket(0), generator=H, target_state=ket(1))]
+# The physical objective of our optimization is to transform the initial state $\ket{0}$ into the target state $\ket{1}$ under the time evolution induced by the Hamiltonian $\op{H}(t)$.
+
+objectives = [Objective(initial_state=ket(0), generator=H, target_state=ket(1))];
 
 #-
 #jl @test length(objectives) == 1
 #-
+
+# The full control problem includes this objective, information about the time grid for the dynamics, and the functional to be used (the square modulus of the overlap $\tau$ with the target state in this case).
 
 problem = ControlProblem(
     objectives=objectives,
@@ -148,12 +143,11 @@ problem = ControlProblem(
     end,
 );
 
+# Note that we have given an explicit function that calculates the gradient $\partial J_T/\partial \tau$
+
 # ## Simulate dynamics under the guess field
 
-# Before running the optimization procedure, we first simulate the dynamics under the
-# guess field $\epsilon_{0}(t)$. The following solves equation of motion for the
-# defined objective, which contains the initial state $\ket{\Psi_{\init}}$ and
-# the Hamiltonian $\op{H}(t)$ defining its evolution.
+# Before running the optimization procedure, we first simulate the dynamics under the guess field $\epsilon_{0}(t)$. The following solves equation of motion for the defined objective, which contains the initial state $\ket{\Psi_{\init}}$ and the Hamiltonian $\op{H}(t)$ defining its evolution.
 
 guess_dynamics = propagate_objective(
     objectives[1],
@@ -164,65 +158,103 @@ guess_dynamics = propagate_objective(
 
 #-
 function plot_population(pop0::Vector, pop1::Vector, tlist)
-    legend_args = Dict(
-        :legend => :right,
-        :foreground_color_legend => nothing,
-        :background_color_legend => RGBA(1, 1, 1, 0.8)
-    )
     fig = plot(tlist, pop0, label="0", xlabel="time", ylabel="population")
-    plot!(fig, tlist, pop1; label="1", legend_args...)
+    plot!(fig, tlist, pop1; label="1")
 end;
 #-
 fig = plot_population(guess_dynamics[1, :], guess_dynamics[2, :], tlist)
 #jl display(fig)
 
-# ## Optimize
+# ## Optimization with LBFGSB
 
-# In the following we optimize the guess field $\epsilon_{0}(t)$ such
-# that the intended state-to-state transfer $\ket{\Psi_{\init}} \rightarrow
-# \ket{\Psi_{\tgt}}$ is solved.
+# In the following we optimize the guess field $\epsilon_{0}(t)$ such that the intended state-to-state transfer $\ket{\Psi_{\init}} \rightarrow \ket{\Psi_{\tgt}}$ is solved.
 
-#jl println("")
-opt_result, file = @optimize_or_load(
-    datadir(),
+# The GRAPE package performs the optimization by calculating the gradient of $J_T$ with respect to the values of the control field at each point in time. This gradient is then fed into a backend solver that calculates an appropriate update based on that gradient.
+
+# By default, this backend is [LBFGSB.jl](https://github.com/Gnimuc/LBFGSB.jl), a wrapper around the true and tested [L-BFGS-B Fortran library](http://users.iems.northwestern.edu/%7Enocedal/lbfgsb.html). L-BFGS-B is a pseudo-Hessian method: it efficiently estimates the second-order Hessian from the gradient information. The search direction determined from that Hessian dramatically improves convergence compared to using the gradient directly as a search direction. The L-BFGS-B method performs its own linesearch to determine how far to go in the search direction.
+
+# It can be quite instructive to see how the improvement in the pseudo-Hessian search direction compares to the gradient, how the linesearch finds an appropriate step width. For this purpose, we have a [GRAPELinesearchAnalysis](https://github.com/JuliaQuantumControl/GRAPELinesearchAnalysis.jl) package that automatically generates plots in every iteration of the optimization showing the linesearch behavior
+
+using GRAPELinesearchAnalysis
+
+# We feed this into the optimization as part of the `info_hook`.
+
+opt_result_LBFGSB, file = @optimize_or_load(
+    datadir("TLS"),
     problem,
     method = :grape,
-    prefix = "TLSOCT",
-    savename_kwargs = Dict(:ignores => ["chi"], :connector => "#"),
-    #=show_trace=true, extended_trace=false,=#
+    filename = "opt_result_LBFGSB.jld2",
     info_hook = chain_infohooks(
-        GRAPELinesearchAnalysis.plot_linesearch(@__DIR__),
+        GRAPELinesearchAnalysis.plot_linesearch(datadir("TLS", "Linesearch", "LBFGSB")),
         QuantumControl.GRAPE.print_table,
     )
-    #=alphaguess=LineSearches.InitialStatic(alpha=0.2),=#
-    #=linesearch=LineSearches.HagerZhang(alphamax=2.0),=#
-    #=linesearch=LineSearches.BackTracking(), # fails=#
-    #=allow_f_increases=true,=#
 );
 #-
-opt_result
+#jl @test opt_result_LBFGSB.J_T < 1e-3
 #-
-#jl @test opt_result.J_T < 1e-3
+
+# When going through this tutorial locally, the generated images for the linesearch can be found in
+
+datadir("TLS", "Linesearch", "LBFGSB")
 #-
+opt_result_LBFGSB
 
 # We can plot the optimized field:
 
 #-
-fig = plot_control(opt_result.optimized_controls[1], tlist)
+fig = plot_control(opt_result_LBFGSB.optimized_controls[1], tlist)
 #jl display(fig)
 #-
 
+# ## Optimization with Optim.jl
+
+# As an alternative to the default L-BFGS-B backend, we can also use any of the gradient-based optimizers in [Optiml.jl](https://github.com/JuliaNLSolvers/Optim.jl). This also gives full control over the linesearch method.
+
+using Optim
+using LineSearches
+
+# Here, we use the LBFGS implementation that is part of Optim (which is not exactly the same as L-BFGS-B; "B" being the variant of LBFGS with optional additional bounds on the control) with a Hager-Zhang linesearch
+
+opt_result_OptimLBFGS, file = @optimize_or_load(
+    datadir("TLS"),
+    problem,
+    method = :grape,
+    filename = "opt_result_OptimLBFGS.jld2",
+    info_hook = chain_infohooks(
+        GRAPELinesearchAnalysis.plot_linesearch(datadir("TLS", "Linesearch", "OptimLBFGS")),
+        QuantumControl.GRAPE.print_table,
+    ),
+    optimizer = Optim.LBFGS(;
+        alphaguess=LineSearches.InitialStatic(alpha=0.2),
+        linesearch=LineSearches.HagerZhang(alphamax=2.0)
+    )
+);
+
+#-
+
+#jl @test opt_result_OptimLBFGS.J_T < 1e-3
+
+#-
+
+opt_result_OptimLBFGS
+#-
+
+# We can plot the optimized field:
+
+fig = plot_control(opt_result_OptimLBFGS.optimized_controls[1], tlist)
+
+# We can see that the choice of linesearch parameters in particular strongly influence the convergence and the resulting field. Play around with different methods and parameters, and compare the different plots generated by `GRAPELinesearchAnalysis`!
+#
+# Empirically, we find the default L-BFGS-B to have a very well-behaved linesearch.
+
 # ## Simulate the dynamics under the optimized field
 
-# Having obtained the optimized control field, we can simulate the dynamics to
-# verify that the optimized field indeed drives the initial state
-# $\ket{\Psi_{\init}} = \ket{0}$ to the desired target state
-# $\ket{\Psi_{\tgt}} = \ket{1}$.
+# Having obtained the optimized control field, we can simulate the dynamics to verify that the optimized field indeed drives the initial state $\ket{\Psi_{\init}} = \ket{0}$ to the desired target state $\ket{\Psi_{\tgt}} = \ket{1}$.
 
 opt_dynamics = propagate_objective(
     objectives[1],
     problem.tlist;
-    controls_map=IdDict(ϵ => opt_result.optimized_controls[1]),
+    controls_map=IdDict(ϵ => opt_result_LBFGSB.optimized_controls[1]),
     storage=true,
     observables=(Ψ -> abs.(Ψ) .^ 2,)
 )
