@@ -1,16 +1,10 @@
 using DrWatson
 @quickactivate "GRAPETests"
 
-using Printf
 using QuantumControl
-using LinearAlgebra
-using GRAPELinesearchAnalysis
-using LineSearches
-
-using Plots
-Plots.default(linewidth=3, size=(550, 300))
 
 using Test
+println("")
 
 ϵ(t) = 0.2 * QuantumControl.Shapes.flattop(t, T=5, t_rise=0.3, func=:blackman);
 
@@ -34,6 +28,15 @@ H = hamiltonian();
 
 tlist = collect(range(0, 5, length=500));
 
+using Plots
+Plots.default(
+    linewidth               = 3,
+    size                    = (550, 300),
+    legend                  = :right,
+    foreground_color_legend = nothing,
+    background_color_legend = RGBA(1, 1, 1, 0.8)
+)
+
 function plot_control(pulse::Vector, tlist)
     plot(tlist, pulse, xlabel="time", ylabel="amplitude", legend=false)
 end
@@ -48,9 +51,10 @@ function ket(label)
     return result[string(label)]
 end;
 
+using LinearAlgebra
 @test dot(ket(0), ket(1)) ≈ 0
 
-objectives = [Objective(initial_state=ket(0), generator=H, target_state=ket(1))]
+objectives = [Objective(initial_state=ket(0), generator=H, target_state=ket(1))];
 
 @test length(objectives) == 1
 
@@ -74,47 +78,63 @@ guess_dynamics = propagate_objective(
 )
 
 function plot_population(pop0::Vector, pop1::Vector, tlist)
-    legend_args = Dict(
-        :legend => :right,
-        :foreground_color_legend => nothing,
-        :background_color_legend => RGBA(1, 1, 1, 0.8)
-    )
     fig = plot(tlist, pop0, label="0", xlabel="time", ylabel="population")
-    plot!(fig, tlist, pop1; label="1", legend_args...)
+    plot!(fig, tlist, pop1; label="1")
 end;
 
 fig = plot_population(guess_dynamics[1, :], guess_dynamics[2, :], tlist)
 display(fig)
 
-println("")
-opt_result, file = @optimize_or_load(
-    datadir(),
+using GRAPELinesearchAnalysis
+
+opt_result_LBFGSB, file = @optimize_or_load(
+    datadir("TLS"),
     problem,
     method = :grape,
-    prefix = "TLSOCT",
-    savename_kwargs = Dict(:ignores => ["chi"], :connector => "#"),
-    #=show_trace=true, extended_trace=false,=#
+    filename = "opt_result_LBFGSB.jld2",
     info_hook = chain_infohooks(
-        GRAPELinesearchAnalysis.plot_linesearch(@__DIR__),
+        GRAPELinesearchAnalysis.plot_linesearch(datadir("TLS", "Linesearch", "LBFGSB")),
         QuantumControl.GRAPE.print_table,
     )
-    #=alphaguess=LineSearches.InitialStatic(alpha=0.2),=#
-    #=linesearch=LineSearches.HagerZhang(alphamax=2.0),=#
-    #=linesearch=LineSearches.BackTracking(), # fails=#
-    #=allow_f_increases=true,=#
 );
 
-opt_result
+@test opt_result_LBFGSB.J_T < 1e-3
 
-@test opt_result.J_T < 1e-3
+datadir("TLS", "Linesearch", "LBFGSB")
 
-fig = plot_control(opt_result.optimized_controls[1], tlist)
+opt_result_LBFGSB
+
+fig = plot_control(opt_result_LBFGSB.optimized_controls[1], tlist)
 display(fig)
+
+using Optim
+using LineSearches
+
+opt_result_OptimLBFGS, file = @optimize_or_load(
+    datadir("TLS"),
+    problem,
+    method = :grape,
+    filename = "opt_result_OptimLBFGS.jld2",
+    info_hook = chain_infohooks(
+        GRAPELinesearchAnalysis.plot_linesearch(datadir("TLS", "Linesearch", "OptimLBFGS")),
+        QuantumControl.GRAPE.print_table,
+    ),
+    optimizer = Optim.LBFGS(;
+        alphaguess=LineSearches.InitialStatic(alpha=0.2),
+        linesearch=LineSearches.HagerZhang(alphamax=2.0)
+    )
+);
+
+@test opt_result_OptimLBFGS.J_T < 1e-3
+
+opt_result_OptimLBFGS
+
+fig = plot_control(opt_result_OptimLBFGS.optimized_controls[1], tlist)
 
 opt_dynamics = propagate_objective(
     objectives[1],
     problem.tlist;
-    controls_map=IdDict(ϵ => opt_result.optimized_controls[1]),
+    controls_map=IdDict(ϵ => opt_result_LBFGSB.optimized_controls[1]),
     storage=true,
     observables=(Ψ -> abs.(Ψ) .^ 2,)
 )
