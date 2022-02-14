@@ -9,12 +9,13 @@ include(joinpath(@__DIR__, "clean.jl"))
 
 servedocs(; kwargs...) = _servedocs(; skip_dirs=["docs/src/examples"], kwargs...)
 
-println("""
+REPL_MESSAGE = """
 *******************************************************************************
 DEVELOPMENT REPL
 
 Revise, JuliaFormatter, LiveServer, Plots with unicode backend are active.
 
+* `help()` – Show this message
 * `include("test/runtests.jl")` – Run the entire test suite
 * `include("test/generate_example_tests.jl")` – Convert all examples to tests
 * `include("test/examples/simple_state_to_state.jl")` –
@@ -29,4 +30,9 @@ Revise, JuliaFormatter, LiveServer, Plots with unicode backend are active.
 * `clean()` – Clean up build/doc/testing artifacts
 * `distclean()` – Restore to a clean checkout state
 *******************************************************************************
-""")
+"""
+
+"""Show help"""
+help() = println(REPL_MESSAGE)
+
+help()
