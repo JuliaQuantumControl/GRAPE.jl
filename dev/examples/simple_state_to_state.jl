@@ -98,6 +98,8 @@ opt_result_LBFGSB, file = @optimize_or_load(
     )
 );
 
+optimize(problem, method = :grape, iter_stop=1)
+
 @test opt_result_LBFGSB.J_T < 1e-3
 
 datadir("TLS", "Linesearch", "LBFGSB")
@@ -124,6 +126,12 @@ opt_result_OptimLBFGS, file = @optimize_or_load(
         linesearch=LineSearches.HagerZhang(alphamax=2.0)
     )
 );
+
+_optimizer = Optim.LBFGS(;
+    alphaguess=LineSearches.InitialStatic(alpha=0.2),
+    linesearch=LineSearches.HagerZhang(alphamax=2.0)
+)
+optimize(problem, method = :grape, iter_stop=1, optimizer=_optimizer)
 
 @test opt_result_OptimLBFGS.J_T < 1e-3
 
