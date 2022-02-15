@@ -7,6 +7,8 @@ gr()
 ENV["GKSwstype"] = "100"
 ENV["GRAPE_LINESEARCH_ANALYSIS_VERBOSE"] = "0"
 
+include(joinpath(@__DIR__, "download_dumps.jl"))
+
 # Generate examples
 include("generate.jl")
 

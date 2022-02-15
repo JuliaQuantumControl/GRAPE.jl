@@ -190,6 +190,9 @@ opt_result_LBFGSB, file = @optimize_or_load(
     )
 );
 #-
+#jl # do a single iteration, to ensure coverage
+#jl optimize(problem, method = :grape, iter_stop=1)
+#-
 #jl @test opt_result_LBFGSB.J_T < 1e-3
 #-
 
@@ -231,9 +234,14 @@ opt_result_OptimLBFGS, file = @optimize_or_load(
 );
 
 #-
-
+#jl # do a single iteration, to ensure coverage
+#jl _optimizer = Optim.LBFGS(;
+#jl     alphaguess=LineSearches.InitialStatic(alpha=0.2),
+#jl     linesearch=LineSearches.HagerZhang(alphamax=2.0)
+#jl )
+#jl optimize(problem, method = :grape, iter_stop=1, optimizer=_optimizer)
+#-
 #jl @test opt_result_OptimLBFGS.J_T < 1e-3
-
 #-
 
 opt_result_OptimLBFGS
