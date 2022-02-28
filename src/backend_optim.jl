@@ -44,6 +44,7 @@ function run_optimizer(
         update_result!(wrk, optimization_state, optimizer_state, iter)
         #update_hook!(...) # TODO
         info_tuple = info_hook(wrk, optimization_state, optimizer_state, wrk.result.iter)
+        wrk.fg_count .= 0
         (info_tuple !== nothing) && push!(wrk.result.records, info_tuple)
         check_convergence!(wrk.result)
         return wrk.result.converged
@@ -132,10 +133,10 @@ function print_table(
     secs = wrk.result.secs
 
     iter_stop = "$(get(wrk.kwargs, :iter_stop, 5000))"
-    widths = [max(length("$iter_stop"), 6), 11, 11, 11, 8]
+    widths = [max(length("$iter_stop"), 6), 11, 11, 11, 8, 8]
 
     if iteration == 0
-        header = ["iter.", "J_T", "|∇J_T|", "ΔJ_T", "secs"]
+        header = ["iter.", "J_T", "|∇J_T|", "ΔJ_T", "FG(F)", "secs"]
         for (header, w) in zip(header, widths)
             print(lpad(header, w))
         end
@@ -147,6 +148,7 @@ function print_table(
         @sprintf("%.2e", J_T),
         @sprintf("%.2e", optimization_state.g_norm),
         (iteration > 0) ? @sprintf("%.2e", ΔJ_T) : "n/a",
+        @sprintf("%d(%d)", wrk.fg_count[1], wrk.fg_count[2]),
         @sprintf("%.1f", secs),
     )
     for (str, w) in zip(strs, widths)

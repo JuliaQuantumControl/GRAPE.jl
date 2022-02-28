@@ -104,6 +104,7 @@ function optimize_grape(problem)
         @assert !isnothing(F)
         @assert isnothing(G)
         wrk.result.f_calls += 1
+        wrk.fg_count[2] += 1
         @threadsif wrk.use_threads for k = 1:N
             copyto!(Ψ[k], wrk.objectives[k].initial_state)
             for n = 1:N_T  # `n` is the index for the time interval
@@ -121,6 +122,7 @@ function optimize_grape(problem)
             return f(F, G, pulsevals)
         end
         wrk.result.fg_calls += 1
+        wrk.fg_count[1] += 1
         # backward propagation of states
         @threadsif wrk.use_threads for k = 1:N
             copyto!(χ[k], wrk.objectives[k].target_state)

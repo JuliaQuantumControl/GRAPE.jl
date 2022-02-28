@@ -28,6 +28,8 @@ using ConcreteStructs
 
     searchdirection::Vector{Float64}  # search-direction for guess in iterations
 
+    fg_count::Vector{Int64}
+
     # Result object
     result
 
@@ -93,6 +95,7 @@ function GrapeWrk(problem::QuantumControlBase.ControlProblem)
     )
     kwargs = Dict(problem.kwargs)
     pulse_options = problem.pulse_options
+    fg_count = zeros(Int64, 2)
     if haskey(kwargs, :continue_from)
         @info "Continuing previous optimization"
         result = kwargs[:continue_from]
@@ -196,6 +199,7 @@ function GrapeWrk(problem::QuantumControlBase.ControlProblem)
         pulsevals,
         gradient,
         searchdirection,
+        fg_count,
         result,
         bw_states,
         fw_states,
