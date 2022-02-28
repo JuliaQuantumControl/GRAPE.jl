@@ -11,5 +11,6 @@
 /docs/src/examples
 /gh-pages/
 /.JuliaFormatter.toml
+/.vscode/
 /lcov.info
 /coverage
