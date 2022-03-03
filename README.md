@@ -6,7 +6,7 @@
 [![Build Status](https://github.com/JuliaQuantumControl/GRAPE.jl/workflows/CI/badge.svg)](https://github.com/JuliaQuantumControl/GRAPE.jl/actions)
 [![Coverage](https://codecov.io/gh/JuliaQuantumControl/GRAPE.jl/branch/master/graph/badge.svg)](https://codecov.io/gh/JuliaQuantumControl/GRAPE.jl)
 
-Implementation of ([second-order](https://arxiv.org/abs/1102.4096)) [GRadient Ascent Pulse Engineering](https://www.department.ch.tum.de/fileadmin/w00bzu/ocnmr/94_GRAPE_JMR_05_.pdf) (GRAPE), part of [`QuantumControl.jl`][QuantumControl] and the [JuliaQuantumControl][] organization.
+Implementation of ([second-order](https://arxiv.org/abs/1102.4096)) [GRadient Ascent Pulse Engineering](https://www.department.ch.tum.de/fileadmin/w00bzu/ocnmr/94_GRAPE_JMR_05_.pdf) (GRAPE) extended with automatic differentiation. Part of [`QuantumControl.jl`][QuantumControl] and the [JuliaQuantumControl][] organization.
 
 
 ## Installation
