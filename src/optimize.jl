@@ -1,5 +1,6 @@
 using QuantumControlBase.QuantumPropagators: propstep!, write_to_storage!, get_from_storage!
 using QuantumControlBase: evalcontrols!, resetgradvec!
+using QuantumControlBase.Functionals: grad_J_T_via_chi!, make_gradient, make_chi
 using QuantumControlBase.ConditionalThreads: @threadsif
 using LinearAlgebra
 using Printf
@@ -25,16 +26,39 @@ arguments used in the instantiation of `problem`.
 
 # Required problem keyword arguments
 
-* `J_T`: A function `J_T(ϕ, objectives, τ=τ)` that evaluates the final time
-  functional from a list `ϕ` of forward-propagated states and
-  `problem.objectives`.
-* `gradient`:  A function `gradient!(G, τ, ∇τ)` that stores the gradient of
-  `J_T` in `G`.
+* `J_T`: A function `J_T(ϕ, objectives; τ=τ)` that evaluates the final time
+  functional from a vector `ϕ` of forward-propagated states and
+  `problem.objectives`. For all `objectives` that define a `target_state`, the
+  element `τₖ` of the vector `τ` will contain the overlap of the state `ϕₖ`
+  with the `target_state` of the `k`'th objective, or `NaN` otherwise.
 
 # Optional problem keyword arguments
 
-* `update_hook`: Not immplemented
-* `info_hook`: A function that receives the same argumens as `update_hook`, in
+* `gradient_via`: A flag indicating how the gradient of `J_T` should be
+   calculated. One of `:tau`, `:chi`. If all objectives in `problem` define a
+   `target_function`, the default is `gradient_via=:tau`. This understands the
+   functional `J_T` as a function of the complex overlaps between the
+   propagated states and the target states, and evaluates the gradient via the
+   chain rule. For functionals that cannot be expressed in terms of the overlap
+   of propagated and target states, and/or if not all objectives define a
+   target state, `gradient_via=:chi` because the default. In this case, the
+   functional `J_T` is understood as a function of the forward-propagated
+   states directly, and the full gradient is again calculated by the chain
+   rule. See [`make_gradient`](@ref) for details.
+* `gradient`:  A function to evaluate the gradient of `J_T`. By default, it is
+  constructed via [`make_gradient`](@ref). If given manually, it must meet the
+  interface described by [`make_gradient`](@ref). Most importantly, it must be
+  consistent with the chosen `gradient_via`.
+* `chi`: If `gradient_via=:chi`, a function that constructs the χ-states for
+   the backward propagation, see [`make_gradient`](@ref) for details. By
+   default, it is constructed via [`make_chi`](@ref). If given manually, it
+   must meet the same interface described in [`make_chi`](@ref).
+* `force_zygote=false`: Whether to force the use of automatic differentiation
+  in [`make_gradient`](@ref) and [`make_chi`](@ref). This disables analytic
+  gradients. The only reason to do this is for testing/benchmarking analytic vs
+  automatic gradients.
+* `update_hook`: Not implemented
+* `info_hook`: A function that receives the same arguments as `update_hook`, in
   order to write information about the current iteration to the screen or to a
   file. The default `info_hook` prints a table with convergence information to
   the screen. Runs after `update_hook`. The `info_hook` function may return a
@@ -70,7 +94,7 @@ determined by the first available item of the following:
 * a property `prop_method` of the objective
 * the value `:auto`
 
-The propagation method for the backword propagation is determined similarly,
+The propagation method for the backward propagation is determined similarly,
 but with `bw_prop_method` instead of `fw_prop_method`. The propagation method
 for the forward propagation of the extended gradient vector for each objective
 is determined from `grad_prop_method`, `fw_prop_method`, `prop_method` in order
@@ -88,68 +112,110 @@ function optimize_grape(problem)
 
     χ = wrk.bw_states
     Ψ = wrk.fw_states
-    Ψ̃ = wrk.fw_grad_states
+    χ̃ = wrk.bw_grad_states
+    Ψ₀ = [obj.initial_state for obj ∈ wrk.objectives]
+    Ψtgt = Union{eltype(Ψ₀),Nothing}[
+        (hasproperty(obj, :target_state) ? obj.target_state : nothing) for
+        obj ∈ wrk.objectives
+    ]
+
+    if any(isnothing, Ψtgt)
+        gradient_via = get(wrk.kwargs, :gradient_via, :chi)
+        if gradient_via == :tau
+            error("Evaluating gradients via τ requires target_states for all objectives")
+        end
+    else
+        gradient_via = get(wrk.kwargs, :gradient_via, :tau)
+    end
+    allowed_gradient_via = (:tau, :chi)  # TODO: :tau_matrix
+    J_T_func = wrk.kwargs[:J_T]
+    force_zygote = get(wrk.kwargs, :get_zygote, false)
+    default_gradfunc! =
+        make_gradient(J_T_func, wrk.objectives; via=gradient_via, force_zygote)
+    gradfunc! = get(wrk.kwargs, :gradient, default_gradfunc!)
+    if gradient_via == :tau
+        # chi! is not used
+    elseif gradient_via == :chi
+        default_chi! = make_chi(J_T_func, wrk.objectives; force_zygote)
+        chi! = get(wrk.kwargs, :chi, default_chi!)
+        if gradfunc! ≢ grad_J_T_via_chi!
+            @warn "gradient_via=:chi requires gradient=grad_J_T_via_chi! Ignoring passed gradient"
+            gradfunc! = grad_J_T_via_chi!
+        end
+    else
+        throw(
+            ArgumentError(
+                "gradient_via $(repr(gradient_via)) is not one of $(repr(allowed_gradient_via))"
+            )
+        )
+    end
+
     τ = wrk.result.tau_vals
     ∇τ = wrk.tau_grads
     N_T = length(wrk.result.tlist) - 1
     N = length(wrk.objectives)
     L = length(wrk.controls)
-    X = wrk.bw_storage
+    Φ = wrk.fw_storage
 
-    gradfunc! = wrk.kwargs[:gradient]
-    J_T_func = wrk.kwargs[:J_T]
-
-    # calculate the functional only
-    function f(F, G, pulsevals)
+    # Calculate the functional only; optionally store.
+    # Side-effects: set Ψ, τ, wrk.result.f_calls, wrk.fg_count
+    function f(F, G, pulsevals; storage=nothing, count_call=true)
         @assert !isnothing(F)
         @assert isnothing(G)
-        wrk.result.f_calls += 1
-        wrk.fg_count[2] += 1
+        if count_call
+            wrk.result.f_calls += 1
+            wrk.fg_count[2] += 1
+        end
         @threadsif wrk.use_threads for k = 1:N
-            copyto!(Ψ[k], wrk.objectives[k].initial_state)
+            local Φₖ = isnothing(storage) ? nothing : storage[k]
+            copyto!(Ψ[k], Ψ₀[k])
+            (Φₖ !== nothing) && write_to_storage!(Φₖ, 1, Ψ₀[k])
             for n = 1:N_T  # `n` is the index for the time interval
                 local (G, dt) = _fw_gen(pulsevals, k, n, wrk)
                 propstep!(Ψ[k], G, dt, wrk.fw_prop_wrk[k])
+                (Φₖ !== nothing) && write_to_storage!(Φₖ, n + 1, Ψ[k])
             end
-            τ[k] = dot(wrk.objectives[k].target_state, Ψ[k])
+            τ[k] = isnothing(Ψtgt[k]) ? NaN : (Ψtgt[k] ⋅ Ψ[k])
         end
         return J_T_func(Ψ, wrk.objectives; τ=τ)
     end
 
-    # calculate the functional and the gradient
+    # Calculate the functional and the gradient G ≡ ∇J_T
     function fg!(F, G, pulsevals)
+
         if isnothing(G)  # functional only
             return f(F, G, pulsevals)
         end
         wrk.result.fg_calls += 1
         wrk.fg_count[1] += 1
-        # backward propagation of states
-        @threadsif wrk.use_threads for k = 1:N
-            copyto!(χ[k], wrk.objectives[k].target_state)
-            write_to_storage!(X[k], N_T + 1, χ[k])
-            for n = N_T:-1:1
-                local (G, dt) = _bw_gen(pulsevals, k, n, wrk)
-                propstep!(χ[k], G, dt, wrk.bw_prop_wrk[k])
-                write_to_storage!(X[k], n, χ[k])
+
+        # forward propagation and storage of states
+        J_T_val = f(wrk.result.J_T, nothing, pulsevals; storage=Φ, count_call=false)
+
+        # backward propagation of combined χ-state and gradient
+        if gradient_via == :tau
+            for k = 1:N
+                copyto!(χ[k], Ψtgt[k])
             end
+        elseif gradient_via == :chi
+            chi!(χ, Ψ, wrk.objectives)  # Ψ were set in forward prop
         end
-        # forward propagation of gradients
         @threadsif wrk.use_threads for k = 1:N
-            resetgradvec!(Ψ̃[k], wrk.objectives[k].initial_state)
-            for n = 1:N_T  # `n` is the index for the time interval
-                local (G̃, dt) = _fw_gradgen(pulsevals, k, n, wrk)
-                propstep!(Ψ̃[k], G̃, dt, wrk.grad_prop_wrk[k])
-                get_from_storage!(χ[k], X[k], n + 1)
+            resetgradvec!(χ̃[k], χ[k])
+            for n = N_T:-1:1  # N_T is the number of time slices
+                local (G̃, dt) = _bw_gradgen(pulsevals, k, n, wrk)
+                propstep!(χ̃[k], G̃, dt, wrk.grad_prop_wrk[k])
+                get_from_storage!(Ψ[k], Φ[k], n)
                 for l = 1:L
-                    ∇τ[k][l, n] = dot(χ[k], Ψ̃[k].grad_states[l])
+                    ∇τ[k][l, n] = χ̃[k].grad_states[l] ⋅ Ψ[k]
                 end
-                resetgradvec!(Ψ̃[k])
+                resetgradvec!(χ̃[k])
             end
-            τ[k] = dot(wrk.objectives[k].target_state, Ψ̃[k].state)
         end
+
         gradfunc!(G, τ, ∇τ)
-        # TODO: set wrk.result.states
-        return J_T_func([Ψ̃[k].state for k = 1:N], wrk.objectives; τ=τ)
+        return J_T_val
+
     end
 
     optimizer = get_optimizer(wrk)
@@ -168,7 +234,7 @@ function get_optimizer(wrk)
 end
 
 
-# The dynamical generator for the forward propagation (functional evaluation)
+# The dynamical generator for the forward propagation
 function _fw_gen(pulse_vals, k, n, wrk)
     vals_dict = wrk.vals_dict[k]
     t = wrk.result.tlist
@@ -183,8 +249,8 @@ function _fw_gen(pulse_vals, k, n, wrk)
 end
 
 
-# The dynamical generator for the gradient propagation
-function _fw_gradgen(pulse_vals, k, n, wrk)
+# The dynamical generator for the backward gradient propagation
+function _bw_gradgen(pulse_vals, k, n, wrk)
     vals_dict = wrk.vals_dict[k]
     t = wrk.result.tlist
     L = length(wrk.controls)
@@ -194,20 +260,5 @@ function _fw_gradgen(pulse_vals, k, n, wrk)
     end
     dt = t[n+1] - t[n]
     evalcontrols!(wrk.gradG[k], wrk.TDgradG[k], vals_dict)
-    return wrk.gradG[k], dt
-end
-
-
-# The dynamical generator for the backward propagation
-function _bw_gen(pulse_vals, k, n, wrk)
-    vals_dict = wrk.vals_dict[k]
-    L = length(wrk.controls)
-    ϵ = reshape(pulse_vals, L, :)
-    t = wrk.result.tlist
-    for (l, control) in enumerate(wrk.controls)
-        vals_dict[control] = ϵ[l, n]
-    end
-    dt = t[n+1] - t[n]
-    evalcontrols!(wrk.G[k], wrk.adjoint_objectives[k].generator, vals_dict)
-    return wrk.G[k], -dt
+    return wrk.gradG[k], -dt
 end

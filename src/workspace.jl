@@ -43,8 +43,8 @@ using ConcreteStructs
     # forward-propagated states (functional evaluation only)
     fw_states
 
-    # foward-propagated grad-vectors
-    fw_grad_states
+    # backward-propagated grad-vectors
+    bw_grad_states
 
     # gradients ∂τₖ/ϵₗ(tₙ)
     tau_grads::Vector{Matrix{ComplexF64}}
@@ -52,7 +52,7 @@ using ConcreteStructs
     # dynamical generator (normal propagation) at a particular point in time
     G
 
-    # dynamica generator for grad-propagation, time-dependent
+    # dynamical generator for grad-bw-propagation, time-dependent
     TDgradG
 
     # dynamical generator for grad-propagation at a particular point in time
@@ -62,7 +62,7 @@ using ConcreteStructs
 
     vals_dict
 
-    bw_storage # backward storage array (per objective)
+    fw_storage # backward storage array (per objective)
 
     fw_prop_wrk # for normal forward propagation
 
@@ -128,11 +128,11 @@ function GrapeWrk(problem::QuantumControlBase.ControlProblem)
     searchdirection = zeros(length(pulsevals))
     bw_states = [similar(obj.initial_state) for obj in objectives]
     fw_states = [similar(obj.initial_state) for obj in objectives]
-    fw_grad_states = [GradVector(obj.initial_state, length(controls)) for obj in objectives]
+    bw_grad_states = [GradVector(obj.initial_state, length(controls)) for obj in objectives]
     dummy_vals = IdDict(control => 1.0 for (i, control) in enumerate(controls))
     G = [evalcontrols(obj.generator, dummy_vals) for obj in objectives]
     vals_dict = [copy(dummy_vals) for _ in objectives]
-    bw_storage = [init_storage(obj.initial_state, tlist) for obj in objectives]
+    fw_storage = [init_storage(obj.initial_state, tlist) for obj in objectives]
     fw_prop_method = [
         Val(
             QuantumControlBase.get_objective_prop_method(
@@ -183,11 +183,11 @@ function GrapeWrk(problem::QuantumControlBase.ControlProblem)
             kwargs...
         ) for (k, obj) in enumerate(objectives)
     ]
-    TDgradG = [TimeDependentGradGenerator(obj.generator) for obj in objectives]
+    TDgradG = [TimeDependentGradGenerator(obj.generator) for obj in adjoint_objectives]
     gradG = [evalcontrols(G̃_of_t, dummy_vals) for G̃_of_t ∈ TDgradG]
     grad_prop_wrk = [
         initpropwrk(Ψ̃, tlist, grad_prop_method[k], gradG[k]; kwargs...) for
-        (k, Ψ̃) in enumerate(fw_grad_states)
+        (k, Ψ̃) in enumerate(bw_grad_states)
     ]
     tau_grads::Vector{Matrix{ComplexF64}} =
         [zeros(ComplexF64, length(controls), length(tlist) - 1) for _ in objectives]
@@ -203,14 +203,14 @@ function GrapeWrk(problem::QuantumControlBase.ControlProblem)
         result,
         bw_states,
         fw_states,
-        fw_grad_states,
+        bw_grad_states,
         tau_grads,
         G,
         TDgradG,
         gradG,
         control_derivs,
         vals_dict,
-        bw_storage,
+        fw_storage,
         fw_prop_wrk,
         bw_prop_wrk,
         grad_prop_wrk,

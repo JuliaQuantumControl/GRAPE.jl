@@ -15,12 +15,12 @@ function run_optimizer(optimizer::LBFGSB.L_BFGS_B, wrk, fg!, info_hook, check_co
     m = 10
     factr = 1e7
     pgtol = 1e-5
-    iprint = -1 # TODO
+    iprint = -1 # TODO: set this based on the value of some verbosity flag
     x = wrk.pulsevals
     x_previous = copy(x)
     n = length(x)
     obj = optimizer
-    bounds = zeros(3, n) # TODO
+    bounds = zeros(3, n) # TODO: allow the problem to specify constraints
     f = 0.0
     message = "n/a"
     # clean up
@@ -87,6 +87,7 @@ function run_optimizer(optimizer::LBFGSB.L_BFGS_B, wrk, fg!, info_hook, check_co
                 # x is the guess for the 0 iteration
                 copyto!(wrk.gradient, obj.g)
                 iter_res = LBFGSB_Result(f, x, x, message_in, message_out)
+                update_result!(wrk, iter_res, obj, 0)
                 wrk.result.J_T = f # TODO: don't mutate result outside of update_result!
                 #update_hook!(...) # TODO
                 info_tuple = info_hook(wrk, iter_res, obj, 0)
@@ -133,6 +134,9 @@ function update_result!(
 )
     # TODO: make this depend only on wrk. Should not be backend-dependent
     res = wrk.result
+    for (k, Ψ) in enumerate(wrk.fw_states)
+        copyto!(res.states[k], Ψ)
+    end
     res.J_T_prev = res.J_T
     res.J_T = iter_res.f
     (i > 0) && (res.iter = i)

@@ -77,6 +77,9 @@ function update_result!(
 )
     # TODO: make this depend only on wrk. Should not be backend-dependent
     res = wrk.result
+    for (k, Ψ) in enumerate(wrk.fw_states)
+        copyto!(res.states[k], Ψ)
+    end
     res.J_T_prev = res.J_T
     res.J_T = optimization_state.value
     (i > 0) && (res.iter = i)
