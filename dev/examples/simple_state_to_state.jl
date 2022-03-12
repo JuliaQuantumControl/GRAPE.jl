@@ -64,7 +64,6 @@ problem = ControlProblem(
     pulse_options=Dict(),
     iter_stop=500,
     J_T=QuantumControl.Functionals.J_T_sm,
-    gradient=QuantumControl.Functionals.grad_J_T_sm!,
     check_convergence=res -> begin
         ((res.J_T < 1e-3) && (res.converged = true) && (res.message = "J_T < 10⁻³"))
     end,
@@ -91,14 +90,13 @@ opt_result_LBFGSB, file = @optimize_or_load(
     datadir("TLS"),
     problem,
     method = :grape,
+    force = true,
     filename = "opt_result_LBFGSB.jld2",
     info_hook = chain_infohooks(
         GRAPELinesearchAnalysis.plot_linesearch(datadir("TLS", "Linesearch", "LBFGSB")),
         QuantumControl.GRAPE.print_table,
     )
 );
-
-optimize(problem, method = :grape, iter_stop=1)
 
 @test opt_result_LBFGSB.J_T < 1e-3
 
@@ -108,6 +106,10 @@ opt_result_LBFGSB
 
 fig = plot_control(opt_result_LBFGSB.optimized_controls[1], tlist)
 display(fig)
+
+opt_result_LBFGSB_via_χ = optimize(problem; method=:grape, gradient_via=:chi);
+
+opt_result_LBFGSB_via_χ
 
 using Optim
 using LineSearches
