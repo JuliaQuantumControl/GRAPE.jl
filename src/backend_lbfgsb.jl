@@ -112,6 +112,9 @@ function run_optimizer(optimizer::LBFGSB.L_BFGS_B, wrk, fg!, info_hook, check_co
                 copyto!(wrk.gradient, obj.g)
             end
         else
+            if wrk.result.message == "in progress"
+                wrk.result.message = String(copy(obj.task))
+            end
             fill!(obj.task, Cuchar(' '))
             obj.task[1:10] = b"STOP: DONE"
             # print_lbfgsb_trace(wrk, obj, message_in, message_out)  # enable for trace-debugging
