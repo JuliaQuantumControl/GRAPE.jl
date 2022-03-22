@@ -84,6 +84,7 @@ arguments used in the instantiation of `problem`.
   use for each objective, see below.
 * `prop_method`/`fw_prop_method`/`grad_prop_method`: The propagation method to
   use for the extended gradient vector for each objective, see below.
+* `verbose=false`: If `true`, print information during initialization
 
 The propagation method for the forward propagation of each objective is
 determined by the first available item of the following:
@@ -107,8 +108,9 @@ function optimize_grape(problem)
     # TODO: check if x_tol, f_tol, g_tol are used necessary / used correctly
     info_hook = get(problem.kwargs, :info_hook, print_table)
     check_convergence! = get(problem.kwargs, :check_convergence, res -> res)
+    verbose = get(problem.kwargs, :verbose, false)
 
-    wrk = GrapeWrk(problem)
+    wrk = GrapeWrk(problem; verbose)
 
     χ = wrk.bw_states
     Ψ = wrk.fw_states

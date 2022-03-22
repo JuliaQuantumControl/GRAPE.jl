@@ -66,7 +66,7 @@ using ConcreteStructs
 
     fw_prop_wrk # for normal forward propagation
 
-    bw_prop_wrk # for normal propagation
+    bw_prop_wrk # for normal propagation TODO: get rid of this
 
     grad_prop_wrk # for gradient forward propagation
 
@@ -74,7 +74,7 @@ using ConcreteStructs
 
 end
 
-function GrapeWrk(problem::QuantumControlBase.ControlProblem)
+function GrapeWrk(problem::QuantumControlBase.ControlProblem; verbose=false)
     use_threads = get(problem.kwargs, :use_threads, false)
     objectives = [obj for obj in problem.objectives]
     adjoint_objectives = [adjoint(obj) for obj in problem.objectives]
@@ -158,7 +158,7 @@ function GrapeWrk(problem::QuantumControlBase.ControlProblem)
             QuantumControlBase.get_objective_prop_method(
                 obj,
                 :grad_prop_method,
-                :fw_prop_method,
+                :bw_prop_method,
                 :prop_method;
                 problem.kwargs...
             )
@@ -171,6 +171,8 @@ function GrapeWrk(problem::QuantumControlBase.ControlProblem)
             tlist,
             fw_prop_method[k];
             initial_state=obj.initial_state,
+            info_msg="Initializing fw-prop of objective $k",
+            verbose=verbose,
             kwargs...
         ) for (k, obj) in enumerate(objectives)
     ]
@@ -180,14 +182,23 @@ function GrapeWrk(problem::QuantumControlBase.ControlProblem)
             tlist,
             bw_prop_method[k];
             initial_state=obj.initial_state,
+            info_msg="Initializing bw-prop of objective $k",
+            verbose=verbose,
             kwargs...
         ) for (k, obj) in enumerate(objectives)
     ]
     TDgradG = [TimeDependentGradGenerator(obj.generator) for obj in adjoint_objectives]
     gradG = [evalcontrols(G̃_of_t, dummy_vals) for G̃_of_t ∈ TDgradG]
     grad_prop_wrk = [
-        initpropwrk(Ψ̃, tlist, grad_prop_method[k], gradG[k]; kwargs...) for
-        (k, Ψ̃) in enumerate(bw_grad_states)
+        _init_objgradpropwrk(
+            Ψ̃,
+            tlist,
+            grad_prop_method[k],
+            gradG[k];
+            verbose=verbose,
+            info_msg="Initializing gradient bw-prop of objective $k",
+            kwargs...
+        ) for (k, Ψ̃) in enumerate(bw_grad_states)
     ]
     tau_grads::Vector{Matrix{ComplexF64}} =
         [zeros(ComplexF64, length(controls), length(tlist) - 1) for _ in objectives]
@@ -216,4 +227,20 @@ function GrapeWrk(problem::QuantumControlBase.ControlProblem)
         grad_prop_wrk,
         use_threads
     )
+end
+
+
+function _init_objgradpropwrk(
+    Ψ̃,
+    tlist,
+    method,
+    generator;
+    verbose=false,
+    info_msg=nothing,
+    kwargs...
+)
+    if verbose && !isnothing(info_msg)
+        @info info_msg
+    end
+    initpropwrk(Ψ̃, tlist, method, generator; verbose=verbose, kwargs...)
 end
