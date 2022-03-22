@@ -5,7 +5,9 @@
 /examples/dump/
 /test/Manifest.toml
 /test/examples/
+/test/LocalPreferences.toml
 /docs/Manifest.toml
+/docs/LocalPreferences.toml
 /docs/Project.toml
 /docs/build/
 /docs/src/examples
