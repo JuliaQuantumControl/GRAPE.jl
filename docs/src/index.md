@@ -20,6 +20,7 @@ Depth = 1
 ```@contents
 Pages = [
     "examples/simple_state_to_state.md",
+    "examples/perfect_entanglers.md",
 ]
 Depth = 1
 ```

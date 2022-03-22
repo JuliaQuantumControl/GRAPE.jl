@@ -40,6 +40,7 @@ makedocs(;
         "Examples" => [
             "List of Examples" => "examples/index.md",
             "Example 1 (TLS)" => "examples/simple_state_to_state.md",
+            "Example 2 (PE)" => "examples/perfect_entanglers.md",
         ],
         "API" => "api.md",
         "History" => "history.md",
