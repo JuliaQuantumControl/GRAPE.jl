@@ -66,8 +66,6 @@ using ConcreteStructs
 
     fw_prop_wrk # for normal forward propagation
 
-    bw_prop_wrk # for normal propagation TODO: get rid of this
-
     grad_prop_wrk # for gradient forward propagation
 
     use_threads::Bool
@@ -176,17 +174,6 @@ function GrapeWrk(problem::QuantumControlBase.ControlProblem; verbose=false)
             kwargs...
         ) for (k, obj) in enumerate(objectives)
     ]
-    bw_prop_wrk = [
-        QuantumControlBase.initobjpropwrk(
-            obj,
-            tlist,
-            bw_prop_method[k];
-            initial_state=obj.initial_state,
-            info_msg="Initializing bw-prop of objective $k",
-            verbose=verbose,
-            kwargs...
-        ) for (k, obj) in enumerate(objectives)
-    ]
     TDgradG = [TimeDependentGradGenerator(obj.generator) for obj in adjoint_objectives]
     gradG = [evalcontrols(G̃_of_t, dummy_vals) for G̃_of_t ∈ TDgradG]
     grad_prop_wrk = [
@@ -223,7 +210,6 @@ function GrapeWrk(problem::QuantumControlBase.ControlProblem; verbose=false)
         vals_dict,
         fw_storage,
         fw_prop_wrk,
-        bw_prop_wrk,
         grad_prop_wrk,
         use_threads
     )
