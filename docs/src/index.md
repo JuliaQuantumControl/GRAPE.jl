@@ -6,6 +6,8 @@ CurrentModule = GRAPE
 
 Julia implementation of Gradient Ascent Pulse engineering.
 
+## Contents
+
 ### Overview
 
 ```@contents
@@ -34,11 +36,6 @@ Pages = [
 Depth = 1
 ```
 
-### History
+## History
 
-```@contents
-Pages = [
-    "history.md",
-]
-Depth = 1
-```
+See the [Releases](https://github.com/JuliaQuantumControl/GRAPE.jl/releases) on Github.

@@ -43,7 +43,6 @@ makedocs(;
             "Example 2 (PE)" => "examples/perfect_entanglers.md",
         ],
         "API" => "api.md",
-        "History" => "history.md",
     ]
 )
 
