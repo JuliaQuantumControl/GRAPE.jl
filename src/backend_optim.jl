@@ -158,4 +158,5 @@ function print_table(
         print(lpad(str, w))
     end
     print("\n")
+    flush(stdout)
 end
