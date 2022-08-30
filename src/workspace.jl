@@ -1,8 +1,8 @@
 import QuantumControlBase
-using QuantumControlBase:
+using QuantumControlBase.QuantumPropagators: init_storage, initprop
+using QuantumControlBase.QuantumPropagators.Controls:
     getcontrols, getcontrolderivs, discretize_on_midpoints, evalcontrols
 using QuantumControlBase: GradVector, TimeDependentGradGenerator
-using QuantumControlBase.QuantumPropagators: init_storage, initpropwrk
 using ConcreteStructs
 
 # GRAPE workspace (for internal use)
@@ -37,36 +37,21 @@ using ConcreteStructs
     # scratch objects, per objective:
 
     # backward-propagated states
-    # note: storage for fw-propagated states is in result.states
-    bw_states
-
-    # forward-propagated states (functional evaluation only)
-    fw_states
-
-    # backward-propagated grad-vectors
-    bw_grad_states
+    chi_states
 
     # gradients ∂τₖ/ϵₗ(tₙ)
     tau_grads::Vector{Matrix{ComplexF64}}
 
-    # dynamical generator (normal propagation) at a particular point in time
-    G
-
     # dynamical generator for grad-bw-propagation, time-dependent
-    TDgradG
-
-    # dynamical generator for grad-propagation at a particular point in time
-    gradG
+    TDgradG  # TODO: rename gradgen
 
     control_derivs::Vector{Vector{Union{Function,Nothing}}}
 
-    vals_dict
-
     fw_storage # backward storage array (per objective)
 
-    fw_prop_wrk # for normal forward propagation
+    fw_propagators # for normal forward propagation
 
-    grad_prop_wrk # for gradient forward propagation
+    bw_grad_propagators  # for gradient backward propagation
 
     use_threads::Bool
 
@@ -80,7 +65,7 @@ function GrapeWrk(problem::QuantumControlBase.ControlProblem; verbose=false)
     control_derivs = [getcontrolderivs(obj.generator, controls) for obj in objectives]
     tlist = problem.tlist
     # interleave the pulse values as [ϵ₁(t̃₁), ϵ₂(t̃₁), ..., ϵ₁(t̃₂), ϵ₂(t̃₂), ...]
-    # to allow access as reshape(pulsevals0, L :)[l, n] where l is the control
+    # to allow access as reshape(pulsevals, L, :)[l, n] where l is the control
     # index and n is the time index
     pulsevals = convert(
         Vector{Float64},
@@ -91,7 +76,7 @@ function GrapeWrk(problem::QuantumControlBase.ControlProblem; verbose=false)
             :
         )
     )
-    kwargs = Dict(problem.kwargs)
+    kwargs = Dict(problem.kwargs)  # creates a shallow copy; ok to modify
     pulse_options = problem.pulse_options
     fg_count = zeros(Int64, 2)
     if haskey(kwargs, :continue_from)
@@ -101,7 +86,7 @@ function GrapeWrk(problem::QuantumControlBase.ControlProblem; verbose=false)
             # account for continuing from a different optimization method
             result = convert(GrapeResult, result)
         end
-        result.iter_stop = get(problem.kwargs, :iter_stop, 5000)
+        result.iter_stop = get(kwargs, :iter_stop, 5000)
         result.converged = false
         result.start_local_time = now()
         result.message = "in progress"
@@ -111,7 +96,7 @@ function GrapeWrk(problem::QuantumControlBase.ControlProblem; verbose=false)
                 transpose(
                     hcat(
                         [
-                            discretize_on_midpoints(control, wrk.result.tlist) for
+                            discretize_on_midpoints(control, result.tlist) for
                             control in result.optimized_controls
                         ]...
                     )
@@ -122,32 +107,24 @@ function GrapeWrk(problem::QuantumControlBase.ControlProblem; verbose=false)
     else
         result = GrapeResult(problem)
     end
+    parameters = IdDict(
+        # The view-aliasing below ensures that we can mutate `pulsevals` and
+        # the updated values are immediately accessible in the propagation
+        control => @view pulsevals[l:length(controls):end] for
+        (l, control) in enumerate(controls)
+    )
     gradient = zeros(length(pulsevals))
     searchdirection = zeros(length(pulsevals))
-    bw_states = [similar(obj.initial_state) for obj in objectives]
-    fw_states = [similar(obj.initial_state) for obj in objectives]
-    bw_grad_states = [GradVector(obj.initial_state, length(controls)) for obj in objectives]
     dummy_vals = IdDict(control => 1.0 for (i, control) in enumerate(controls))
-    G = [evalcontrols(obj.generator, dummy_vals) for obj in objectives]
-    vals_dict = [copy(dummy_vals) for _ in objectives]
     fw_storage = [init_storage(obj.initial_state, tlist) for obj in objectives]
+    kwargs[:piecewise] = true  # only accept piecewise propagators
     fw_prop_method = [
         Val(
             QuantumControlBase.get_objective_prop_method(
                 obj,
                 :fw_prop_method,
                 :prop_method;
-                problem.kwargs...
-            )
-        ) for obj in objectives
-    ]
-    bw_prop_method = [
-        Val(
-            QuantumControlBase.get_objective_prop_method(
-                obj,
-                :bw_prop_method,
-                :prop_method;
-                problem.kwargs...
+                kwargs...
             )
         ) for obj in objectives
     ]
@@ -158,34 +135,42 @@ function GrapeWrk(problem::QuantumControlBase.ControlProblem; verbose=false)
                 :grad_prop_method,
                 :bw_prop_method,
                 :prop_method;
-                problem.kwargs...
+                kwargs...
             )
         ) for obj in objectives
     ]
 
-    fw_prop_wrk = [
-        QuantumControlBase.initobjpropwrk(
-            obj,
-            tlist,
-            fw_prop_method[k];
-            initial_state=obj.initial_state,
-            info_msg="Initializing fw-prop of objective $k",
-            verbose=verbose,
-            kwargs...
-        ) for (k, obj) in enumerate(objectives)
+    fw_propagators = [
+        begin
+            verbose &&
+                @info "Initializing fw-prop of objective $k with method $(fw_prop_method[k])"
+            initprop(
+                obj.initial_state,
+                obj.generator,
+                tlist;
+                method=fw_prop_method[k],
+                parameters=parameters,
+                kwargs...
+            )
+        end for (k, obj) in enumerate(objectives)
     ]
     TDgradG = [TimeDependentGradGenerator(obj.generator) for obj in adjoint_objectives]
-    gradG = [evalcontrols(G̃_of_t, dummy_vals) for G̃_of_t ∈ TDgradG]
-    grad_prop_wrk = [
-        _init_objgradpropwrk(
-            Ψ̃,
-            tlist,
-            grad_prop_method[k],
-            gradG[k];
-            verbose=verbose,
-            info_msg="Initializing gradient bw-prop of objective $k",
-            kwargs...
-        ) for (k, Ψ̃) in enumerate(bw_grad_states)
+    chi_states = [similar(obj.initial_state) for obj in objectives]
+    bw_grad_propagators = [
+        begin
+            verbose &&
+                @info "Initializing gradient bw-prop of objective $k with method $(grad_prop_method[k])"
+            χ̃ₖ = GradVector(chi_states[k], length(controls))
+            initprop(
+                χ̃ₖ,
+                TDgradG[k],
+                tlist;
+                method=grad_prop_method[k],
+                backward=true,
+                parameters=parameters,
+                kwargs...
+            )
+        end for k ∈ eachindex(objectives)
     ]
     tau_grads::Vector{Matrix{ComplexF64}} =
         [zeros(ComplexF64, length(controls), length(tlist) - 1) for _ in objectives]
@@ -199,34 +184,13 @@ function GrapeWrk(problem::QuantumControlBase.ControlProblem; verbose=false)
         searchdirection,
         fg_count,
         result,
-        bw_states,
-        fw_states,
-        bw_grad_states,
+        chi_states,
         tau_grads,
-        G,
         TDgradG,
-        gradG,
         control_derivs,
-        vals_dict,
         fw_storage,
-        fw_prop_wrk,
-        grad_prop_wrk,
+        fw_propagators,
+        bw_grad_propagators,
         use_threads
     )
-end
-
-
-function _init_objgradpropwrk(
-    Ψ̃,
-    tlist,
-    method,
-    generator;
-    verbose=false,
-    info_msg=nothing,
-    kwargs...
-)
-    if verbose && !isnothing(info_msg)
-        @info info_msg
-    end
-    initpropwrk(Ψ̃, tlist, method, generator; verbose=verbose, kwargs...)
 end

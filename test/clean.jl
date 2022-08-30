@@ -6,14 +6,26 @@ Clean up build/doc/testing artifacts. Restore to clean checkout state
 """
 function clean(; distclean=false, _exit=true)
 
-    _glob(folder, ending) =
-        [name for name in readdir(folder; join=true) if (name |> endswith(ending))]
-    _glob_star(folder; except=[]) = [
-        joinpath(folder, name) for
-        name in readdir(folder) if !(name |> startswith(".") || name ∈ except)
-    ]
     _exists(name) = isfile(name) || isdir(name)
     _push!(lst, name) = _exists(name) && push!(lst, name)
+
+    function _glob(folder, ending)
+        if !_exists(folder)
+            return []
+        end
+        [name for name in readdir(folder; join=true) if (name |> endswith(ending))]
+    end
+
+    function _glob_star(folder; except=[])
+        if !_exists(folder)
+            return []
+        end
+        [
+            joinpath(folder, name) for
+            name in readdir(folder) if !(name |> startswith(".") || name ∈ except)
+        ]
+    end
+
 
     ROOT = dirname(@__DIR__)
 
