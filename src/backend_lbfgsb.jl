@@ -1,4 +1,5 @@
 import LBFGSB
+using QuantumControlBase.QuantumPropagators.Controls: discretize
 
 struct LBFGSB_Result
     # TODO: get rid of this data structure, once we move everything the
@@ -137,8 +138,8 @@ function update_result!(
 )
     # TODO: make this depend only on wrk. Should not be backend-dependent
     res = wrk.result
-    for (k, Ψ) in enumerate(wrk.fw_states)
-        copyto!(res.states[k], Ψ)
+    for (k, propagator) in enumerate(wrk.fw_propagators)
+        copyto!(res.states[k], propagator.state)
     end
     res.J_T_prev = res.J_T
     res.J_T = iter_res.f

@@ -1,5 +1,7 @@
-using QuantumControlBase.QuantumPropagators: propstep!, write_to_storage!, get_from_storage!
-using QuantumControlBase: evalcontrols!, resetgradvec!
+using QuantumControlBase.QuantumPropagators:
+    propstep!, write_to_storage!, get_from_storage!, set_state!, reinitprop!
+using QuantumControlBase.QuantumPropagators.Controls: evalcontrols!
+using QuantumControlBase: resetgradvec!
 using QuantumControlBase.Functionals: grad_J_T_via_chi!, make_gradient, make_chi
 using QuantumControlBase.ConditionalThreads: @threadsif
 using LinearAlgebra
@@ -106,15 +108,14 @@ function optimize_grape(problem)
     # TODO: implement update_hook
     # TODO: streamline the interface for info_hook
     # TODO: check if x_tol, f_tol, g_tol are used necessary / used correctly
+    # TODO: always evaluate via chi
     info_hook = get(problem.kwargs, :info_hook, print_table)
     check_convergence! = get(problem.kwargs, :check_convergence, res -> res)
     verbose = get(problem.kwargs, :verbose, false)
 
     wrk = GrapeWrk(problem; verbose)
 
-    χ = wrk.bw_states
-    Ψ = wrk.fw_states
-    χ̃ = wrk.bw_grad_states
+    χ = wrk.chi_states
     Ψ₀ = [obj.initial_state for obj ∈ wrk.objectives]
     Ψtgt = Union{eltype(Ψ₀),Nothing}[
         (hasproperty(obj, :target_state) ? obj.target_state : nothing) for
@@ -129,9 +130,9 @@ function optimize_grape(problem)
     else
         gradient_via = get(wrk.kwargs, :gradient_via, :tau)
     end
-    allowed_gradient_via = (:tau, :chi)  # TODO: :tau_matrix
+    allowed_gradient_via = (:tau, :chi)
     J_T_func = wrk.kwargs[:J_T]
-    force_zygote = get(wrk.kwargs, :get_zygote, false)
+    force_zygote = get(wrk.kwargs, :force_zygote, false)
     default_gradfunc! =
         make_gradient(J_T_func, wrk.objectives; via=gradient_via, force_zygote)
     gradfunc! = get(wrk.kwargs, :gradient, default_gradfunc!)
@@ -170,15 +171,16 @@ function optimize_grape(problem)
         end
         @threadsif wrk.use_threads for k = 1:N
             local Φₖ = isnothing(storage) ? nothing : storage[k]
-            copyto!(Ψ[k], Ψ₀[k])
+            reinitprop!(wrk.fw_propagators[k], Ψ₀[k]; transform_control_ranges)
             (Φₖ !== nothing) && write_to_storage!(Φₖ, 1, Ψ₀[k])
             for n = 1:N_T  # `n` is the index for the time interval
-                local (G, dt) = _fw_gen(pulsevals, k, n, wrk)
-                propstep!(Ψ[k], G, dt, wrk.fw_prop_wrk[k])
-                (Φₖ !== nothing) && write_to_storage!(Φₖ, n + 1, Ψ[k])
+                local Ψₖ = propstep!(wrk.fw_propagators[k])
+                (Φₖ !== nothing) && write_to_storage!(Φₖ, n + 1, Ψₖ)
             end
-            τ[k] = isnothing(Ψtgt[k]) ? NaN : (Ψtgt[k] ⋅ Ψ[k])
+            local Ψₖ = wrk.fw_propagators[k].state
+            τ[k] = isnothing(Ψtgt[k]) ? NaN : (Ψtgt[k] ⋅ Ψₖ)
         end
+        Ψ = [p.state for p ∈ wrk.fw_propagators]
         return J_T_func(Ψ, wrk.objectives; τ=τ)
     end
 
@@ -195,23 +197,27 @@ function optimize_grape(problem)
         J_T_val = f(wrk.result.J_T, nothing, pulsevals; storage=Φ, count_call=false)
 
         # backward propagation of combined χ-state and gradient
+        Ψ = [p.state for p ∈ wrk.fw_propagators]
         if gradient_via == :tau
             for k = 1:N
                 copyto!(χ[k], Ψtgt[k])
             end
         elseif gradient_via == :chi
-            chi!(χ, Ψ, wrk.objectives)  # Ψ were set in forward prop
+            chi!(χ, Ψ, wrk.objectives)
         end
         @threadsif wrk.use_threads for k = 1:N
-            resetgradvec!(χ̃[k], χ[k])
+            local Ψₖ = wrk.fw_propagators[k].state
+            local χ̃ₖ = wrk.bw_grad_propagators[k].state
+            resetgradvec!(χ̃ₖ, χ[k])
+            reinitprop!(wrk.bw_grad_propagators[k], χ̃ₖ; transform_control_ranges)
             for n = N_T:-1:1  # N_T is the number of time slices
-                local (G̃, dt) = _bw_gradgen(pulsevals, k, n, wrk)
-                propstep!(χ̃[k], G̃, dt, wrk.grad_prop_wrk[k])
-                get_from_storage!(Ψ[k], Φ[k], n)
+                χ̃ₖ = propstep!(wrk.bw_grad_propagators[k])
+                get_from_storage!(Ψₖ, Φ[k], n)
                 for l = 1:L
-                    ∇τ[k][l, n] = χ̃[k].grad_states[l] ⋅ Ψ[k]
+                    ∇τ[k][l, n] = χ̃ₖ.grad_states[l] ⋅ Ψₖ
                 end
-                resetgradvec!(χ̃[k])
+                resetgradvec!(χ̃ₖ)
+                set_state!(wrk.bw_grad_propagators[k], χ̃ₖ)
             end
         end
 
@@ -228,39 +234,18 @@ function optimize_grape(problem)
 end
 
 
+function transform_control_ranges(c, ϵ_min, ϵ_max, check)
+    if check
+        return (min(ϵ_min, 2 * ϵ_min), max(ϵ_max, 2 * ϵ_max))
+    else
+        return (min(ϵ_min, 5 * ϵ_min), max(ϵ_max, 5 * ϵ_max))
+    end
+end
+
+
 function get_optimizer(wrk)
     n = length(wrk.pulsevals)
     m = 10 # TODO: kwarg for number of limited memory corrections
     optimizer = get(wrk.kwargs, :optimizer, LBFGSB.L_BFGS_B(n, m))
     return optimizer
-end
-
-
-# The dynamical generator for the forward propagation
-function _fw_gen(pulse_vals, k, n, wrk)
-    vals_dict = wrk.vals_dict[k]
-    t = wrk.result.tlist
-    L = length(wrk.controls)
-    ϵ = reshape(pulse_vals, L, :)
-    for (l, control) in enumerate(wrk.controls)
-        vals_dict[control] = ϵ[l, n]
-    end
-    dt = t[n+1] - t[n]
-    evalcontrols!(wrk.G[k], wrk.objectives[k].generator, vals_dict)
-    return wrk.G[k], dt
-end
-
-
-# The dynamical generator for the backward gradient propagation
-function _bw_gradgen(pulse_vals, k, n, wrk)
-    vals_dict = wrk.vals_dict[k]
-    t = wrk.result.tlist
-    L = length(wrk.controls)
-    ϵ = reshape(pulse_vals, L, :)
-    for (l, control) in enumerate(wrk.controls)
-        vals_dict[control] = ϵ[l, n]
-    end
-    dt = t[n+1] - t[n]
-    evalcontrols!(wrk.gradG[k], wrk.TDgradG[k], vals_dict)
-    return wrk.gradG[k], -dt
 end
