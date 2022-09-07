@@ -1,5 +1,6 @@
 using DrWatson
 @quickactivate "GRAPETests"
+using QuantumControl
 using Test; println("")
 
 const GHz = 2π
@@ -110,6 +111,8 @@ end
 
 plot_complex_pulse(tlist, Ωre_guess.(tlist) + 𝕚 * Ωim_guess.(tlist))
 
+H = hamiltonian(Ωre=Ωre_guess, Ωim=Ωim_guess);
+
 function ket(i::Int64; N=N)
     Ψ = zeros(ComplexF64, N)
     Ψ[i+1] = 1
@@ -127,13 +130,75 @@ end
 function ket(label::AbstractString; N=N)
     indices = [parse(Int64, digit) for digit in label]
     return ket(indices...; N=N)
-end
+end;
 
 basis = [ket("00"), ket("01"), ket("10"), ket("11")];
 
-using QuantumControl
+SQRTISWAP = [
+    1  0    0   0
+    0 1/√2 𝕚/√2 0
+    0 𝕚/√2 1/√2 0
+    0  0    0   1
+];
 
-H = hamiltonian(Ωre=Ωre_guess, Ωim=Ωim_guess);
+basis_tgt = transpose(SQRTISWAP) * basis;
+
+objectives = [
+    Objective(initial_state=Ψ, target_state=Ψtgt, generator=H) for
+    (Ψ, Ψtgt) ∈ zip(basis, basis_tgt)
+];
+
+using QuantumControl: propagate_objectives
+
+guess_states = propagate_objectives(objectives, tlist; use_threads=true);
+
+U_guess = [basis[i] ⋅ guess_states[j] for i = 1:4, j = 1:4];
+
+using QuantumControl.Functionals: J_T_sm
+
+J_T_sm(guess_states, objectives)
+
+1 - (abs(tr(U_guess' * SQRTISWAP)) / 4)^2
+
+problem = ControlProblem(
+    objectives=objectives,
+    pulse_options=IdDict(),
+    tlist=tlist,
+    iter_stop=100,
+    J_T=J_T_sm,
+    check_convergence=res -> begin
+        (
+            (res.J_T > res.J_T_prev) &&
+            (res.converged = true) &&
+            (res.message = "Loss of monotonic convergence")
+        )
+        ((res.J_T <= 1e-3) && (res.converged = true) && (res.message = "J_T < 10⁻³"))
+    end,
+    use_threads=true,
+);
+
+opt_result, file =
+    @optimize_or_load(datadir(), problem; method=:GRAPE, filename="GATE_OCT.jld2");
+
+opt_result
+
+Ω_opt = opt_result.optimized_controls[1] + 𝕚 * opt_result.optimized_controls[2]
+
+plot_complex_pulse(tlist, Ω_opt)
+
+opt_states = propagate_objectives(
+    objectives,
+    tlist;
+    use_threads=true,
+    controls_map=IdDict(
+        Ωre_guess => opt_result.optimized_controls[1],
+        Ωim_guess => opt_result.optimized_controls[2]
+    )
+);
+
+U_opt = [basis[i] ⋅ opt_states[j] for i = 1:4, j = 1:4];
+
+(abs(tr(U_opt' * SQRTISWAP)) / 4)^2
 
 objectives = [MinimalObjective(; initial_state=Ψ, generator=H) for Ψ ∈ basis];
 
@@ -141,12 +206,6 @@ using QuantumControl.WeylChamber: D_PE, gate_concurrence, unitarity
 using QuantumControl.Functionals: gate_functional
 
 J_T_PE = gate_functional(D_PE; unitarity_weight=0.5);
-
-using QuantumControl: propagate_objectives
-
-guess_states = propagate_objectives(objectives, tlist; use_threads=true);
-
-U_guess = [basis[i] ⋅ guess_states[j] for i = 1:4, j = 1:4]
 
 gate_concurrence(U_guess)
 
@@ -172,19 +231,11 @@ J_T_PE(guess_states, objectives)
 
 problem = ControlProblem(
     objectives=objectives,
-    pulse_options=IdDict(
-        Ωre_guess => Dict(
-            :lambda_a => 10.0,
-            :update_shape => t -> flattop(t, T=400ns, t_rise=15ns, func=:blackman),
-        ),
-        Ωim_guess => Dict(
-            :lambda_a => 10.0,
-            :update_shape => t -> flattop(t, T=400ns, t_rise=15ns, func=:blackman),
-        ),
-    ),
+    pulse_options=IdDict(),
     tlist=tlist,
     iter_stop=100,
     J_T=J_T_PE,
+    gradient_via=:chi,
     check_convergence=res -> begin
         (
             (res.J_T > res.J_T_prev) &&
@@ -239,6 +290,7 @@ opt_result_direct, file = @optimize_or_load(
     problem;
     method=:GRAPE,
     J_T=gate_functional(J_T_C),
+    gradient_via=:chi,
     chi=chi_C,
     filename="PE_OCT_direct.jld2"
 );
