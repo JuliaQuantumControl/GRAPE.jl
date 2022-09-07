@@ -1,15 +1,18 @@
-# # Example 2: Optimization for a perfect entangler
+# # Example 2: Entangling quantum gates for coupled transmon qubits
 
 #md # !!! tip
 #md #     This example is also available as a Jupyter notebook:
 #md #     [`perfect_entanglers.ipynb`](@__NBVIEWER_ROOT_URL__/examples/perfect_entanglers.ipynb).
 #md #
-#md #     Compare this example against the [same example using Krotov's
+#md #     Compare this example against the [related example using Krotov's
 #md #     method](https://juliaquantumcontrol.github.io/Krotov.jl/stable/examples/perfect_entanglers/).
 
+#md # ``\gdef\Op#1{\hat{#1}}``
 #md # ``\gdef\op#1{\hat{#1}}``
 #md # ``\gdef\init{\text{init}}``
 #md # ``\gdef\tgt{\text{tgt}}``
+#md # ``\gdef\Re{\operatorname{Re}}``
+#md # ``\gdef\Im{\operatorname{Im}}``
 
 #nb # $
 #nb # \newcommand{tr}[0]{\operatorname{tr}}
@@ -44,14 +47,25 @@
 
 using DrWatson
 @quickactivate "GRAPETests"
+using QuantumControl
 #jl using Test; println("")
 
 # This example illustrates the optimization towards a perfectly entangling
 # two-qubit gate for a system of two transmon qubits with a shared transmission
-# line. It uses both the indirect perfect entanglers functional shown in
-# Goerz et. al., Phys. Rev. A 91, 062307 (2015) and a direct maximization of
-# the gate concurrence and thus demonstrates the optimization for non-analytic
-# functions via the calculation of gradients with automatic differentiation.
+# line. It goes through three progressively more advanced optimizations:
+#
+# 1. The direct optimization for a ``\Op{O} = \sqrt{\text{iSWAP}}`` gate with a
+#    standard square-modulus functional
+# 2. The optimization towards a perfect entangler using the functional
+#    developed in Goerz et al., Phys. Rev. A 91, 062307 (2015)
+# 3. The direct maximization of of the gate concurrence
+#
+# While the first example evaluates the gradient of the optimization functional
+# analytically, the latter two are examples for the use of automatic
+# differentiation, or more specifically semi-automatic differentiation, as
+# developed in Goerz et al., arXiv:2205.15044. The optimization of the gate
+# concurrence specifically illustrates the optimization of a functional that is
+# inherently non-analytical.
 
 # ## Hamiltonian and guess pulses
 
@@ -142,6 +156,8 @@ end
 
 tlist, Ωre_guess, Ωim_guess = guess_pulses();
 
+#-
+
 # We can visualize this:
 
 using Plots
@@ -178,6 +194,10 @@ end
 
 plot_complex_pulse(tlist, Ωre_guess.(tlist) + 𝕚 * Ωim_guess.(tlist))
 
+# We now instantiate the Hamiltonian with these control fields:
+
+H = hamiltonian(Ωre=Ωre_guess, Ωim=Ωim_guess);
+
 # ## Logical basis for two-qubit gates
 
 # For simplicity, we will be define the qubits in the *bare* basis, i.e.
@@ -200,18 +220,122 @@ end
 function ket(label::AbstractString; N=N)
     indices = [parse(Int64, digit) for digit in label]
     return ket(indices...; N=N)
-end
+end;
+
+#-
 
 basis = [ket("00"), ket("01"), ket("10"), ket("11")];
 
-# ## Defining the optimization problem
+# ## Optimizing for a specific quantum gate
+
+# Our target gate is ``\Op{O} = \sqrt{\text{iSWAP}}``:
+
+SQRTISWAP = [
+    1  0    0   0
+    0 1/√2 𝕚/√2 0
+    0 𝕚/√2 1/√2 0
+    0  0    0   1
+];
+
+# For each basis state, we get a target state that results from applying the
+# gate to the basis state (you can convince yourself that this equivalent
+# multiplying the transpose of the above gate matrix to the vector of basis
+# states):
+
+basis_tgt = transpose(SQRTISWAP) * basis;
+
+# The mapping from each initial (basis) state to the corresponding target state
+# constitutes an "objective" for the optimization:
+
+#-
+objectives = [
+    Objective(initial_state=Ψ, target_state=Ψtgt, generator=H) for
+    (Ψ, Ψtgt) ∈ zip(basis, basis_tgt)
+];
+
+# We can analyze how all of the basis states evolve under the guess controls in
+# one go:
+
+using QuantumControl: propagate_objectives
+
+guess_states = propagate_objectives(objectives, tlist; use_threads=true);
+
+# The gate implemented by the guess controls is
+
+U_guess = [basis[i] ⋅ guess_states[j] for i = 1:4, j = 1:4];
+
+# We will optimize these objectives with a square-modulus functional
+
+using QuantumControl.Functionals: J_T_sm
+
+# The initial value of the functional is
+
+J_T_sm(guess_states, objectives)
+
+# which is the gate error
+
+1 - (abs(tr(U_guess' * SQRTISWAP)) / 4)^2
+
+# Now, we define the full optimization problems on top of the list of
+# objectives, and with the optimization functional:
+
+problem = ControlProblem(
+    objectives=objectives,
+    pulse_options=IdDict(),
+    tlist=tlist,
+    iter_stop=100,
+    J_T=J_T_sm,
+    check_convergence=res -> begin
+        (
+            (res.J_T > res.J_T_prev) &&
+            (res.converged = true) &&
+            (res.message = "Loss of monotonic convergence")
+        )
+        ((res.J_T <= 1e-3) && (res.converged = true) && (res.message = "J_T < 10⁻³"))
+    end,
+    use_threads=true,
+);
+
+#-
+
+opt_result, file =
+    @optimize_or_load(datadir(), problem; method=:GRAPE, filename="GATE_OCT.jld2");
+#-
+opt_result
+
+# We extract the optimized control field from the optimization result and plot
+# it
+
+Ω_opt = opt_result.optimized_controls[1] + 𝕚 * opt_result.optimized_controls[2]
+
+plot_complex_pulse(tlist, Ω_opt)
+
+# We then propagate the optimized control field to analyze the resulting
+# quantum gate:
+
+opt_states = propagate_objectives(
+    objectives,
+    tlist;
+    use_threads=true,
+    controls_map=IdDict(
+        Ωre_guess => opt_result.optimized_controls[1],
+        Ωim_guess => opt_result.optimized_controls[2]
+    )
+);
+
+
+# The resulting gate is
+
+U_opt = [basis[i] ⋅ opt_states[j] for i = 1:4, j = 1:4];
+
+# and we can verify the resulting fidelity
+
+(abs(tr(U_opt' * SQRTISWAP)) / 4)^2
+
+# ## Optimizing for a general perfect entangler
 
 # We define the optimization with one objective for each of the four basis
 # states:
-
-using QuantumControl
-
-H = hamiltonian(Ωre=Ωre_guess, Ωim=Ωim_guess);
 
 objectives = [MinimalObjective(; initial_state=Ψ, generator=H) for Ψ ∈ basis];
 
@@ -225,7 +349,7 @@ objectives = [MinimalObjective(; initial_state=Ψ, generator=H) for Ψ ∈ basis
 # the Weyl chamber. Since the logical subspace defining the qubit is embedded
 # in the larger Hilbert space of the transmon, there may be loss of population
 # from the logical subspace. To counter this possibility in the optimization,
-# we add a unitarity measure  to $D_PE$. The two terms are added with equal
+# we add a unitarity measure  to $D_{PE}$. The two terms are added with equal
 # weight.
 
 using QuantumControl.WeylChamber: D_PE, gate_concurrence, unitarity
@@ -241,11 +365,6 @@ J_T_PE = gate_functional(D_PE; unitarity_weight=0.5);
 # We can check that for the guess pulse, we are not implementing a perfect
 # entangler
 
-using QuantumControl: propagate_objectives
-
-guess_states = propagate_objectives(objectives, tlist; use_threads=true);
-
-U_guess = [basis[i] ⋅ guess_states[j] for i = 1:4, j = 1:4]
 
 gate_concurrence(U_guess)
 
@@ -297,25 +416,15 @@ J_T_PE(guess_states, objectives)
 #jl @test 0.4 < J_T_PE(guess_states, objectives) < 0.5
 #jl @test 0.5 * D_PE(U_guess) + 0.5 * (1-unitarity(U_guess)) ≈ J_T_PE(guess_states, objectives) atol=1e-15
 
-# ## Optimization
-
 # Now, we formulate the full control problem
 
 problem = ControlProblem(
     objectives=objectives,
-    pulse_options=IdDict(
-        Ωre_guess => Dict(
-            :lambda_a => 10.0,
-            :update_shape => t -> flattop(t, T=400ns, t_rise=15ns, func=:blackman),
-        ),
-        Ωim_guess => Dict(
-            :lambda_a => 10.0,
-            :update_shape => t -> flattop(t, T=400ns, t_rise=15ns, func=:blackman),
-        ),
-    ),
+    pulse_options=IdDict(),
     tlist=tlist,
     iter_stop=100,
     J_T=J_T_PE,
+    gradient_via=:chi,
     check_convergence=res -> begin
         (
             (res.J_T > res.J_T_prev) &&
@@ -370,8 +479,6 @@ opt_result, file =
 #-
 opt_result
 
-
-# ## Optimization result
 
 # We extract the optimized control field from the optimization result and plot
 # it
@@ -458,6 +565,7 @@ opt_result_direct, file = @optimize_or_load(
     problem;
     method=:GRAPE,
     J_T=gate_functional(J_T_C),
+    gradient_via=:chi,
     chi=chi_C,
     filename="PE_OCT_direct.jld2"
 );
