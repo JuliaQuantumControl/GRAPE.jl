@@ -162,7 +162,6 @@ J_T_sm(guess_states, objectives)
 
 problem = ControlProblem(
     objectives=objectives,
-    pulse_options=IdDict(),
     tlist=tlist,
     iter_stop=100,
     J_T=J_T_sm,
@@ -231,7 +230,6 @@ J_T_PE(guess_states, objectives)
 
 problem = ControlProblem(
     objectives=objectives,
-    pulse_options=IdDict(),
     tlist=tlist,
     iter_stop=100,
     J_T=J_T_PE,
