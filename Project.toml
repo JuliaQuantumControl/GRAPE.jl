@@ -1,7 +1,7 @@
 name = "GRAPE"
 uuid = "6b52fcaf-80fe-489a-93e9-9f92080510be"
-authors = ["Alastair Marshall <alastair@nvision-imaging.com>", "Michael Goerz <mail@michaelgoerz.net>"]
-version = "0.2.1+dev"
+authors = ["Michael Goerz <mail@michaelgoerz.net>", "Alastair Marshall <alastair@nvision-imaging.com>"]
+version = "0.3.0+dev"
 
 [deps]
 Dates = "ade2ca70-3891-5945-98fb-dc099432e06a"
@@ -14,7 +14,7 @@ QuantumControlBase = "f10a33bc-5a64-497c-be7b-6f86b4f0c2aa"
 
 [compat]
 Optim = "1"
-QuantumControlBase = ">=0.3.3"
+QuantumControlBase = ">=0.4.0"
 LBFGSB = "^0.4"
 ConcreteStructs = "^0.2"
 julia = "1.6"
