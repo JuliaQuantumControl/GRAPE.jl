@@ -30,7 +30,7 @@ using ConcreteStructs
 
     fg_count::Vector{Int64}
 
-    # Result object
+    # Resultt object
     result
 
     #################################
@@ -77,7 +77,10 @@ function GrapeWrk(problem::QuantumControlBase.ControlProblem; verbose=false)
         )
     )
     kwargs = Dict(problem.kwargs)  # creates a shallow copy; ok to modify
-    pulse_options = problem.pulse_options
+    default_pulse_options = IdDict()  # not used
+    pulse_options = get(kwargs, :pulse_options, default_pulse_options)
+    # TODO: store pulse_options in workspace, allow for things like bounds and
+    # pulse parametrization
     fg_count = zeros(Int64, 2)
     if haskey(kwargs, :continue_from)
         @info "Continuing previous optimization"
