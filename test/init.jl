@@ -3,7 +3,7 @@ using Revise
 using Plots
 unicodeplots()
 using JuliaFormatter
-using QuantumControlBase.TestUtils: test
+using QuantumControlBase.TestUtils: test, show_coverage, generate_coverage_html
 using LiveServer: LiveServer, serve, servedocs as _servedocs
 using Term
 include(joinpath(@__DIR__, "clean.jl"))
@@ -22,7 +22,8 @@ Revise, JuliaFormatter, LiveServer, Plots with unicode backend are active.
 * `include("test/examples/simple_state_to_state.jl")` –
   Run an individual example test (after converting examples)!
 * `test()` – Run the entire test suite in a subprocess with coverage
-* `test(genhtml=true)` – Generate an HTML coverage report
+* `show_coverage()` – Print a tabular overview of coverage data
+* `generate_coverage_html()` – Generate an HTML coverage report
 * `include("docs/make.jl")` – Generate the documentation
 * `format(".")` – Apply code formatting to all files
 * `servedocs([port=8000, verbose=false])` –
