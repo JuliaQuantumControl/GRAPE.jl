@@ -336,11 +336,12 @@ U_opt = [basis[i] ⋅ opt_states[j] for i = 1:4, j = 1:4];
 # We define the optimization with one objective for each of the four basis
 # states:
 
-objectives = [MinimalObjective(; initial_state=Ψ, generator=H) for Ψ ∈ basis];
+objectives = [Objective(; initial_state=Ψ, generator=H) for Ψ ∈ basis];
 
-# Note the use of `MinimalObjective` which does not have a `target_state`. This
-# is because we will be optimizing for an arbitrary perfect entangler, not for
-# a specific quantum gate.
+# Note that we omit the `target_state` here. This is because we will be
+# optimizing for an arbitrary perfect entangler, not for a specific quantum
+# gate. Thus, there is no a-priori known target state to which the initial
+# state must evolve.
 
 # The optimization is steered by the perfect entanglers distance measure
 # $D_{PE}$, that is, the geometric distance of the quantum gate obtained from
@@ -461,7 +462,8 @@ problem = ControlProblem(
 # direct function of the forward-propagated states ``|ϕ_k(T)⟩``. It does this
 # by checking whether the objectives define a target state. If they do, this
 # indicates that `J_T` is a direct function of overlaps ``τ_k``. If they do not
-# (our case, see the use `MinimalObjective` above), `J_T` is considered a
+# (our case, see the absence of the `target_state` keyword argument when
+# defining the objectives above), `J_T` is considered a
 # direct function of ``\{|ϕ_k(T)⟩\}``. GRAPE will then look for a
 # parameter `chi` that implements the above definition, or use automatic
 # differentiation to generate one, which is what happens in this example.
