@@ -199,7 +199,7 @@ U_opt = [basis[i] ⋅ opt_states[j] for i = 1:4, j = 1:4];
 
 (abs(tr(U_opt' * SQRTISWAP)) / 4)^2
 
-objectives = [MinimalObjective(; initial_state=Ψ, generator=H) for Ψ ∈ basis];
+objectives = [Objective(; initial_state=Ψ, generator=H) for Ψ ∈ basis];
 
 using QuantumControl.WeylChamber: D_PE, gate_concurrence, unitarity
 using QuantumControl.Functionals: gate_functional
