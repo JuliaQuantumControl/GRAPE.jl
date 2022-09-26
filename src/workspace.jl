@@ -1,7 +1,6 @@
 import QuantumControlBase
 using QuantumControlBase.QuantumPropagators: init_storage, initprop
-using QuantumControlBase.QuantumPropagators.Controls:
-    getcontrols, getcontrolderivs, discretize_on_midpoints, evalcontrols
+using QuantumControlBase.QuantumPropagators.Controls: getcontrols, discretize_on_midpoints
 using QuantumControlBase: GradVector, TimeDependentGradGenerator
 using ConcreteStructs
 
@@ -45,8 +44,6 @@ using ConcreteStructs
     # dynamical generator for grad-bw-propagation, time-dependent
     TDgradG  # TODO: rename gradgen
 
-    control_derivs::Vector{Vector{Union{Function,Nothing}}}
-
     fw_storage # backward storage array (per objective)
 
     fw_propagators # for normal forward propagation
@@ -62,7 +59,6 @@ function GrapeWrk(problem::QuantumControlBase.ControlProblem; verbose=false)
     objectives = [obj for obj in problem.objectives]
     adjoint_objectives = [adjoint(obj) for obj in problem.objectives]
     controls = getcontrols(objectives)
-    control_derivs = [getcontrolderivs(obj.generator, controls) for obj in objectives]
     tlist = problem.tlist
     # interleave the pulse values as [ϵ₁(t̃₁), ϵ₂(t̃₁), ..., ϵ₁(t̃₂), ϵ₂(t̃₂), ...]
     # to allow access as reshape(pulsevals, L, :)[l, n] where l is the control
@@ -190,7 +186,6 @@ function GrapeWrk(problem::QuantumControlBase.ControlProblem; verbose=false)
         chi_states,
         tau_grads,
         TDgradG,
-        control_derivs,
         fw_storage,
         fw_propagators,
         bw_grad_propagators,

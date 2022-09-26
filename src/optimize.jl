@@ -1,6 +1,5 @@
 using QuantumControlBase.QuantumPropagators:
     propstep!, write_to_storage!, get_from_storage!, set_state!, reinitprop!
-using QuantumControlBase.QuantumPropagators.Controls: evalcontrols!
 using QuantumControlBase: resetgradvec!
 using QuantumControlBase.Functionals: grad_J_T_via_chi!, make_gradient, make_chi
 using QuantumControlBase.ConditionalThreads: @threadsif
