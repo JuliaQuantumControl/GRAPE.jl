@@ -297,8 +297,7 @@ problem = ControlProblem(
 
 #-
 
-opt_result, file =
-    @optimize_or_load(datadir(), problem; method=:GRAPE, filename="GATE_OCT.jld2");
+opt_result = @optimize_or_load(datadir("GATE_OCT.jld2"), problem; method=:GRAPE);
 #-
 opt_result
 
@@ -474,8 +473,7 @@ problem = ControlProblem(
 
 # With this, we can easily find a solution to the control problem:
 
-opt_result, file =
-    @optimize_or_load(datadir(), problem; method=:GRAPE, filename="PE_OCT.jld2");
+opt_result = @optimize_or_load(datadir("PE_OCT.jld2"), problem; method=:GRAPE);
 #-
 opt_result
 
@@ -560,14 +558,13 @@ chi_C = make_gate_chi(J_T_C, objectives);
 
 # Running the optimization, we again are able to find a perfect entangler.
 
-opt_result_direct, file = @optimize_or_load(
-    datadir(),
+opt_result_direct = @optimize_or_load(
+    datadir("PE_OCT_direct.jld2"),
     problem;
     method=:GRAPE,
     J_T=gate_functional(J_T_C),
     gradient_via=:chi,
-    chi=chi_C,
-    filename="PE_OCT_direct.jld2"
+    chi=chi_C
 );
 #-
 opt_result_direct

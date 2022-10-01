@@ -177,12 +177,11 @@ using GRAPELinesearchAnalysis
 
 # We feed this into the optimization as part of the `info_hook`.
 
-opt_result_LBFGSB, file = @optimize_or_load(
-    datadir("TLS"),
+opt_result_LBFGSB = @optimize_or_load(
+    datadir("TLS", "opt_result_LBFGSB.jld2"),
     problem,
     method = :grape,
     force = true,
-    filename = "opt_result_LBFGSB.jld2",
     info_hook = chain_infohooks(
         GRAPELinesearchAnalysis.plot_linesearch(datadir("TLS", "Linesearch", "LBFGSB")),
         QuantumControl.GRAPE.print_table,
@@ -221,11 +220,10 @@ using LineSearches
 
 # Here, we use the LBFGS implementation that is part of Optim (which is not exactly the same as L-BFGS-B; "B" being the variant of LBFGS with optional additional bounds on the control) with a Hager-Zhang linesearch
 
-opt_result_OptimLBFGS, file = @optimize_or_load(
-    datadir("TLS"),
+opt_result_OptimLBFGS = @optimize_or_load(
+    datadir("TLS", "opt_result_OptimLBFGS.jld2"),
     problem,
     method = :grape,
-    filename = "opt_result_OptimLBFGS.jld2",
     info_hook = chain_infohooks(
         GRAPELinesearchAnalysis.plot_linesearch(datadir("TLS", "Linesearch", "OptimLBFGS")),
         QuantumControl.GRAPE.print_table,
