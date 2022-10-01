@@ -86,12 +86,11 @@ display(fig)
 
 using GRAPELinesearchAnalysis
 
-opt_result_LBFGSB, file = @optimize_or_load(
-    datadir("TLS"),
+opt_result_LBFGSB = @optimize_or_load(
+    datadir("TLS",  "opt_result_LBFGSB.jld2"),
     problem,
     method = :grape,
     force = true,
-    filename = "opt_result_LBFGSB.jld2",
     info_hook = chain_infohooks(
         GRAPELinesearchAnalysis.plot_linesearch(datadir("TLS", "Linesearch", "LBFGSB")),
         QuantumControl.GRAPE.print_table,
@@ -114,11 +113,10 @@ opt_result_LBFGSB_via_χ
 using Optim
 using LineSearches
 
-opt_result_OptimLBFGS, file = @optimize_or_load(
-    datadir("TLS"),
+opt_result_OptimLBFGS = @optimize_or_load(
+    datadir("TLS", "opt_result_OptimLBFGS.jld2"),
     problem,
     method = :grape,
-    filename = "opt_result_OptimLBFGS.jld2",
     info_hook = chain_infohooks(
         GRAPELinesearchAnalysis.plot_linesearch(datadir("TLS", "Linesearch", "OptimLBFGS")),
         QuantumControl.GRAPE.print_table,

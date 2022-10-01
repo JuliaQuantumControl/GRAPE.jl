@@ -176,8 +176,7 @@ problem = ControlProblem(
     use_threads=true,
 );
 
-opt_result, file =
-    @optimize_or_load(datadir(), problem; method=:GRAPE, filename="GATE_OCT.jld2");
+opt_result = @optimize_or_load(datadir("GATE_OCT.jld2"), problem; method=:GRAPE);
 
 opt_result
 
@@ -249,8 +248,7 @@ problem = ControlProblem(
     use_threads=true,
 );
 
-opt_result, file =
-    @optimize_or_load(datadir(), problem; method=:GRAPE, filename="PE_OCT.jld2");
+opt_result = @optimize_or_load(datadir("PE_OCT.jld2"), problem; method=:GRAPE);
 
 opt_result
 
@@ -283,14 +281,13 @@ using QuantumControl.Functionals: make_gate_chi
 
 chi_C = make_gate_chi(J_T_C, objectives);
 
-opt_result_direct, file = @optimize_or_load(
-    datadir(),
+opt_result_direct = @optimize_or_load(
+    datadir("PE_OCT_direct.jld2"),
     problem;
     method=:GRAPE,
     J_T=gate_functional(J_T_C),
     gradient_via=:chi,
     chi=chi_C,
-    filename="PE_OCT_direct.jld2"
 );
 
 opt_result_direct
