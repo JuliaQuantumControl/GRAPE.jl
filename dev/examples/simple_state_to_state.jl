@@ -87,7 +87,7 @@ display(fig)
 using GRAPELinesearchAnalysis
 
 opt_result_LBFGSB = @optimize_or_load(
-    datadir("TLS",  "opt_result_LBFGSB.jld2"),
+    datadir("TLS", "opt_result_LBFGSB.jld2"),
     problem,
     method = :grape,
     force = true,

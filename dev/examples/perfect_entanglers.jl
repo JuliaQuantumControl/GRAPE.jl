@@ -287,7 +287,7 @@ opt_result_direct = @optimize_or_load(
     method=:GRAPE,
     J_T=gate_functional(J_T_C),
     gradient_via=:chi,
-    chi=chi_C,
+    chi=chi_C
 );
 
 opt_result_direct
