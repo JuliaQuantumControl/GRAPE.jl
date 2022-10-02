@@ -58,12 +58,14 @@ objectives = [Objective(initial_state=ket(0), generator=H, target_state=ket(1))]
 
 @test length(objectives) == 1
 
+using QuantumControl.Functionals: J_T_sm
+
 problem = ControlProblem(
     objectives=objectives,
     tlist=tlist,
     pulse_options=Dict(),
     iter_stop=500,
-    J_T=QuantumControl.Functionals.J_T_sm,
+    J_T=J_T_sm,
     check_convergence=res -> begin
         ((res.J_T < 1e-3) && (res.converged = true) && (res.message = "J_T < 10⁻³"))
     end,
@@ -106,7 +108,11 @@ opt_result_LBFGSB
 fig = plot_control(opt_result_LBFGSB.optimized_controls[1], tlist)
 display(fig)
 
-opt_result_LBFGSB_via_χ = optimize(problem; method=:grape, gradient_via=:chi);
+using QuantumControl.Functionals: make_chi
+
+chi_sm = make_chi(J_T_sm, objectives; force_zygote=true)
+
+opt_result_LBFGSB_via_χ = optimize(problem; method=:grape, chi=chi_sm);
 
 opt_result_LBFGSB_via_χ
 

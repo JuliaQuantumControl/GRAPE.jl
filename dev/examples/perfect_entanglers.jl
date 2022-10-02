@@ -227,12 +227,15 @@ J_T_PE(guess_states, objectives)
 @test 0.4 < J_T_PE(guess_states, objectives) < 0.5
 @test 0.5 * D_PE(U_guess) + 0.5 * (1-unitarity(U_guess)) ≈ J_T_PE(guess_states, objectives) atol=1e-15
 
+using QuantumControl.Functionals: make_gate_chi
+chi_pe = make_gate_chi(D_PE, objectives; unitarity_weight=0.5)
+
 problem = ControlProblem(
     objectives=objectives,
     tlist=tlist,
     iter_stop=100,
     J_T=J_T_PE,
-    gradient_via=:chi,
+    chi=chi_pe,
     check_convergence=res -> begin
         (
             (res.J_T > res.J_T_prev) &&
@@ -277,17 +280,12 @@ gate_concurrence(U_opt)
 
 J_T_C = U -> 0.5 * (1 - gate_concurrence(U)) + 0.5 * (1 - unitarity(U));
 
-using QuantumControl.Functionals: make_gate_chi
-
-chi_C = make_gate_chi(J_T_C, objectives);
-
 opt_result_direct = @optimize_or_load(
     datadir("PE_OCT_direct.jld2"),
     problem;
     method=:GRAPE,
     J_T=gate_functional(J_T_C),
-    gradient_via=:chi,
-    chi=chi_C
+    chi=make_gate_chi(J_T_C, objectives)
 );
 
 opt_result_direct
