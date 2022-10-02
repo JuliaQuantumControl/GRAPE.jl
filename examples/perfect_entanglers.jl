@@ -364,7 +364,6 @@ J_T_PE = gate_functional(D_PE; unitarity_weight=0.5);
 # We can check that for the guess pulse, we are not implementing a perfect
 # entangler
 
-
 gate_concurrence(U_guess)
 
 #jl @test gate_concurrence(U_guess) < 0.9
@@ -415,6 +414,26 @@ J_T_PE(guess_states, objectives)
 #jl @test 0.4 < J_T_PE(guess_states, objectives) < 0.5
 #jl @test 0.5 * D_PE(U_guess) + 0.5 * (1-unitarity(U_guess)) ≈ J_T_PE(guess_states, objectives) atol=1e-15
 
+
+# For the standard functional `J_T_sm` used in the previous section, our GRAPE
+# was able to automatically use an analytic implementation of the gradient. For
+# the perfect-entanglers functional, an analytic gradient exist, but is very
+# cumbersome to implement. Instead, we make use of semi-automatic
+# differentiation. As shown in Goerz et al., arXiv:2205.15044, by evaluating
+# the gradient via a chain rule in the propagated states, the dependency of the
+# gradient on the final time functional is pushed into the boundary condition
+# for the backward propagation, ``|χ_k⟩ = -∂J_T/∂⟨ϕ_k|``. We can further
+# exploit that `J_T` is an explicit function of the two-qubit gate in the
+# computational basis and use a chain rule with respect to the elements of the
+# two-qubit gate ``U_{kk'}``. The remaining derivatives ``∂J_T/∂U_{kk'}`` are
+# then obtained via automatic differentiation. This is set up via the
+# `make_gate_chi` function,
+
+using QuantumControl.Functionals: make_gate_chi
+chi_pe = make_gate_chi(D_PE, objectives; unitarity_weight=0.5)
+
+# where the resulting `chi_pe` must be passed to the optimization.
+
 # Now, we formulate the full control problem
 
 problem = ControlProblem(
@@ -422,7 +441,7 @@ problem = ControlProblem(
     tlist=tlist,
     iter_stop=100,
     J_T=J_T_PE,
-    gradient_via=:chi,
+    chi=chi_pe,
     check_convergence=res -> begin
         (
             (res.J_T > res.J_T_prev) &&
@@ -437,39 +456,6 @@ problem = ControlProblem(
     end,
     use_threads=true,
 );
-
-# Note that we have not specified a routine to calculate the gradient.
-# In  this case, our implementation of GRAPE will use automatic
-# differentiation, or actually "semi-automatic differentiation",
-# to calculate the gradient directly from the functional.
-#
-# By semi-automatic differentiation, we mean that when we consider the
-# functional as a function of a set of states ``\{|ϕ_k(T)⟩\}``, we find
-#
-# ```math
-# (∇J_T)_{ln} ≡ \frac{∂J_T(\{|ϕ_k(T)⟩\})}{∂ϵ_{ln}}
-#  = 2\Re\sum_k
-#     \frac{∂J_T}{∂|ϕ_k(T)⟩}
-#     \frac{∂|ϕ_k(T)⟩}{∂ϵ_{ln}}
-# ```
-#
-# We can see that ``\frac{∂J_T}{∂|ϕ_k(T)⟩}`` is very closely related to
-# the definition ``|χ_k⟩ = -∂J_T/∂⟨ϕ_k|`` (up to the sign) that is a core part
-# of [Krotov's method](https://github.com/JuliaQuantumControl/Krotov.jl) (an
-# alternative optimization method to GRAPE). Our GRAPE
-# implementation knows about this, too. It will detect whether `J_T` is a
-# direct function of the forward-propagated states ``|ϕ_k(T)⟩``. It does this
-# by checking whether the objectives define a target state. If they do, this
-# indicates that `J_T` is a direct function of overlaps ``τ_k``. If they do not
-# (our case, see the absence of the `target_state` keyword argument when
-# defining the objectives above), `J_T` is considered a
-# direct function of ``\{|ϕ_k(T)⟩\}``. GRAPE will then look for a
-# parameter `chi` that implements the above definition, or use automatic
-# differentiation to generate one, which is what happens in this example.
-#
-# Once ``\frac{∂J_T}{∂|ϕ_k(T)⟩}`` has been calculated, GRAPE is able to
-# analytically determine the full gradient ``(∇J_T)_{ln}`` without any further
-# use of automatic differentiation.
 
 # With this, we can easily find a solution to the control problem:
 
@@ -532,29 +518,9 @@ J_T_C = U -> 0.5 * (1 - gate_concurrence(U)) + 0.5 * (1 - unitarity(U));
 
 # In the optimization, we will convert this functional to one that takes the
 # propagated states as arguments (via the `gate_functional` routine).
-# We can help the automatic differentiation making the same conversion "by
-# hand". As discussed above, without further intervention, out GRAPE
-# implementation will use automatic differentiation to calculate a state
-# ``|χ_k⟩ = -\frac{∂}{∂⟨ϕ_k|} J_T``. Here, we can treat `J_T` as depending on
-# the gate `U` and apply the chain rule:
-#
-# ```math
-# \begin{split}
-#     |χ_k⟩
-#     &= - \frac{1}{2} \sum_i (∇_U J_T)_{ik} \frac{∂ U_{ik}}{∂⟨ϕ_k|} \\
-#     &= - \frac{1}{2} \sum_i (∇_U J_T)_{ik} |Ψ_i⟩
-# \end{split}
-# ```
-#
-# The automatic differentiation now only has to calculate ``(∇_U J_T)_{ik}``,
-# which is a much smaller-dimensional problem. The above chain rule is
-# implemented like this:
-
-using QuantumControl.Functionals: make_gate_chi
-
-chi_C = make_gate_chi(J_T_C, objectives);
-
-# which we can pass explicitly to the optimization.
+# Also, as before, we have to create a matching routine for the boundary condition
+# ``|χ_k⟩ = -\frac{∂}{∂⟨ϕ_k|} J_T`` of the backward-propagation via the
+# `make_gate_chi` routine.
 
 # Running the optimization, we again are able to find a perfect entangler.
 
@@ -563,8 +529,7 @@ opt_result_direct = @optimize_or_load(
     problem;
     method=:GRAPE,
     J_T=gate_functional(J_T_C),
-    gradient_via=:chi,
-    chi=chi_C
+    chi=make_gate_chi(J_T_C, objectives)
 );
 #-
 opt_result_direct

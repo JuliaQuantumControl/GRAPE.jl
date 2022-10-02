@@ -1,7 +1,7 @@
 using QuantumControlBase.QuantumPropagators:
     propstep!, write_to_storage!, get_from_storage!, set_state!, reinitprop!
 using QuantumControlBase: resetgradvec!
-using QuantumControlBase.Functionals: grad_J_T_via_chi!, make_gradient, make_chi
+using QuantumControlBase.Functionals: make_chi
 using QuantumControlBase.ConditionalThreads: @threadsif
 using LinearAlgebra
 using Printf
@@ -35,29 +35,10 @@ arguments used in the instantiation of `problem`.
 
 # Optional problem keyword arguments
 
-* `gradient_via`: A flag indicating how the gradient of `J_T` should be
-   calculated. One of `:tau`, `:chi`. If all objectives in `problem` define a
-   `target_function`, the default is `gradient_via=:tau`. This understands the
-   functional `J_T` as a function of the complex overlaps between the
-   propagated states and the target states, and evaluates the gradient via the
-   chain rule. For functionals that cannot be expressed in terms of the overlap
-   of propagated and target states, and/or if not all objectives define a
-   target state, `gradient_via=:chi` because the default. In this case, the
-   functional `J_T` is understood as a function of the forward-propagated
-   states directly, and the full gradient is again calculated by the chain
-   rule. See [`make_gradient`](@ref) for details.
-* `gradient`:  A function to evaluate the gradient of `J_T`. By default, it is
-  constructed via [`make_gradient`](@ref). If given manually, it must meet the
-  interface described by [`make_gradient`](@ref). Most importantly, it must be
-  consistent with the chosen `gradient_via`.
-* `chi`: If `gradient_via=:chi`, a function that constructs the χ-states for
-   the backward propagation, see [`make_gradient`](@ref) for details. By
-   default, it is constructed via [`make_chi`](@ref). If given manually, it
-   must meet the same interface described in [`make_chi`](@ref).
-* `force_zygote=false`: Whether to force the use of automatic differentiation
-  in [`make_gradient`](@ref) and [`make_chi`](@ref). This disables analytic
-  gradients. The only reason to do this is for testing/benchmarking analytic vs
-  automatic gradients.
+* `chi`: A function `chi!(χ, ϕ, objectives)` what receives a list `ϕ`
+  of the forward propagated states and must set ``|χₖ⟩ = -∂J_T/∂⟨ϕₖ|``. If not
+  given, it will be automatically determined from `J_T` via [`make_chi`](@ref
+  QuantumControlBase.Functionals.make_chi) with the default parameters.
 * `update_hook`: Not implemented
 * `info_hook`: A function that receives the same arguments as `update_hook`, in
   order to write information about the current iteration to the screen or to a
@@ -107,7 +88,6 @@ function optimize_grape(problem)
     # TODO: implement update_hook
     # TODO: streamline the interface for info_hook
     # TODO: check if x_tol, f_tol, g_tol are used necessary / used correctly
-    # TODO: always evaluate via chi
     info_hook = get(problem.kwargs, :info_hook, print_table)
     check_convergence! = get(problem.kwargs, :check_convergence, res -> res)
     verbose = get(problem.kwargs, :verbose, false)
@@ -121,36 +101,8 @@ function optimize_grape(problem)
         obj ∈ wrk.objectives
     ]
 
-    if any(isnothing, Ψtgt)
-        gradient_via = get(wrk.kwargs, :gradient_via, :chi)
-        if gradient_via == :tau
-            error("Evaluating gradients via τ requires target_states for all objectives")
-        end
-    else
-        gradient_via = get(wrk.kwargs, :gradient_via, :tau)
-    end
-    allowed_gradient_via = (:tau, :chi)
     J_T_func = wrk.kwargs[:J_T]
-    force_zygote = get(wrk.kwargs, :force_zygote, false)
-    default_gradfunc! =
-        make_gradient(J_T_func, wrk.objectives; via=gradient_via, force_zygote)
-    gradfunc! = get(wrk.kwargs, :gradient, default_gradfunc!)
-    if gradient_via == :tau
-        # chi! is not used
-    elseif gradient_via == :chi
-        default_chi! = make_chi(J_T_func, wrk.objectives; force_zygote)
-        chi! = get(wrk.kwargs, :chi, default_chi!)
-        if gradfunc! ≢ grad_J_T_via_chi!
-            @warn "gradient_via=:chi requires gradient=grad_J_T_via_chi! Ignoring passed gradient"
-            gradfunc! = grad_J_T_via_chi!
-        end
-    else
-        throw(
-            ArgumentError(
-                "gradient_via $(repr(gradient_via)) is not one of $(repr(allowed_gradient_via))"
-            )
-        )
-    end
+    chi! = get(wrk.kwargs, :chi, make_chi(J_T_func, wrk.objectives))
 
     τ = wrk.result.tau_vals
     ∇τ = wrk.tau_grads
@@ -197,13 +149,7 @@ function optimize_grape(problem)
 
         # backward propagation of combined χ-state and gradient
         Ψ = [p.state for p ∈ wrk.fw_propagators]
-        if gradient_via == :tau
-            for k = 1:N
-                copyto!(χ[k], Ψtgt[k])
-            end
-        elseif gradient_via == :chi
-            chi!(χ, Ψ, wrk.objectives)
-        end
+        chi!(χ, Ψ, wrk.objectives; τ=τ)  # τ from f(...)
         @threadsif wrk.use_threads for k = 1:N
             local Ψₖ = wrk.fw_propagators[k].state
             local χ̃ₖ = wrk.bw_grad_propagators[k].state
@@ -220,7 +166,7 @@ function optimize_grape(problem)
             end
         end
 
-        gradfunc!(G, τ, ∇τ)
+        _grad_J_T_via_chi!(G, τ, ∇τ)
         return J_T_val
 
     end
@@ -230,6 +176,54 @@ function optimize_grape(problem)
     finalize_result!(wrk, res)
     return wrk.result
 
+end
+
+
+# Gradient for an arbitrary functional evaluated via χ-states.
+#
+# ```julia
+# _grad_J_T_via_chi!(∇J_T, τ, ∇τ)
+# ```
+#
+# sets the (vectorized) elements of the gradient `∇J_T` to the gradient
+# ``∂J_T/∂ϵ_{ln}`` for an arbitrary functional ``J_T=J_T(\{|ϕ_k(T)⟩\})``, under
+# the assumption that
+#
+# ```math
+# \begin{aligned}
+#     τ_k &= ⟨χ_k|ϕ_k(T)⟩ \quad \text{with} \quad |χ_k⟩ &= -∂J_T/∂⟨ϕ_k(T)|
+#     \quad \text{and} \\
+#     ∇τ_{kln} &= ∂τ_k/∂ϵ_{ln}\,,
+# \end{aligned}
+# ```
+#
+# where ``|ϕ_k(T)⟩`` is a state resulting from the forward propagation of some
+# initial state ``|ϕ_k⟩`` under the pulse values ``ϵ_{ln}`` where ``l`` numbers
+# the controls and ``n`` numbers the time slices. The ``τ_k`` are the elements
+# of `τ` and ``∇τ_{kln}`` corresponds to `∇τ[k][l, n]`.
+#
+# In this case,
+#
+# ```math
+# (∇J_T)_{ln} = ∂J_T/∂ϵ_{ln} = -2 \Re \sum_k ∇τ_{kln}\,.
+# ```
+#
+# Note that the definition of the ``|χ_k⟩`` matches exactly the definition of
+# the boundary condition for the backward propagation in Krotov's method, see
+# [`QuantumControlBase.Functionals.make_chi`](@ref). Specifically, there is a
+# minus sign in front of the derivative, compensated by the minus sign in the
+# factor ``(-2)`` of the final ``(∇J_T)_{ln}``.
+function _grad_J_T_via_chi!(∇J_T, τ, ∇τ)
+    N = length(τ) # number of objectives
+    L, N_T = size(∇τ[1])  # number of controls/time intervals
+    ∇J_T′ = reshape(∇J_T, L, N_T)  # writing to ∇J_T′ modifies ∇J_T
+    for l = 1:L
+        for n = 1:N_T
+            ∇J_T′[l, n] = real(sum([∇τ[k][l, n] for k = 1:N]))
+        end
+    end
+    lmul!(-2, ∇J_T)
+    return ∇J_T
 end
 
 

@@ -131,12 +131,14 @@ objectives = [Objective(initial_state=ket(0), generator=H, target_state=ket(1))]
 
 # The full control problem includes this objective, information about the time grid for the dynamics, and the functional to be used (the square modulus of the overlap $\tau$ with the target state in this case).
 
+using QuantumControl.Functionals: J_T_sm
+
 problem = ControlProblem(
     objectives=objectives,
     tlist=tlist,
     pulse_options=Dict(),
     iter_stop=500,
-    J_T=QuantumControl.Functionals.J_T_sm,
+    J_T=J_T_sm,
     check_convergence=res -> begin
         ((res.J_T < 1e-3) && (res.converged = true) && (res.message = "J_T < 10⁻³"))
     end,
@@ -205,9 +207,17 @@ fig = plot_control(opt_result_LBFGSB.optimized_controls[1], tlist)
 #-
 
 
-# ## Optimization via χ
+# ## Optimization via semi-automatic differentiation
 
-opt_result_LBFGSB_via_χ = optimize(problem; method=:grape, gradient_via=:chi);
+# Our GRAPE implementation includes the analytic gradient of the optimization functional `J_T_sm`. Thus, we only had to pass the functional itself to the optimization. More generally, for functionals where the analytic gradient is not known, semi-automatic differentiation can be used to determine it automatically. For illustration, we may re-run the optimization forgoing the known analytic gradient and instead using an automatically determined gradient.
+
+# As shown in Goerz et al., arXiv:2205.15044, by evaluating the gradient of ``J_T`` via a chain rule in the propagated states, the dependency of the gradient on the final time functional is pushed into the boundary condition for the backward propagation, ``|χ_k⟩ = -∂J_T/∂⟨ϕ_k|``. For functionals that can be written in terms of the overlaps ``τ_k`` of the forward-propagated states and target states, such as the `J_T_sm` used here, a further chain rule leaves derivatives of `J_T` with respect to the overlaps ``τ_k``, which are easily obtained via automatic differentiation. This happens automatically if we use `make_chi` with `force_zygote=true` and pass the resulting `chi` to the optimization:
+
+using QuantumControl.Functionals: make_chi
+
+chi_sm = make_chi(J_T_sm, objectives; force_zygote=true)
+
+opt_result_LBFGSB_via_χ = optimize(problem; method=:grape, chi=chi_sm);
 #-
 opt_result_LBFGSB_via_χ
 
