@@ -1,13 +1,13 @@
 using QuantumControlBase.QuantumPropagators:
     propstep!, write_to_storage!, get_from_storage!, set_state!, reinitprop!
 using QuantumControlBase: resetgradvec!
-using QuantumControlBase.Functionals: make_chi
+using QuantumControlBase.Functionals: make_chi, make_grad_J_a
 using QuantumControlBase.ConditionalThreads: @threadsif
 using LinearAlgebra
 using Printf
 
 
-"""Optimize a control problem using GRAPE.
+@doc raw"""Optimize a control problem using GRAPE.
 
 ```julia
 result = optimize_grape(problem)
@@ -15,7 +15,19 @@ result = optimize_grape(problem)
 
 optimizes the given
 control [`problem`](@ref QuantumControlBase.ControlProblem),
-returning a [`GrapeResult`](@ref).
+by minimizing the functional
+
+```math
+J(\{ϵ_{ln}\}) = J_T(\{|ϕ_k(T)⟩\}) + λ_a J_a(\{ϵ_{ln}\})
+```
+
+where the final time functional ``J_T`` depends explicitly on the
+forward-propagated states and the running cost ``J_a`` depends explicitly on
+pulse values ``ϵ_{nl}`` of the l'th control discretized on the n'th interval of
+the time grid.
+
+Returns a [`GrapeResult`](@ref).
+
 
 !!! note
 
@@ -39,6 +51,12 @@ arguments used in the instantiation of `problem`.
   of the forward propagated states and must set ``|χₖ⟩ = -∂J_T/∂⟨ϕₖ|``. If not
   given, it will be automatically determined from `J_T` via [`make_chi`](@ref
   QuantumControlBase.Functionals.make_chi) with the default parameters.
+* `J_a`: A function `J_a(pulsevals, tlist)` that evaluates running costs over
+  the pulse values, where `pulsevals` are the vectorized values ``ϵ_{nl}``.
+  If not given, the optimization will not include a running cost.
+* `lambda_a=1`: A weight for the running cost `J_a`.
+* `grad_J_a`: A function to calculate the gradient of `J_a`. If not given, it
+  will be automatically determined.
 * `update_hook`: Not implemented
 * `info_hook`: A function that receives the same arguments as `update_hook`, in
   order to write information about the current iteration to the screen or to a
@@ -101,18 +119,29 @@ function optimize_grape(problem)
         obj ∈ wrk.objectives
     ]
 
+    J = wrk.J_parts
+    tlist = wrk.result.tlist
     J_T_func = wrk.kwargs[:J_T]
+    J_a_func = get(wrk.kwargs, :J_a, nothing)
+    ∇J_T = wrk.grad_J_T
+    ∇J_a = wrk.grad_J_a
+    λₐ = get(wrk.kwargs, :lambda_a, 1.0)
     chi! = get(wrk.kwargs, :chi, make_chi(J_T_func, wrk.objectives))
+    grad_J_a! = nothing
+    if !isnothing(J_a_func)
+        grad_J_a! = get(wrk.kwargs, :grad_J_a, make_grad_J_a(J_a_func, tlist))
+    end
 
     τ = wrk.result.tau_vals
     ∇τ = wrk.tau_grads
-    N_T = length(wrk.result.tlist) - 1
+    N_T = length(tlist) - 1
     N = length(wrk.objectives)
     L = length(wrk.controls)
     Φ = wrk.fw_storage
 
     # Calculate the functional only; optionally store.
-    # Side-effects: set Ψ, τ, wrk.result.f_calls, wrk.fg_count
+    # Side-effects:
+    # set Ψ, τ, wrk.result.f_calls, wrk.fg_count wrk.J_parts
     function f(F, G, pulsevals; storage=nothing, count_call=true)
         @assert !isnothing(F)
         @assert isnothing(G)
@@ -132,10 +161,16 @@ function optimize_grape(problem)
             τ[k] = isnothing(Ψtgt[k]) ? NaN : (Ψtgt[k] ⋅ Ψₖ)
         end
         Ψ = [p.state for p ∈ wrk.fw_propagators]
-        return J_T_func(Ψ, wrk.objectives; τ=τ)
+        J[1] = J_T_func(Ψ, wrk.objectives; τ=τ)
+        if !isnothing(J_a_func)
+            J[2] = λₐ * J_a_func(pulsevals, tlist)
+        end
+        return sum(J)
     end
 
     # Calculate the functional and the gradient G ≡ ∇J_T
+    # Side-effects:
+    # as in f(...); wrk.grad_J_T, wrk.grad_J_a
     function fg!(F, G, pulsevals)
 
         if isnothing(G)  # functional only
@@ -145,7 +180,8 @@ function optimize_grape(problem)
         wrk.fg_count[1] += 1
 
         # forward propagation and storage of states
-        J_T_val = f(wrk.result.J_T, nothing, pulsevals; storage=Φ, count_call=false)
+        J_val_guess = sum(wrk.J_parts)
+        J_val = f(J_val_guess, nothing, pulsevals; storage=Φ, count_call=false)
 
         # backward propagation of combined χ-state and gradient
         Ψ = [p.state for p ∈ wrk.fw_propagators]
@@ -166,8 +202,13 @@ function optimize_grape(problem)
             end
         end
 
-        _grad_J_T_via_chi!(G, τ, ∇τ)
-        return J_T_val
+        _grad_J_T_via_chi!(∇J_T, τ, ∇τ)
+        copyto!(G, ∇J_T)
+        if !isnothing(grad_J_a!)
+            grad_J_a!(∇J_a, pulsevals, tlist)
+            axpy!(λₐ, ∇J_a, G)
+        end
+        return J_val
 
     end
 
@@ -176,6 +217,86 @@ function optimize_grape(problem)
     finalize_result!(wrk, res)
     return wrk.result
 
+end
+
+
+function update_result!(wrk::GrapeWrk, i::Int64)
+    res = wrk.result
+    for (k, propagator) in enumerate(wrk.fw_propagators)
+        copyto!(res.states[k], propagator.state)
+    end
+    res.J_T_prev = res.J_T
+    res.J_T = wrk.J_parts[1]
+    (i > 0) && (res.iter = i)
+    if i >= res.iter_stop
+        res.converged = true
+        res.message = "Reached maximum number of iterations"
+        # Note: other convergence checks are done in user-supplied
+        # check_convergence routine
+    end
+    prev_time = res.end_local_time
+    res.end_local_time = now()
+    res.secs = Dates.toms(res.end_local_time - prev_time) / 1000.0
+end
+
+
+"""Print optimization progress as a table.
+
+This functions serves as the default `info_hook` for an optimization with
+GRAPE.
+"""
+function print_table(wrk, iteration, args...)
+    # TODO: make_print_table that precomputes headers and such, and maybe
+    # allows for more options.
+    # TODO: should we report ΔJ instead of ΔJ_T?
+
+    J_T = wrk.result.J_T
+    ΔJ_T = J_T - wrk.result.J_T_prev
+    secs = wrk.result.secs
+
+    headers = ["iter.", "J_T", "|∇J_T|", "ΔJ_T", "FG(F)", "secs"]
+    if wrk.J_parts[2] ≠ 0.0
+        headers = ["iter.", "J_T", "|∇J_T|", "|∇J_a|", "ΔJ_T", "FG(F)", "secs"]
+    end
+
+    iter_stop = "$(get(wrk.kwargs, :iter_stop, 5000))"
+    width = Dict(
+        "iter." => max(length("$iter_stop"), 6),
+        "J_T" => 11,
+        "|∇J_T|" => 11,
+        "|∇J_a|" => 11,
+        "|∇J|" => 11,
+        "ΔJ" => 11,
+        "ΔJ_T" => 11,
+        "FG(F)" => 8,
+        "secs" => 8,
+    )
+
+    if iteration == 0
+        for header in headers
+            w = width[header]
+            print(lpad(header, w))
+        end
+        print("\n")
+    end
+
+    strs = [
+        "$iteration",
+        @sprintf("%.2e", J_T),
+        @sprintf("%.2e", norm(wrk.grad_J_T)),
+        (iteration > 0) ? @sprintf("%.2e", ΔJ_T) : "n/a",
+        @sprintf("%d(%d)", wrk.fg_count[1], wrk.fg_count[2]),
+        @sprintf("%.1f", secs),
+    ]
+    if wrk.J_parts[2] ≠ 0.0
+        insert!(strs, 4, @sprintf("%.2e", norm(wrk.grad_J_a)))
+    end
+    for (str, header) in zip(strs, headers)
+        w = width[header]
+        print(lpad(str, w))
+    end
+    print("\n")
+    flush(stdout)
 end
 
 

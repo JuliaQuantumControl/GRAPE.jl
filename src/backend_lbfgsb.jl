@@ -88,10 +88,9 @@ function run_optimizer(optimizer::LBFGSB.L_BFGS_B, wrk, fg!, info_hook, check_co
                 # x is the guess for the 0 iteration
                 copyto!(wrk.gradient, obj.g)
                 iter_res = LBFGSB_Result(f, x, x, message_in, message_out)
-                update_result!(wrk, iter_res, obj, 0)
-                wrk.result.J_T = f # TODO: don't mutate result outside of update_result!
+                update_result!(wrk, 0)
                 #update_hook!(...) # TODO
-                info_tuple = info_hook(wrk, iter_res, obj, 0)
+                info_tuple = info_hook(wrk, 0, iter_res, obj)
                 wrk.fg_count .= 0
                 (info_tuple !== nothing) && push!(wrk.result.records, info_tuple)
             end
@@ -99,9 +98,11 @@ function run_optimizer(optimizer::LBFGSB.L_BFGS_B, wrk, fg!, info_hook, check_co
             # x is the optimized pulses for the current iteration
             iter = wrk.result.iter_start + obj.isave[30]
             iter_res = LBFGSB_Result(f, x, x_previous, message_in, message_out)
-            update_result!(wrk, iter_res, obj, iter)
+            update_result!(wrk, iter)
             #update_hook!(...) # TODO
-            info_tuple = info_hook(wrk, iter_res, obj, wrk.result.iter)
+            info_tuple = info_hook(wrk, wrk.result.iter, iter_res, obj)
+            # TODO: optimization_state, optimizer_state are passed to info_hook
+            # only for GRAPELinesearchAnalysis
             wrk.fg_count .= 0
             (info_tuple !== nothing) && push!(wrk.result.records, info_tuple)
             check_convergence!(wrk.result)
@@ -127,32 +128,6 @@ function run_optimizer(optimizer::LBFGSB.L_BFGS_B, wrk, fg!, info_hook, check_co
 
     return LBFGSB_Result(f, x, x_previous, message_in, message_out)
 
-end
-
-
-function update_result!(
-    wrk::GrapeWrk,
-    iter_res::LBFGSB_Result,
-    optimizer::LBFGSB.L_BFGS_B,
-    i::Int64
-)
-    # TODO: make this depend only on wrk. Should not be backend-dependent
-    res = wrk.result
-    for (k, propagator) in enumerate(wrk.fw_propagators)
-        copyto!(res.states[k], propagator.state)
-    end
-    res.J_T_prev = res.J_T
-    res.J_T = iter_res.f
-    (i > 0) && (res.iter = i)
-    if i >= res.iter_stop
-        res.converged = true
-        res.message = "Reached maximum number of iterations"
-        # Note: other convergence checks are done in user-supplied
-        # check_convergence routine
-    end
-    prev_time = res.end_local_time
-    res.end_local_time = now()
-    res.secs = Dates.toms(res.end_local_time - prev_time) / 1000.0
 end
 
 
@@ -209,43 +184,4 @@ function print_lbfgsb_trace(
         println("   dsave[16] = $(optimizer.dsave[16]):\t the square of the 2-norm of the line search direction vector")
     end
     #! format: on
-end
-
-
-function print_table(
-    wrk,
-    iter_res::LBFGSB_Result,
-    optimizer::LBFGSB.L_BFGS_B,
-    iteration,
-    args...
-)
-    # TODO: make this depend only on wrk. Should not be backend-dependent
-    J_T = wrk.result.J_T
-    ΔJ_T = J_T - wrk.result.J_T_prev
-    secs = wrk.result.secs
-
-    iter_stop = "$(get(wrk.kwargs, :iter_stop, 5000))"
-    widths = [max(length("$iter_stop"), 6), 11, 11, 11, 8, 8]
-
-    if iteration == 0
-        header = ["iter.", "J_T", "|∇J_T|", "ΔJ_T", "FG(F)", "secs"]
-        for (header, w) in zip(header, widths)
-            print(lpad(header, w))
-        end
-        print("\n")
-    end
-
-    strs = (
-        "$iteration",
-        @sprintf("%.2e", J_T),
-        @sprintf("%.2e", norm(wrk.gradient)),
-        (iteration > 0) ? @sprintf("%.2e", ΔJ_T) : "n/a",
-        @sprintf("%d(%d)", wrk.fg_count[1], wrk.fg_count[2]),
-        @sprintf("%.1f", secs),
-    )
-    for (str, w) in zip(strs, widths)
-        print(lpad(str, w))
-    end
-    print("\n")
-    flush(stdout)
 end

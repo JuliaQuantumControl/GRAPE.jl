@@ -23,7 +23,13 @@ using ConcreteStructs
     # TODO: pulsevals0 and pulsevals1
     pulsevals::Vector{Float64}
 
-    gradient::Vector{Float64}  # gradient for guess in iterations
+    gradient::Vector{Float64}  # total gradient for guess in iterations
+
+    grad_J_T::Vector{Float64}  # storage for current final time gradient
+
+    grad_J_a::Vector{Float64}  # storage for current running cost gradient
+
+    J_parts::Vector{Float64} # two-component vector [J_T, J_a]
 
     searchdirection::Vector{Float64}  # search-direction for guess in iterations
 
@@ -113,6 +119,9 @@ function GrapeWrk(problem::QuantumControlBase.ControlProblem; verbose=false)
         (l, control) in enumerate(controls)
     )
     gradient = zeros(length(pulsevals))
+    grad_J_T = zeros(length(pulsevals))
+    grad_J_a = zeros(length(pulsevals))
+    J_parts = zeros(2)
     searchdirection = zeros(length(pulsevals))
     dummy_vals = IdDict(control => 1.0 for (i, control) in enumerate(controls))
     fw_storage = [init_storage(obj.initial_state, tlist) for obj in objectives]
@@ -180,6 +189,9 @@ function GrapeWrk(problem::QuantumControlBase.ControlProblem; verbose=false)
         controls,
         pulsevals,
         gradient,
+        grad_J_T,
+        grad_J_a,
+        J_parts,
         searchdirection,
         fg_count,
         result,

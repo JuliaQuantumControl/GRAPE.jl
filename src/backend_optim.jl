@@ -42,9 +42,11 @@ function run_optimizer(
         wrk.gradient .= optimizer_state.g_previous
         wrk.searchdirection .= optimizer_state.s  # TODO: may depend on type of optimizer_state
         iter = wrk.result.iter_start + optimization_state.iteration
-        update_result!(wrk, optimization_state, optimizer_state, iter)
+        update_result!(wrk, iter)
         #update_hook!(...) # TODO
-        info_tuple = info_hook(wrk, optimization_state, optimizer_state, wrk.result.iter)
+        info_tuple = info_hook(wrk, wrk.result.iter, optimization_state, optimizer_state)
+        # TODO: optimization_state, optimizer_state are passed to info_hook
+        # only for GRAPELinesearchAnalysis
         wrk.fg_count .= 0
         (info_tuple !== nothing) && push!(wrk.result.records, info_tuple)
         check_convergence!(wrk.result)
@@ -70,32 +72,6 @@ function run_optimizer(
 end
 
 
-function update_result!(
-    wrk::GrapeWrk,
-    optimization_state::Optim.OptimizationState,
-    optimizer_state::Optim.AbstractOptimizerState,
-    i::Int64
-)
-    # TODO: make this depend only on wrk. Should not be backend-dependent
-    res = wrk.result
-    for (k, propagator) in enumerate(wrk.fw_propagators)
-        copyto!(res.states[k], propagator.state)
-    end
-    res.J_T_prev = res.J_T
-    res.J_T = optimization_state.value
-    (i > 0) && (res.iter = i)
-    if i >= res.iter_stop
-        res.converged = true
-        res.message = "Reached maximum number of iterations"
-        # Note: other convergence checks are done in user-supplied
-        # check_convergence routine
-    end
-    prev_time = res.end_local_time
-    res.end_local_time = now()
-    res.secs = Dates.toms(res.end_local_time - prev_time) / 1000.0
-end
-
-
 function finalize_result!(wrk::GrapeWrk, optim_res::Optim.MultivariateOptimizationResults)
     L = length(wrk.controls)
     res = wrk.result
@@ -116,48 +92,4 @@ function finalize_result!(wrk::GrapeWrk, optim_res::Optim.MultivariateOptimizati
         res.optimized_controls[l] = discretize(ϵ_opt[l, :], res.tlist)
     end
     res.optim_res = optim_res
-end
-
-
-"""Print optimization progress as a table.
-
-This functions serves as the default `info_hook` for an optimization with
-GRAPE.
-"""
-function print_table(
-    wrk,
-    optimization_state::Optim.OptimizationState,
-    optimizer_state::Optim.AbstractOptimizerState,
-    iteration,
-    args...
-)
-    # TODO: make this depend only on wrk. Should not be backend-dependent
-    J_T = wrk.result.J_T
-    ΔJ_T = J_T - wrk.result.J_T_prev
-    secs = wrk.result.secs
-
-    iter_stop = "$(get(wrk.kwargs, :iter_stop, 5000))"
-    widths = [max(length("$iter_stop"), 6), 11, 11, 11, 8, 8]
-
-    if iteration == 0
-        header = ["iter.", "J_T", "|∇J_T|", "ΔJ_T", "FG(F)", "secs"]
-        for (header, w) in zip(header, widths)
-            print(lpad(header, w))
-        end
-        print("\n")
-    end
-
-    strs = (
-        "$iteration",
-        @sprintf("%.2e", J_T),
-        @sprintf("%.2e", optimization_state.g_norm),
-        (iteration > 0) ? @sprintf("%.2e", ΔJ_T) : "n/a",
-        @sprintf("%d(%d)", wrk.fg_count[1], wrk.fg_count[2]),
-        @sprintf("%.1f", secs),
-    )
-    for (str, w) in zip(strs, widths)
-        print(lpad(str, w))
-    end
-    print("\n")
-    flush(stdout)
 end
