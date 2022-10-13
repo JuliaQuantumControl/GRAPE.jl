@@ -87,7 +87,7 @@ const N = 6  # levels per transmon
 using LinearAlgebra
 using SparseArrays
 
-function hamiltonian(;
+function transmon_hamiltonian(;
     Ωre,
     Ωim,
     N=N,  # levels per transmon
@@ -127,9 +127,9 @@ function hamiltonian(;
     Ĥ₁im = (𝕚 / 2) * (b̂₁⁺ - b̂₁ + λ * b̂₂⁺ - λ * b̂₂)
 
     if ((N < 5) && (use_sparse ≢ true)) || use_sparse ≡ false
-        H = (Array(Ĥ₀), (Array(Ĥ₁re), Ωre), (Array(Ĥ₁im), Ωim))
+        H = hamiltonian(Array(Ĥ₀), (Array(Ĥ₁re), Ωre), (Array(Ĥ₁im), Ωim))
     else
-        H = (Ĥ₀, (Ĥ₁re, Ωre), (Ĥ₁im, Ωim))
+        H = hamiltonian(Ĥ₀, (Ĥ₁re, Ωre), (Ĥ₁im, Ωim))
     end
     return H
 
@@ -196,7 +196,7 @@ plot_complex_pulse(tlist, Ωre_guess.(tlist) + 𝕚 * Ωim_guess.(tlist))
 
 # We now instantiate the Hamiltonian with these control fields:
 
-H = hamiltonian(Ωre=Ωre_guess, Ωim=Ωim_guess);
+H = transmon_hamiltonian(Ωre=Ωre_guess, Ωim=Ωim_guess);
 
 # ## Logical basis for two-qubit gates
 

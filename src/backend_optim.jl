@@ -1,4 +1,4 @@
-using QuantumControlBase.QuantumPropagators.Controls: discretize
+using QuantumControlBase.QuantumPropagators.Generators: discretize
 import Optim
 
 function run_optimizer(

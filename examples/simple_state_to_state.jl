@@ -63,7 +63,7 @@ using QuantumControl
 
 #-
 """Two-level-system Hamiltonian."""
-function hamiltonian(Ω=1.0, ϵ=ϵ)
+function tls_hamiltonian(Ω=1.0, ϵ=ϵ)
     σ̂_z = ComplexF64[
         1  0
         0 -1
@@ -74,12 +74,12 @@ function hamiltonian(Ω=1.0, ϵ=ϵ)
     ]
     Ĥ₀ = -0.5 * Ω * σ̂_z
     Ĥ₁ = σ̂_x
-    return (Ĥ₀, (Ĥ₁, ϵ))
+    return hamiltonian(Ĥ₀, (Ĥ₁, ϵ))
 end;
 #-
 
-H = hamiltonian();
-#jl @test length(H) == 2
+H = tls_hamiltonian();
+#jl @test length(H.ops) == 2
 
 # The control field here switches on from zero at $t=0$ to it's maximum amplitude
 # 0.2 within the time period 0.3 (the switch-on shape is half a [Blackman pulse](https://en.wikipedia.org/wiki/Window_function#Blackman_window)).
@@ -104,7 +104,7 @@ end
 
 plot_control(ϵ::T, tlist) where {T<:Function} = plot_control([ϵ(t) for t in tlist], tlist);
 #-
-fig = plot_control(H[2][2], tlist)
+fig = plot_control(ϵ, tlist)
 #jl display(fig)
 
 # ## Optimization target

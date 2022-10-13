@@ -1,5 +1,5 @@
 import LBFGSB
-using QuantumControlBase.QuantumPropagators.Controls: discretize
+using QuantumControlBase.QuantumPropagators.Generators: discretize
 
 struct LBFGSB_Result
     # TODO: get rid of this data structure, once we move everything the

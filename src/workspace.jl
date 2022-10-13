@@ -1,7 +1,7 @@
 import QuantumControlBase
 using QuantumControlBase.QuantumPropagators: init_storage, initprop
-using QuantumControlBase.QuantumPropagators.Controls: getcontrols, discretize_on_midpoints
-using QuantumControlBase: GradVector, TimeDependentGradGenerator
+using QuantumControlBase.QuantumPropagators.Generators: getcontrols, discretize_on_midpoints
+using QuantumControlBase: GradVector, GradGenerator
 using ConcreteStructs
 
 # GRAPE workspace (for internal use)
@@ -48,7 +48,7 @@ using ConcreteStructs
     tau_grads::Vector{Matrix{ComplexF64}}
 
     # dynamical generator for grad-bw-propagation, time-dependent
-    TDgradG  # TODO: rename gradgen
+    gradgen  # TODO: rename gradgen
 
     fw_storage # backward storage array (per objective)
 
@@ -162,7 +162,7 @@ function GrapeWrk(problem::QuantumControlBase.ControlProblem; verbose=false)
             )
         end for (k, obj) in enumerate(objectives)
     ]
-    TDgradG = [TimeDependentGradGenerator(obj.generator) for obj in adjoint_objectives]
+    gradgen = [GradGenerator(obj.generator) for obj in adjoint_objectives]
     chi_states = [similar(obj.initial_state) for obj in objectives]
     bw_grad_propagators = [
         begin
@@ -171,7 +171,7 @@ function GrapeWrk(problem::QuantumControlBase.ControlProblem; verbose=false)
             χ̃ₖ = GradVector(chi_states[k], length(controls))
             initprop(
                 χ̃ₖ,
-                TDgradG[k],
+                gradgen[k],
                 tlist;
                 method=grad_prop_method[k],
                 backward=true,
@@ -197,7 +197,7 @@ function GrapeWrk(problem::QuantumControlBase.ControlProblem; verbose=false)
         result,
         chi_states,
         tau_grads,
-        TDgradG,
+        gradgen,
         fw_storage,
         fw_propagators,
         bw_grad_propagators,
