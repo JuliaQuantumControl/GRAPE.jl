@@ -1,4 +1,4 @@
-using QuantumControlBase.QuantumPropagators.Generators: getcontrols, discretize
+using QuantumControlBase.QuantumPropagators.Controls: getcontrols, discretize
 using Printf
 using Dates
 

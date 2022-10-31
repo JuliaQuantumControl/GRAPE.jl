@@ -1,6 +1,6 @@
 import QuantumControlBase
 using QuantumControlBase.QuantumPropagators: init_storage, initprop
-using QuantumControlBase.QuantumPropagators.Generators: getcontrols, discretize_on_midpoints
+using QuantumControlBase.QuantumPropagators.Controls: getcontrols, discretize_on_midpoints
 using QuantumControlBase: GradVector, GradGenerator
 using ConcreteStructs
 
