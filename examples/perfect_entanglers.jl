@@ -136,25 +136,40 @@ function transmon_hamiltonian(;
 end;
 
 # We choose a pulse duration of 400 ns. The guess pulse amplitude is 35 MHz,
-# with a 15 ns switch-on/-off time. The Hamiltonian is written in a rotating
-# frame, so in general, the control field is allowed to be complex-valued. We
-# separate this into two control fields, one for the real part and one for the
-# imaginary part. Initially, the imaginary part is zero, corresponding to a
-# field exactly at the frequency of the rotating frame.
+# with a 15 ns switch-on/-off time. This switch-on/-off must be maintained in
+# the optimization: A pulse that does not start from or end at zero would not
+# be physical. For GRAPE, we can achieve this by using a `ShapedAmplitude`:
+
+using QuantumControl.Amplitudes: ShapedAmplitude
+
+# This allows to have a control amplitude ``Ω(t) = S(t) ϵ(t)`` where ``S(t)``
+# is a fixed shape and ``ϵ(t)`` is the pulse directly tuned by the
+# optimization. We start with a constant ``ϵ(t)`` and do not place any
+# restrictions on how the optimization might update ``ϵ(t)``.
+
+# The Hamiltonian is written in a rotating frame, so in general, the control
+# field is allowed to be complex-valued. We separate this into two control
+# fields, one for the real part and one for the imaginary part. Initially, the
+# imaginary part is zero, corresponding to a field exactly at the frequency of
+# the rotating frame.
+
+# Note that passing `tlist` to `ShapedAmplitude` discretizes both the control
+# and the shape function to the midpoints of the `tlist` array.
 
 using QuantumControl.Shapes: flattop
 
-function guess_pulses(; T=400ns, E₀=35MHz, dt=0.1ns, t_rise=15ns)
+function guess_amplitudes(; T=400ns, E₀=35MHz, dt=0.1ns, t_rise=15ns)
 
     tlist = collect(range(0, T, step=dt))
-    Ωre = t -> E₀ * flattop(t, T=T, t_rise=t_rise)
-    Ωim = t -> 0.0
+    shape(t) = flattop(t, T=T, t_rise=t_rise)
+    Ωre = ShapedAmplitude(t -> E₀, tlist; shape)
+    Ωim = ShapedAmplitude(t -> 0.0, tlist; shape)
 
     return tlist, Ωre, Ωim
 
 end
 
-tlist, Ωre_guess, Ωim_guess = guess_pulses();
+tlist, Ωre_guess, Ωim_guess = guess_amplitudes();
 
 #-
 
@@ -168,8 +183,11 @@ Plots.default(
     foreground_color_legend = nothing,
     background_color_legend = RGBA(1, 1, 1, 0.8),
 )
+using QuantumControl.Controls: discretize
 
 function plot_complex_pulse(tlist, Ω; time_unit=:ns, ampl_unit=:MHz, kwargs...)
+
+    Ω = discretize(Ω, tlist)  # make sure Ω is defined on *points* of `tlist`
 
     ax1 = plot(
         tlist ./ eval(time_unit),
@@ -192,11 +210,11 @@ function plot_complex_pulse(tlist, Ω; time_unit=:ns, ampl_unit=:MHz, kwargs...)
 
 end
 
-plot_complex_pulse(tlist, Ωre_guess.(tlist) + 𝕚 * Ωim_guess.(tlist))
+plot_complex_pulse(tlist, Array(Ωre_guess) .+ 𝕚 .* Array(Ωim_guess))
 
 # We now instantiate the Hamiltonian with these control fields:
 
-H = transmon_hamiltonian(Ωre=Ωre_guess, Ωim=Ωim_guess);
+H = transmon_hamiltonian(Ωre=Ωre_guess, Ωim=Ωim_guess)
 
 # ## Logical basis for two-qubit gates
 
@@ -302,9 +320,17 @@ opt_result = @optimize_or_load(datadir("GATE_OCT.jld2"), problem; method=:GRAPE)
 opt_result
 
 # We extract the optimized control field from the optimization result and plot
-# it
+# the resulting amplitude.
 
-Ω_opt = opt_result.optimized_controls[1] + 𝕚 * opt_result.optimized_controls[2]
+# The `optimized_controls` field of the `opt_results` contains the optimized
+# controls ``ϵ(t)``.
+
+ϵ_opt = opt_result.optimized_controls[1] + 𝕚 * opt_result.optimized_controls[2];
+
+# These must still be multiplied by the static shape ``S(t)`` that we set up
+# for the guess amplitudes
+
+Ω_opt = ϵ_opt .* discretize(Ωre_guess.shape, tlist)
 
 plot_complex_pulse(tlist, Ω_opt)
 
@@ -316,8 +342,8 @@ opt_states = propagate_objectives(
     tlist;
     use_threads=true,
     controls_map=IdDict(
-        Ωre_guess => opt_result.optimized_controls[1],
-        Ωim_guess => opt_result.optimized_controls[2]
+        Ωre_guess.control => opt_result.optimized_controls[1],
+        Ωim_guess.control => opt_result.optimized_controls[2]
     )
 );
 
@@ -430,7 +456,7 @@ J_T_PE(guess_states, objectives)
 # `make_gate_chi` function,
 
 using QuantumControl.Functionals: make_gate_chi
-chi_pe = make_gate_chi(D_PE, objectives; unitarity_weight=0.5)
+chi_pe = make_gate_chi(D_PE, objectives; unitarity_weight=0.5);
 
 # where the resulting `chi_pe` must be passed to the optimization.
 
@@ -467,7 +493,8 @@ opt_result
 # We extract the optimized control field from the optimization result and plot
 # it
 
-Ω_opt = opt_result.optimized_controls[1] + 𝕚 * opt_result.optimized_controls[2]
+ϵ_opt = opt_result.optimized_controls[1] + 𝕚 * opt_result.optimized_controls[2]
+Ω_opt = ϵ_opt .* discretize(Ωre_guess.shape, tlist)
 
 plot_complex_pulse(tlist, Ω_opt)
 
@@ -479,8 +506,8 @@ opt_states = propagate_objectives(
     tlist;
     use_threads=true,
     controls_map=IdDict(
-        Ωre_guess => opt_result.optimized_controls[1],
-        Ωim_guess => opt_result.optimized_controls[2]
+        Ωre_guess.control => opt_result.optimized_controls[1],
+        Ωim_guess.control => opt_result.optimized_controls[2]
     )
 );
 
@@ -491,11 +518,11 @@ U_opt = [basis[i] ⋅ opt_states[j] for i = 1:4, j = 1:4];
 gate_concurrence(U_opt)
 #jl @test round(gate_concurrence(U_opt), digits=3) ≈ 1.0
 
-# Moreover, we have reduced the population loss to less than 2%
+# Moreover, we have reduced the population loss to less than 4%
 
 1 - unitarity(U_opt)
 
-#jl @test 1 - unitarity(U_opt) < 0.02
+#jl @test 1 - unitarity(U_opt) < 0.04
 
 
 # ## Direct maximization of the gate concurrence
@@ -539,8 +566,8 @@ opt_states_direct = propagate_objectives(
     tlist;
     use_threads=true,
     controls_map=IdDict(
-        Ωre_guess => opt_result_direct.optimized_controls[1],
-        Ωim_guess => opt_result_direct.optimized_controls[2]
+        Ωre_guess.control => opt_result_direct.optimized_controls[1],
+        Ωim_guess.control => opt_result_direct.optimized_controls[2]
     )
 );
 
@@ -550,4 +577,4 @@ gate_concurrence(U_opt_direct)
 #jl @test round(gate_concurrence(U_opt_direct), digits=3) ≈ 1.0
 #-
 1 - unitarity(U_opt_direct)
-#jl @test round(1 - unitarity(U_opt_direct), digits=3) ≈ 0.002
+#jl @test round(1 - unitarity(U_opt_direct), digits=3) ≈ 0.02
