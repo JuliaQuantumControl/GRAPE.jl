@@ -63,19 +63,22 @@ function transmon_hamiltonian(;
 
 end;
 
+using QuantumControl.Amplitudes: ShapedAmplitude
+
 using QuantumControl.Shapes: flattop
 
-function guess_pulses(; T=400ns, E₀=35MHz, dt=0.1ns, t_rise=15ns)
+function guess_amplitudes(; T=400ns, E₀=35MHz, dt=0.1ns, t_rise=15ns)
 
     tlist = collect(range(0, T, step=dt))
-    Ωre = t -> E₀ * flattop(t, T=T, t_rise=t_rise)
-    Ωim = t -> 0.0
+    shape(t) = flattop(t, T=T, t_rise=t_rise)
+    Ωre = ShapedAmplitude(t -> E₀, tlist; shape)
+    Ωim = ShapedAmplitude(t -> 0.0, tlist; shape)
 
     return tlist, Ωre, Ωim
 
 end
 
-tlist, Ωre_guess, Ωim_guess = guess_pulses();
+tlist, Ωre_guess, Ωim_guess = guess_amplitudes();
 
 using Plots
 Plots.default(
@@ -85,8 +88,11 @@ Plots.default(
     foreground_color_legend = nothing,
     background_color_legend = RGBA(1, 1, 1, 0.8),
 )
+using QuantumControl.Controls: discretize
 
 function plot_complex_pulse(tlist, Ω; time_unit=:ns, ampl_unit=:MHz, kwargs...)
+
+    Ω = discretize(Ω, tlist)  # make sure Ω is defined on *points* of `tlist`
 
     ax1 = plot(
         tlist ./ eval(time_unit),
@@ -109,9 +115,9 @@ function plot_complex_pulse(tlist, Ω; time_unit=:ns, ampl_unit=:MHz, kwargs...)
 
 end
 
-plot_complex_pulse(tlist, Ωre_guess.(tlist) + 𝕚 * Ωim_guess.(tlist))
+plot_complex_pulse(tlist, Array(Ωre_guess) .+ 𝕚 .* Array(Ωim_guess))
 
-H = transmon_hamiltonian(Ωre=Ωre_guess, Ωim=Ωim_guess);
+H = transmon_hamiltonian(Ωre=Ωre_guess, Ωim=Ωim_guess)
 
 function ket(i::Int64; N=N)
     Ψ = zeros(ComplexF64, N)
@@ -180,7 +186,9 @@ opt_result = @optimize_or_load(datadir("GATE_OCT.jld2"), problem; method=:GRAPE)
 
 opt_result
 
-Ω_opt = opt_result.optimized_controls[1] + 𝕚 * opt_result.optimized_controls[2]
+ϵ_opt = opt_result.optimized_controls[1] + 𝕚 * opt_result.optimized_controls[2];
+
+Ω_opt = ϵ_opt .* discretize(Ωre_guess.shape, tlist)
 
 plot_complex_pulse(tlist, Ω_opt)
 
@@ -189,8 +197,8 @@ opt_states = propagate_objectives(
     tlist;
     use_threads=true,
     controls_map=IdDict(
-        Ωre_guess => opt_result.optimized_controls[1],
-        Ωim_guess => opt_result.optimized_controls[2]
+        Ωre_guess.control => opt_result.optimized_controls[1],
+        Ωim_guess.control => opt_result.optimized_controls[2]
     )
 );
 
@@ -228,7 +236,7 @@ J_T_PE(guess_states, objectives)
 @test 0.5 * D_PE(U_guess) + 0.5 * (1-unitarity(U_guess)) ≈ J_T_PE(guess_states, objectives) atol=1e-15
 
 using QuantumControl.Functionals: make_gate_chi
-chi_pe = make_gate_chi(D_PE, objectives; unitarity_weight=0.5)
+chi_pe = make_gate_chi(D_PE, objectives; unitarity_weight=0.5);
 
 problem = ControlProblem(
     objectives=objectives,
@@ -255,7 +263,8 @@ opt_result = @optimize_or_load(datadir("PE_OCT.jld2"), problem; method=:GRAPE);
 
 opt_result
 
-Ω_opt = opt_result.optimized_controls[1] + 𝕚 * opt_result.optimized_controls[2]
+ϵ_opt = opt_result.optimized_controls[1] + 𝕚 * opt_result.optimized_controls[2]
+Ω_opt = ϵ_opt .* discretize(Ωre_guess.shape, tlist)
 
 plot_complex_pulse(tlist, Ω_opt)
 
@@ -264,8 +273,8 @@ opt_states = propagate_objectives(
     tlist;
     use_threads=true,
     controls_map=IdDict(
-        Ωre_guess => opt_result.optimized_controls[1],
-        Ωim_guess => opt_result.optimized_controls[2]
+        Ωre_guess.control => opt_result.optimized_controls[1],
+        Ωim_guess.control => opt_result.optimized_controls[2]
     )
 );
 
@@ -276,7 +285,7 @@ gate_concurrence(U_opt)
 
 1 - unitarity(U_opt)
 
-@test 1 - unitarity(U_opt) < 0.02
+@test 1 - unitarity(U_opt) < 0.04
 
 J_T_C = U -> 0.5 * (1 - gate_concurrence(U)) + 0.5 * (1 - unitarity(U));
 
@@ -295,8 +304,8 @@ opt_states_direct = propagate_objectives(
     tlist;
     use_threads=true,
     controls_map=IdDict(
-        Ωre_guess => opt_result_direct.optimized_controls[1],
-        Ωim_guess => opt_result_direct.optimized_controls[2]
+        Ωre_guess.control => opt_result_direct.optimized_controls[1],
+        Ωim_guess.control => opt_result_direct.optimized_controls[2]
     )
 );
 
@@ -306,7 +315,7 @@ gate_concurrence(U_opt_direct)
 @test round(gate_concurrence(U_opt_direct), digits=3) ≈ 1.0
 
 1 - unitarity(U_opt_direct)
-@test round(1 - unitarity(U_opt_direct), digits=3) ≈ 0.002
+@test round(1 - unitarity(U_opt_direct), digits=3) ≈ 0.02
 
 # This file was generated using Literate.jl, https://github.com/fredrikekre/Literate.jl
 
