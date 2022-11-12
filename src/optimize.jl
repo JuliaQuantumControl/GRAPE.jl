@@ -1,5 +1,5 @@
 using QuantumControlBase.QuantumPropagators:
-    propstep!, write_to_storage!, get_from_storage!, set_state!, reinitprop!
+    prop_step!, write_to_storage!, get_from_storage!, set_state!, reinit_prop!
 using QuantumControlBase: resetgradvec!
 using QuantumControlBase.Functionals: make_chi, make_grad_J_a
 using QuantumControlBase.ConditionalThreads: @threadsif
@@ -151,10 +151,10 @@ function optimize_grape(problem)
         end
         @threadsif wrk.use_threads for k = 1:N
             local Φₖ = isnothing(storage) ? nothing : storage[k]
-            reinitprop!(wrk.fw_propagators[k], Ψ₀[k]; transform_control_ranges)
+            reinit_prop!(wrk.fw_propagators[k], Ψ₀[k]; transform_control_ranges)
             (Φₖ !== nothing) && write_to_storage!(Φₖ, 1, Ψ₀[k])
             for n = 1:N_T  # `n` is the index for the time interval
-                local Ψₖ = propstep!(wrk.fw_propagators[k])
+                local Ψₖ = prop_step!(wrk.fw_propagators[k])
                 (Φₖ !== nothing) && write_to_storage!(Φₖ, n + 1, Ψₖ)
             end
             local Ψₖ = wrk.fw_propagators[k].state
@@ -190,9 +190,9 @@ function optimize_grape(problem)
             local Ψₖ = wrk.fw_propagators[k].state
             local χ̃ₖ = wrk.bw_grad_propagators[k].state
             resetgradvec!(χ̃ₖ, χ[k])
-            reinitprop!(wrk.bw_grad_propagators[k], χ̃ₖ; transform_control_ranges)
+            reinit_prop!(wrk.bw_grad_propagators[k], χ̃ₖ; transform_control_ranges)
             for n = N_T:-1:1  # N_T is the number of time slices
-                χ̃ₖ = propstep!(wrk.bw_grad_propagators[k])
+                χ̃ₖ = prop_step!(wrk.bw_grad_propagators[k])
                 get_from_storage!(Ψₖ, Φ[k], n)
                 for l = 1:L
                     ∇τ[k][l, n] = χ̃ₖ.grad_states[l] ⋅ Ψₖ

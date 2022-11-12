@@ -1,4 +1,4 @@
-using QuantumControlBase.QuantumPropagators.Controls: getcontrols, discretize
+using QuantumControlBase.QuantumPropagators.Controls: get_controls, discretize
 using Printf
 using Dates
 
@@ -26,7 +26,7 @@ mutable struct GrapeResult{STST}
 
     function GrapeResult(problem)
         tlist = problem.tlist
-        controls = getcontrols(problem.objectives)
+        controls = get_controls(problem.objectives)
         iter_start = get(problem.kwargs, :iter_start, 0)
         iter_stop = get(problem.kwargs, :iter_stop, 5000)
         iter = iter_start

@@ -1,6 +1,6 @@
 import QuantumControlBase
-using QuantumControlBase.QuantumPropagators: init_storage, initprop
-using QuantumControlBase.QuantumPropagators.Controls: getcontrols, discretize_on_midpoints
+using QuantumControlBase.QuantumPropagators: init_storage, init_prop
+using QuantumControlBase.QuantumPropagators.Controls: get_controls, discretize_on_midpoints
 using QuantumControlBase: GradVector, GradGenerator
 using ConcreteStructs
 
@@ -64,7 +64,7 @@ function GrapeWrk(problem::QuantumControlBase.ControlProblem; verbose=false)
     use_threads = get(problem.kwargs, :use_threads, false)
     objectives = [obj for obj in problem.objectives]
     adjoint_objectives = [adjoint(obj) for obj in problem.objectives]
-    controls = getcontrols(objectives)
+    controls = get_controls(objectives)
     tlist = problem.tlist
     # interleave the pulse values as [ϵ₁(t̃₁), ϵ₂(t̃₁), ..., ϵ₁(t̃₂), ϵ₂(t̃₂), ...]
     # to allow access as reshape(pulsevals, L, :)[l, n] where l is the control
@@ -152,7 +152,7 @@ function GrapeWrk(problem::QuantumControlBase.ControlProblem; verbose=false)
         begin
             verbose &&
                 @info "Initializing fw-prop of objective $k with method $(fw_prop_method[k])"
-            initprop(
+            init_prop(
                 obj.initial_state,
                 obj.generator,
                 tlist;
@@ -169,7 +169,7 @@ function GrapeWrk(problem::QuantumControlBase.ControlProblem; verbose=false)
             verbose &&
                 @info "Initializing gradient bw-prop of objective $k with method $(grad_prop_method[k])"
             χ̃ₖ = GradVector(chi_states[k], length(controls))
-            initprop(
+            init_prop(
                 χ̃ₖ,
                 gradgen[k],
                 tlist;
