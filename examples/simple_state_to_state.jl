@@ -270,10 +270,11 @@ fig = plot_control(opt_result_OptimLBFGS.optimized_controls[1], tlist)
 
 # Having obtained the optimized control field, we can simulate the dynamics to verify that the optimized field indeed drives the initial state $\ket{\Psi_{\init}} = \ket{0}$ to the desired target state $\ket{\Psi_{\tgt}} = \ket{1}$.
 
+using QuantumControl.Controls: substitute
+
 opt_dynamics = propagate_objective(
-    objectives[1],
+    substitute(objectives[1], IdDict(ϵ => opt_result_LBFGSB.optimized_controls[1])),
     problem.tlist;
-    controls_map=IdDict(ϵ => opt_result_LBFGSB.optimized_controls[1]),
     storage=true,
     observables=(Ψ -> abs.(Ψ) .^ 2,)
 )
