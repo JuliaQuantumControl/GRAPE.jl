@@ -145,10 +145,11 @@ opt_result_OptimLBFGS
 
 fig = plot_control(opt_result_OptimLBFGS.optimized_controls[1], tlist)
 
+using QuantumControl.Controls: substitute
+
 opt_dynamics = propagate_objective(
-    objectives[1],
+    substitute(objectives[1], IdDict(ϵ => opt_result_LBFGSB.optimized_controls[1])),
     problem.tlist;
-    controls_map=IdDict(ϵ => opt_result_LBFGSB.optimized_controls[1]),
     storage=true,
     observables=(Ψ -> abs.(Ψ) .^ 2,)
 )
