@@ -143,6 +143,12 @@ function optimize_grape(problem)
     # Side-effects:
     # set Ψ, τ, wrk.result.f_calls, wrk.fg_count wrk.J_parts
     function f(F, G, pulsevals; storage=nothing, count_call=true)
+        if pulsevals ≢ wrk.pulsevals
+            # Ideally, the optimizer uses the original `pulsevals`. LBFGSB
+            # does, but Optim.jl does not. Thus, for Optim.jl, we need to copy
+            # back the values.
+            wrk.pulsevals .= pulsevals
+        end
         @assert !isnothing(F)
         @assert isnothing(G)
         if count_call

@@ -225,8 +225,8 @@ opt_result_LBFGSB_via_χ
 
 # As an alternative to the default L-BFGS-B backend, we can also use any of the gradient-based optimizers in [Optiml.jl](https://github.com/JuliaNLSolvers/Optim.jl). This also gives full control over the linesearch method.
 
-using Optim
-using LineSearches
+import Optim
+import LineSearches
 
 # Here, we use the LBFGS implementation that is part of Optim (which is not exactly the same as L-BFGS-B; "B" being the variant of LBFGS with optional additional bounds on the control) with a Hager-Zhang linesearch
 
@@ -250,7 +250,8 @@ opt_result_OptimLBFGS = @optimize_or_load(
 #jl     alphaguess=LineSearches.InitialStatic(alpha=0.2),
 #jl     linesearch=LineSearches.HagerZhang(alphamax=2.0)
 #jl )
-#jl optimize(problem, method = :grape, iter_stop=1, optimizer=_optimizer)
+#jl _opt_result = optimize(problem, method = :grape, iter_stop=1, optimizer=_optimizer)
+#jl @test _opt_result.J_T < 0.951
 #-
 #jl @test opt_result_OptimLBFGS.J_T < 1e-3
 #-
