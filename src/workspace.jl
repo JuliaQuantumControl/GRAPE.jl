@@ -5,7 +5,7 @@ using QuantumControlBase: GradVector, GradGenerator
 using ConcreteStructs
 
 # GRAPE workspace (for internal use)
-@concrete terse struct GrapeWrk
+@concrete terse mutable struct GrapeWrk
 
     # a copy of the objectives
     objectives
@@ -20,7 +20,8 @@ using ConcreteStructs
     # Tuple of the original controls (probably functions)
     controls
 
-    # TODO: pulsevals0 and pulsevals1
+    pulsevals_guess::Vector{Float64}
+
     pulsevals::Vector{Float64}
 
     gradient::Vector{Float64}  # total gradient for guess in iterations
@@ -33,9 +34,10 @@ using ConcreteStructs
 
     searchdirection::Vector{Float64}  # search-direction for guess in iterations
 
+    alpha::Float64  # the step width in the search direction
+
     fg_count::Vector{Int64}
 
-    # Resultt object
     result
 
     #################################
@@ -48,7 +50,7 @@ using ConcreteStructs
     tau_grads::Vector{Matrix{ComplexF64}}
 
     # dynamical generator for grad-bw-propagation, time-dependent
-    gradgen  # TODO: rename gradgen
+    gradgen
 
     fw_storage # backward storage array (per objective)
 
@@ -122,7 +124,9 @@ function GrapeWrk(problem::QuantumControlBase.ControlProblem; verbose=false)
     grad_J_T = zeros(length(pulsevals))
     grad_J_a = zeros(length(pulsevals))
     J_parts = zeros(2)
+    pulsevals_guess = copy(pulsevals)
     searchdirection = zeros(length(pulsevals))
+    alpha = 0.0
     dummy_vals = IdDict(control => 1.0 for (i, control) in enumerate(controls))
     fw_storage = [init_storage(obj.initial_state, tlist) for obj in objectives]
     kwargs[:piecewise] = true  # only accept piecewise propagators
@@ -187,12 +191,14 @@ function GrapeWrk(problem::QuantumControlBase.ControlProblem; verbose=false)
         adjoint_objectives,
         kwargs,
         controls,
+        pulsevals_guess,
         pulsevals,
         gradient,
         grad_J_T,
         grad_J_a,
         J_parts,
         searchdirection,
+        alpha,
         fg_count,
         result,
         chi_states,

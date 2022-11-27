@@ -26,27 +26,37 @@ function run_optimizer(
             optimizer_state.x_previous ==
             objective.x_f ==
             objective.x_df
-    @assert optimizer_state.g_previous == objective.DF
     # ... but `f_x_previous` does not match the initial `x_previous`:
     @assert isnan(optimizer_state.f_x_previous)
 
     # update the result object and check convergence
     function callback(optimization_state::Optim.OptimizationState)
-        @assert optimization_state.value == objective.F
+        iter = wrk.result.iter_start + optimization_state.iteration
+        #@assert optimization_state.value == objective.F
         #if optimization_state.iteration > 0
         #    @assert norm(
         #       optimizer_state.x .-
         #       (optimizer_state.x_previous .+ optimizer_state.alpha .* optimizer_state.s)
         #    ) < 1e-14
         #end
-        wrk.gradient .= optimizer_state.g_previous
-        wrk.searchdirection .= optimizer_state.s  # TODO: may depend on type of optimizer_state
-        iter = wrk.result.iter_start + optimization_state.iteration
+        if hasproperty(optimizer_state, :s) && hasproperty(optimizer_state, :alpha)
+            wrk.searchdirection .= optimizer_state.s
+            wrk.alpha = optimizer_state.alpha
+        elseif (optimization_state.iteration == 1)
+            @error "Cannot determine search direction/step width"
+        end
         update_result!(wrk, iter)
         #update_hook!(...) # TODO
-        info_tuple = info_hook(wrk, wrk.result.iter, optimization_state, optimizer_state)
-        # TODO: optimization_state, optimizer_state are passed to info_hook
-        # only for GRAPELinesearchAnalysis
+        info_tuple = info_hook(wrk, wrk.result.iter)
+        if hasproperty(objective, :DF)
+            # DF is the *current* gradient, i.e., the gradient of the updated
+            # pulsevals, which (after the call to `info_hook`) is the gradient
+            # for the the guess of the next iteration.
+            wrk.gradient .= objective.DF
+        elseif (optimization_state.iteration == 1)
+            @error "Cannot determine guess gradient"
+        end
+        copyto!(wrk.pulsevals_guess, wrk.pulsevals)
         wrk.fg_count .= 0
         (info_tuple !== nothing) && push!(wrk.result.records, info_tuple)
         check_convergence!(wrk.result)
@@ -67,29 +77,19 @@ function run_optimizer(
     )
 
     res = Optim.optimize(objective, initial_x, method, options, optimizer_state)
-    return res
 
-end
-
-
-function finalize_result!(wrk::GrapeWrk, optim_res::Optim.MultivariateOptimizationResults)
-    L = length(wrk.controls)
-    res = wrk.result
-    if !optim_res.ls_success
+    if !res.ls_success
         @error "optimization failed (linesearch)"
-        res.message = "Failed linesearch"
+        wrk.result.message = "Failed linesearch"
     end
-    if optim_res.stopped_by.f_increased
+    if res.stopped_by.f_increased
         @error "loss of monotonic convergence (try allow_f_increases=true)"
-        res.message = "Loss of monotonic convergence"
+        wrk.result.message = "Loss of monotonic convergence"
     end
-    if !res.converged
+    if !wrk.result.converged
         @warn "Optimization failed to converge"
     end
-    res.end_local_time = now()
-    ϵ_opt = reshape(Optim.minimizer(optim_res), L, :)
-    for l = 1:L
-        res.optimized_controls[l] = discretize(ϵ_opt[l, :], res.tlist)
-    end
-    res.optim_res = optim_res
+
+    return nothing
+
 end

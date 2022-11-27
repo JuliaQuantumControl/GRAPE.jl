@@ -1,16 +1,6 @@
 import LBFGSB
 using QuantumControlBase.QuantumPropagators.Controls: discretize
 
-struct LBFGSB_Result
-    # TODO: get rid of this data structure, once we move everything the
-    # info-hook needs into wrk
-    f::Float64
-    x::Vector{Float64}
-    x_previous::Vector{Float64}
-    message_in::String
-    message_out::String
-end
-
 function run_optimizer(optimizer::LBFGSB.L_BFGS_B, wrk, fg!, info_hook, check_convergence!)
 
     m = 10
@@ -18,7 +8,6 @@ function run_optimizer(optimizer::LBFGSB.L_BFGS_B, wrk, fg!, info_hook, check_co
     pgtol = 1e-5
     iprint = -1 # TODO: set this based on the value of some verbosity flag
     x = wrk.pulsevals
-    x_previous = copy(x)
     n = length(x)
     obj = optimizer
     bounds = zeros(3, n) # TODO: allow the problem to specify constraints
@@ -79,30 +68,24 @@ function run_optimizer(optimizer::LBFGSB.L_BFGS_B, wrk, fg!, info_hook, check_co
         if obj.task[1:2] == b"FG" # FG_LNSRCH or FG_START
             f = fg!(f, obj.g, x)
             # println("calling fg! for |x|=$(norm(x)) -> f=$f, |g|=$(norm(obj.g))")
-            if (message_in == "START") || (message_in == "NEW_X")
-                # new iteration
-                n0 = obj.isave[13]
-                wrk.searchdirection .= obj.wa[n0:n0+n-1]
-            end
             if obj.task[1:5] == b"FG_ST" # FG_START
                 # x is the guess for the 0 iteration
                 copyto!(wrk.gradient, obj.g)
-                iter_res = LBFGSB_Result(f, x, x, message_in, message_out)
                 update_result!(wrk, 0)
                 #update_hook!(...) # TODO
-                info_tuple = info_hook(wrk, 0, iter_res, obj)
+                info_tuple = info_hook(wrk, 0)
                 wrk.fg_count .= 0
                 (info_tuple !== nothing) && push!(wrk.result.records, info_tuple)
             end
         elseif obj.task[1:5] == b"NEW_X"
             # x is the optimized pulses for the current iteration
             iter = wrk.result.iter_start + obj.isave[30]
-            iter_res = LBFGSB_Result(f, x, x_previous, message_in, message_out)
+            n0 = obj.isave[13]
+            wrk.searchdirection .= obj.wa[n0:n0+n-1]
+            wrk.alpha = obj.dsave[14]
             update_result!(wrk, iter)
             #update_hook!(...) # TODO
-            info_tuple = info_hook(wrk, wrk.result.iter, iter_res, obj)
-            # TODO: optimization_state, optimizer_state are passed to info_hook
-            # only for GRAPELinesearchAnalysis
+            info_tuple = info_hook(wrk, wrk.result.iter)
             wrk.fg_count .= 0
             (info_tuple !== nothing) && push!(wrk.result.records, info_tuple)
             check_convergence!(wrk.result)
@@ -110,7 +93,7 @@ function run_optimizer(optimizer::LBFGSB.L_BFGS_B, wrk, fg!, info_hook, check_co
                 fill!(obj.task, Cuchar(' '))
                 obj.task[1:24] = b"STOP: NEW_X -> CONVERGED"
             else # prepare for next iteration
-                copyto!(x_previous, x)
+                copyto!(wrk.pulsevals_guess, x)
                 copyto!(wrk.gradient, obj.g)
             end
         else
@@ -126,20 +109,19 @@ function run_optimizer(optimizer::LBFGSB.L_BFGS_B, wrk, fg!, info_hook, check_co
 
     end # task loop
 
-    return LBFGSB_Result(f, x, x_previous, message_in, message_out)
+    return nothing
 
 end
 
 
-function finalize_result!(wrk::GrapeWrk, optim_res::LBFGSB_Result)
+function finalize_result!(wrk::GrapeWrk)
     L = length(wrk.controls)
     res = wrk.result
     res.end_local_time = now()
-    ϵ_opt = reshape(optim_res.x, L, :)
+    ϵ_opt = reshape(wrk.pulsevals, L, :)
     for l = 1:L
         res.optimized_controls[l] = discretize(ϵ_opt[l, :], res.tlist)
     end
-    res.optim_res = optim_res
 end
 
 function print_lbfgsb_trace(

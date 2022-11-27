@@ -21,7 +21,6 @@ mutable struct GrapeResult{STST}
     converged::Bool
     f_calls::Int64
     fg_calls::Int64
-    optim_res::Any
     message::String
 
     function GrapeResult(problem)
@@ -44,7 +43,6 @@ mutable struct GrapeResult{STST}
         message = "in progress"
         f_calls = 0
         fg_calls = 0
-        optim_res = nothing
         new{eltype(states)}(
             tlist,
             iter_start,
@@ -63,7 +61,6 @@ mutable struct GrapeResult{STST}
             converged,
             f_calls,
             fg_calls,
-            optim_res,
             message
         )
     end

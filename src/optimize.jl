@@ -219,8 +219,8 @@ function optimize_grape(problem)
     end
 
     optimizer = get_optimizer(wrk)
-    res = run_optimizer(optimizer, wrk, fg!, info_hook, check_convergence!)
-    finalize_result!(wrk, res)
+    run_optimizer(optimizer, wrk, fg!, info_hook, check_convergence!)
+    finalize_result!(wrk)
     return wrk.result
 
 end
