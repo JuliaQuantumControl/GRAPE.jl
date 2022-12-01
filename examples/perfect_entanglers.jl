@@ -313,7 +313,7 @@ problem = ControlProblem(
 
 #-
 
-opt_result = @optimize_or_load(datadir("GATE_OCT.jld2"), problem; method=:GRAPE);
+opt_result = @optimize_or_load(datadir("GATE_OCT.jld2"), problem; method=:GRAPE, force=true);
 #-
 opt_result
 
@@ -484,7 +484,7 @@ problem = ControlProblem(
 
 # With this, we can easily find a solution to the control problem:
 
-opt_result = @optimize_or_load(datadir("PE_OCT.jld2"), problem; method=:GRAPE);
+opt_result = @optimize_or_load(datadir("PE_OCT.jld2"), problem; method=:GRAPE, force=true);
 #-
 opt_result
 
@@ -554,7 +554,8 @@ opt_result_direct = @optimize_or_load(
     problem;
     method=:GRAPE,
     J_T=gate_functional(J_T_C),
-    chi=make_gate_chi(J_T_C, objectives)
+    chi=make_gate_chi(J_T_C, objectives),
+    force=true
 );
 #-
 opt_result_direct
@@ -574,4 +575,4 @@ gate_concurrence(U_opt_direct)
 #jl @test round(gate_concurrence(U_opt_direct), digits=3) ≈ 1.0
 #-
 1 - unitarity(U_opt_direct)
-#jl @test round(1 - unitarity(U_opt_direct), digits=3) ≈ 0.02
+#jl @test round(1 - unitarity(U_opt_direct), digits=3) ≈ 0.001

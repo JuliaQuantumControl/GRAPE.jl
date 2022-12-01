@@ -234,6 +234,7 @@ opt_result_OptimLBFGS = @optimize_or_load(
     datadir("TLS", "opt_result_OptimLBFGS.jld2"),
     problem,
     method = :grape,
+    force = true,
     info_hook = chain_infohooks(
         GRAPELinesearchAnalysis.plot_linesearch(datadir("TLS", "Linesearch", "OptimLBFGS")),
         QuantumControl.GRAPE.print_table,
@@ -244,14 +245,6 @@ opt_result_OptimLBFGS = @optimize_or_load(
     )
 );
 
-#-
-#jl # do a single iteration, to ensure coverage
-#jl _optimizer = Optim.LBFGS(;
-#jl     alphaguess=LineSearches.InitialStatic(alpha=0.2),
-#jl     linesearch=LineSearches.HagerZhang(alphamax=2.0)
-#jl )
-#jl _opt_result = optimize(problem, method = :grape, iter_stop=1, optimizer=_optimizer)
-#jl @test _opt_result.J_T < 0.951
 #-
 #jl @test opt_result_OptimLBFGS.J_T < 1e-3
 #-
