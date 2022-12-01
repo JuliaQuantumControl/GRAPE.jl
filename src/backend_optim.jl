@@ -15,6 +15,9 @@ function run_optimizer(
         f_tol=get(wrk.kwargs, :f_tol, 0.0),
         g_tol=get(wrk.kwargs, :g_tol, 1e-8),
     )
+    if any(wrk.lower_bounds .> -Inf) || any(wrk.upper_bounds .< Inf)
+        error("bounds are not implemented for Optim.jl optimization")
+    end
     initial_x = wrk.pulsevals
     method = optimizer
     objective = Optim.promote_objtype(method, initial_x, :finite, true, Optim.only_fg!(fg!))

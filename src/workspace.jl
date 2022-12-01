@@ -34,9 +34,18 @@ using ConcreteStructs
 
     searchdirection::Vector{Float64}  # search-direction for guess in iterations
 
+    upper_bounds::Vector{Float64}  # Upper bound for every `pulsevals`,
+    # +Inf indicates no bound
+
+    lower_bounds::Vector{Float64}  # Upper bound for every `pulsevals`,
+    # -Inf indicates no bound
+
     alpha::Float64  # the step width in the search direction
 
     fg_count::Vector{Int64}
+
+    # map of controls to options
+    pulse_options
 
     result
 
@@ -83,8 +92,6 @@ function GrapeWrk(problem::QuantumControlBase.ControlProblem; verbose=false)
     kwargs = Dict(problem.kwargs)  # creates a shallow copy; ok to modify
     default_pulse_options = IdDict()  # not used
     pulse_options = get(kwargs, :pulse_options, default_pulse_options)
-    # TODO: store pulse_options in workspace, allow for things like bounds and
-    # pulse parametrization
     fg_count = zeros(Int64, 2)
     if haskey(kwargs, :continue_from)
         @info "Continuing previous optimization"
@@ -126,6 +133,19 @@ function GrapeWrk(problem::QuantumControlBase.ControlProblem; verbose=false)
     J_parts = zeros(2)
     pulsevals_guess = copy(pulsevals)
     searchdirection = zeros(length(pulsevals))
+    upper_bounds = fill(get(kwargs, :upper_bound, Inf), length(pulsevals))
+    lower_bounds = fill(get(kwargs, :lower_bound, -Inf), length(pulsevals))
+    for (l, control) in enumerate(controls)
+        options = get(pulse_options, control, Dict())
+        if haskey(options, :upper_bounds)
+            ub = @view upper_bounds[l:length(controls):end]
+            ub .= options[:upper_bounds]
+        end
+        if haskey(options, :lower_bounds)
+            lb = @view lower_bounds[l:length(controls):end]
+            lb .= options[:lower_bounds]
+        end
+    end
     alpha = 0.0
     dummy_vals = IdDict(control => 1.0 for (i, control) in enumerate(controls))
     fw_storage = [init_storage(obj.initial_state, tlist) for obj in objectives]
@@ -198,8 +218,11 @@ function GrapeWrk(problem::QuantumControlBase.ControlProblem; verbose=false)
         grad_J_a,
         J_parts,
         searchdirection,
+        upper_bounds,
+        lower_bounds,
         alpha,
         fg_count,
+        pulse_options,
         result,
         chi_states,
         tau_grads,

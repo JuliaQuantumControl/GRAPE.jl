@@ -57,6 +57,21 @@ arguments used in the instantiation of `problem`.
 * `lambda_a=1`: A weight for the running cost `J_a`.
 * `grad_J_a`: A function to calculate the gradient of `J_a`. If not given, it
   will be automatically determined.
+* `upper_bound`: An upper bound for the value of any optimized control.
+  Time-dependent upper bounds can be specified via `pulse_options`.
+* `lower_bound`: A lower bound for the value of any optimized control.
+  Time-dependent lower bounds can be specified via `pulse_options`.
+* `pulse_options`: A dictionary that maps every control (as obtained by
+  [`get_controls`](@ref
+  QuantumControlBase.QuantumPropagators.Controls.get_controls) from the
+  `problem.objectives`) to a dict with the following possible keys:
+
+  - `:upper_bounds`: A vector of upper bound values, one for each intervals of
+    the time grid. Values of `Inf` indicate an unconstrained upper bound for
+    that time interval, respectively the global `upper_bound`, if given.
+  - `:lower_bounds`: A vector of lower bound values. Values of `-Inf` indicate
+    an unconstrained lower bound for that time interval,
+
 * `update_hook`: Not implemented
 * `info_hook`: A function that receives the same arguments as `update_hook`, in
   order to write information about the current iteration to the screen or to a

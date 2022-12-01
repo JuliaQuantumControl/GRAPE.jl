@@ -10,7 +10,6 @@ function run_optimizer(optimizer::LBFGSB.L_BFGS_B, wrk, fg!, info_hook, check_co
     x = wrk.pulsevals
     n = length(x)
     obj = optimizer
-    bounds = zeros(3, n) # TODO: allow the problem to specify constraints
     f = 0.0
     message = "n/a"
     # clean up
@@ -27,9 +26,21 @@ function run_optimizer(optimizer::LBFGSB.L_BFGS_B, wrk, fg!, info_hook, check_co
     fill!(obj.u, zero(Cdouble))
     # set bounds
     for i = 1:n
-        obj.nbd[i] = bounds[1, i]
-        obj.l[i] = bounds[2, i]
-        obj.u[i] = bounds[3, i]
+        obj.nbd[i] = 0
+        obj.l[i] = 0.0
+        obj.u[i] = 0.0
+        if wrk.lower_bounds[i] > -Inf
+            obj.nbd[i] += 1
+            obj.l[i] = wrk.lower_bounds[i]
+        end
+        if wrk.upper_bounds[i] > -Inf
+            if obj.nbd[i] == 1
+                obj.nbd[i] = 2  # lower and upper bound
+            else
+                obj.nbd[i] = 3  # upper bound only
+            end
+            obj.u[i] = wrk.upper_bounds[i]
+        end
     end
     # start
     obj.task[1:5] = b"START"
