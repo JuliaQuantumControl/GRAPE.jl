@@ -1,7 +1,7 @@
 import QuantumControlBase
 using QuantumControlBase.QuantumPropagators: init_storage, init_prop
 using QuantumControlBase.QuantumPropagators.Controls: get_controls, discretize_on_midpoints
-using QuantumControlBase: GradVector, GradGenerator
+using QuantumControlBase: GradVector, GradGenerator, get_control_derivs
 using ConcreteStructs
 
 # GRAPE workspace (for internal use)
@@ -24,23 +24,29 @@ using ConcreteStructs
 
     pulsevals::Vector{Float64}
 
-    gradient::Vector{Float64}  # total gradient for guess in iterations
+    # total gradient for guess in iterations
+    gradient::Vector{Float64}
 
-    grad_J_T::Vector{Float64}  # storage for current final time gradient
+    # storage for current final time gradient
+    grad_J_T::Vector{Float64}
 
-    grad_J_a::Vector{Float64}  # storage for current running cost gradient
+    # storage for current running cost gradient
+    grad_J_a::Vector{Float64}
 
-    J_parts::Vector{Float64} # two-component vector [J_T, J_a]
+    # two-component vector [J_T, J_a]
+    J_parts::Vector{Float64}
 
-    searchdirection::Vector{Float64}  # search-direction for guess in iterations
+    # search-direction for guess in iterations
+    searchdirection::Vector{Float64}
 
-    upper_bounds::Vector{Float64}  # Upper bound for every `pulsevals`,
-    # +Inf indicates no bound
+    # Upper bound for every `pulsevals`, +Inf indicates no bound
+    upper_bounds::Vector{Float64}
 
-    lower_bounds::Vector{Float64}  # Upper bound for every `pulsevals`,
-    # -Inf indicates no bound
+    # Upper bound for every `pulsevals`, -Inf indicates no bound
+    lower_bounds::Vector{Float64}
 
-    alpha::Float64  # the step width in the search direction
+    # the step width in the search direction
+    alpha::Float64
 
     fg_count::Vector{Int64}
 
@@ -59,13 +65,35 @@ using ConcreteStructs
     tau_grads::Vector{Matrix{ComplexF64}}
 
     # dynamical generator for grad-bw-propagation, time-dependent
+    # gradient_method=:gradgen only
     gradgen
 
-    fw_storage # backward storage array (per objective)
+    # backward storage array (per objective)
+    fw_storage
 
-    fw_propagators # for normal forward propagation
+    # for normal forward propagation
+    fw_propagators
 
-    bw_grad_propagators  # for gradient backward propagation
+    # for gradient backward propagation
+    # gradient_method=:gradgen only
+    bw_grad_propagators
+
+    # for normal backward propagation
+    # gradient_method=:taylor only
+    bw_propagators
+
+    # evaluated Hₖ for a particular point in time
+    # gradient_method=:taylor only
+    taylor_genops
+
+    # derivatives ∂Hₖ/∂ϵₗ(t)
+    # gradient_method=:taylor only
+    control_derivs
+
+    # 5 temporary states for each objective and each control, for evaluating
+    # gradients via Taylor expansions
+    # gradient_method=:taylor only
+    taylor_grad_states
 
     use_threads::Bool
 
@@ -73,6 +101,7 @@ end
 
 function GrapeWrk(problem::QuantumControlBase.ControlProblem; verbose=false)
     use_threads = get(problem.kwargs, :use_threads, false)
+    gradient_method = get(problem.kwargs, :gradient_method, :gradgen)
     objectives = [obj for obj in problem.objectives]
     adjoint_objectives = [adjoint(obj) for obj in problem.objectives]
     controls = get_controls(objectives)
@@ -160,6 +189,16 @@ function GrapeWrk(problem::QuantumControlBase.ControlProblem; verbose=false)
             )
         ) for obj in objectives
     ]
+    bw_prop_method = [
+        Val(
+            QuantumControlBase.get_objective_prop_method(
+                obj,
+                :bw_prop_method,
+                :prop_method;
+                kwargs...
+            )
+        ) for obj in objectives
+    ]
     grad_prop_method = [
         Val(
             QuantumControlBase.get_objective_prop_method(
@@ -186,26 +225,58 @@ function GrapeWrk(problem::QuantumControlBase.ControlProblem; verbose=false)
             )
         end for (k, obj) in enumerate(objectives)
     ]
-    gradgen = [GradGenerator(obj.generator) for obj in adjoint_objectives]
     chi_states = [similar(obj.initial_state) for obj in objectives]
-    bw_grad_propagators = [
-        begin
-            verbose &&
-                @info "Initializing gradient bw-prop of objective $k with method $(grad_prop_method[k])"
-            χ̃ₖ = GradVector(chi_states[k], length(controls))
-            init_prop(
-                χ̃ₖ,
-                gradgen[k],
-                tlist;
-                method=grad_prop_method[k],
-                backward=true,
-                parameters=parameters,
-                kwargs...
-            )
-        end for k ∈ eachindex(objectives)
-    ]
     tau_grads::Vector{Matrix{ComplexF64}} =
         [zeros(ComplexF64, length(controls), length(tlist) - 1) for _ in objectives]
+    if gradient_method == :gradgen
+        gradgen = [GradGenerator(obj.generator) for obj in adjoint_objectives]
+        bw_grad_propagators = [
+            begin
+                verbose &&
+                    @info "Initializing gradient bw-prop of objective $k with method $(grad_prop_method[k])"
+                χ̃ₖ = GradVector(chi_states[k], length(controls))
+                init_prop(
+                    χ̃ₖ,
+                    gradgen[k],
+                    tlist;
+                    method=grad_prop_method[k],
+                    backward=true,
+                    parameters=parameters,
+                    kwargs...
+                )
+            end for k ∈ eachindex(objectives)
+        ]
+        bw_propagators = []
+        taylor_genops = []
+        control_derivs = []
+        taylor_grad_states = []
+    elseif gradient_method == :taylor
+        gradgen = []
+        bw_grad_propagators = []
+        bw_propagators = [
+            begin
+                verbose &&
+                    @info "Initializing bw-prop of objective $k with method $(bw_prop_method[k])"
+                init_prop(
+                    obj.initial_state,
+                    obj.generator,
+                    tlist;
+                    method=bw_prop_method[k],
+                    backward=true,
+                    parameters=parameters,
+                    kwargs...
+                )
+            end for (k, obj) in enumerate(adjoint_objectives)
+        ]
+        taylor_genops = [evaluate(obj.generator, tlist, 1) for obj in adjoint_objectives]
+        control_derivs = [get_control_derivs(obj.generator, controls) for obj in objectives]
+        taylor_grad_states = [
+            Tuple(similar(objectives[k].initial_state) for _ = 1:5) for
+            l = 1:length(controls), k = 1:length(objectives)
+        ]
+    else
+        error("Invalid gradient_method=$(repr(gradient_method)) ∉ (:gradgen, :taylor)")
+    end
     GrapeWrk(
         objectives,
         adjoint_objectives,
@@ -230,6 +301,10 @@ function GrapeWrk(problem::QuantumControlBase.ControlProblem; verbose=false)
         fw_storage,
         fw_propagators,
         bw_grad_propagators,
+        bw_propagators,
+        taylor_genops,
+        control_derivs,
+        taylor_grad_states,
         use_threads
     )
 end

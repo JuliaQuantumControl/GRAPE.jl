@@ -12,6 +12,11 @@ include(joinpath(@__DIR__, "download_dumps.jl"))
 # Note: comment outer @testset to stop after first @safetestset failure
 @time @testset verbose = true "GRAPE.jl Package" begin
 
+    print("\n* Taylor Gradient (test_taylor_grad.jl):")
+    @time @safetestset "Taylor Gradient" begin
+        include("test_taylor_grad.jl")
+    end
+
     print("\n* Example 1 (examples/simple_state_to_state.jl):")
     @time @safetestset "Example 1" begin
         include(joinpath("examples", "simple_state_to_state.jl"))

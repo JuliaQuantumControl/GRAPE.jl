@@ -1,3 +1,5 @@
+using QuantumControlBase.QuantumPropagators.Generators: Operator
+using QuantumControlBase.QuantumPropagators.Controls: evaluate, evaluate!
 using QuantumControlBase.QuantumPropagators:
     prop_step!, write_to_storage!, get_from_storage!, set_state!, reinit_prop!
 using QuantumControlBase: resetgradvec!
@@ -54,6 +56,26 @@ arguments used in the instantiation of `problem`.
 * `J_a`: A function `J_a(pulsevals, tlist)` that evaluates running costs over
   the pulse values, where `pulsevals` are the vectorized values ``ϵ_{nl}``.
   If not given, the optimization will not include a running cost.
+* `gradient_method=:gradgen`: One of `:gradgen` (default) or `:taylor`.
+  With `gradient_method=:gradgen`, the gradient is calculated using
+  [QuantumGradientGenerators]
+  (https://github.com/JuliaQuantumControl/QuantumGradientGenerators.jl).
+  With `gradient_method=:taylor`, it is evaluated via a Taylor series, see
+  Eq. (20) in Kuprov and Rogers,  J. Chem. Phys. 131, 234108 (2009).
+* `taylor_grad_max_order=100`: If given with `gradient_method=:taylor`, the
+  maximum number of terms in the Taylor series. If
+  `taylor_grad_check_convergence=true` (default), if the Taylor series does not
+  convergence within the given number of terms, throw an an error. With
+  `taylor_grad_check_convergence=true`, this is the exact order of the Taylor
+  series.
+* `taylor_grad_tolerance=1e-16`: If given with `gradient_method=:taylor` and
+  `taylor_grad_check_convergence=true`, stop the Taylor series when the norm of
+  the term falls below the given tolerance. Ignored if
+  `taylor_grad_check_convergence=false`.
+* `taylor_grad_check_convergence=true`: If given as `true` (default), check the
+  convergence after each term in the Taylor series an stop as soon as the norm
+  of the term drops below the given number. If `false`, stop after exactly
+  `taylor_grad_max_order` terms.
 * `lambda_a=1`: A weight for the running cost `J_a`.
 * `grad_J_a`: A function to calculate the gradient of `J_a`. If not given, it
   will be automatically determined.
@@ -112,7 +134,7 @@ determined by the first available item of the following:
 
 The propagation method for the backward propagation is determined similarly,
 but with `bw_prop_method` instead of `fw_prop_method`. The propagation method
-for the forward propagation of the extended gradient vector for each objective
+for the backward propagation of the extended gradient vector for each objective
 is determined from `grad_prop_method`, `fw_prop_method`, `prop_method` in order
 of precedence.
 """
@@ -124,6 +146,11 @@ function optimize_grape(problem)
     info_hook = get(problem.kwargs, :info_hook, print_table)
     check_convergence! = get(problem.kwargs, :check_convergence, res -> res)
     verbose = get(problem.kwargs, :verbose, false)
+    gradient_method = get(problem.kwargs, :gradient_method, :gradgen)
+    taylor_grad_max_order = get(problem.kwargs, :taylor_grad_max_order, 100)
+    taylor_grad_tolerance = get(problem.kwargs, :taylor_grad_tolerance, 1e-16)
+    taylor_grad_check_convergence =
+        get(problem.kwargs, :taylor_grad_check_convergence, true)
 
     wrk = GrapeWrk(problem; verbose)
 
@@ -192,7 +219,7 @@ function optimize_grape(problem)
     # Calculate the functional and the gradient G ≡ ∇J_T
     # Side-effects:
     # as in f(...); wrk.grad_J_T, wrk.grad_J_a
-    function fg!(F, G, pulsevals)
+    function fg_gradgen!(F, G, pulsevals)
 
         if isnothing(G)  # functional only
             return f(F, G, pulsevals)
@@ -233,8 +260,88 @@ function optimize_grape(problem)
 
     end
 
+    # Calculate the functional and the gradient G ≡ ∇J_T
+    # Side-effects:
+    # as in f(...); wrk.grad_J_T, wrk.grad_J_a
+    function fg_taylor!(F, G, pulsevals)
+
+        if isnothing(G)  # functional only
+            return f(F, G, pulsevals)
+        end
+        wrk.result.fg_calls += 1
+        wrk.fg_count[1] += 1
+
+        # forward propagation and storage of states
+        J_val_guess = sum(wrk.J_parts)
+        J_val = f(J_val_guess, nothing, pulsevals; storage=Φ, count_call=false)
+
+        # backward propagation of χ-state
+        Ψ = [p.state for p ∈ wrk.fw_propagators]
+        chi!(χ, Ψ, wrk.objectives; τ=τ)  # τ from f(...)
+        @threadsif wrk.use_threads for k = 1:N
+            local Ψₖ = wrk.fw_propagators[k].state
+            reinit_prop!(wrk.bw_propagators[k], χ[k]; transform_control_ranges)
+            local χₖ = wrk.bw_propagators[k].state
+            local Hₖ⁺ = wrk.adjoint_objectives[k].generator
+            local Hₖₙ⁺ = wrk.taylor_genops[k]
+            for n = N_T:-1:1  # N_T is the number of time slices
+                # TODO: It would be cleaner to encapsulate this in a
+                # propagator-like interface that can reuse the gradgen
+                # structure instead of the taylor_genops, control_derivs, and
+                # taylor_grad_states in wrk
+                get_from_storage!(Ψₖ, Φ[k], n)
+                for l = 1:L
+                    local μₖₗ = wrk.control_derivs[k][l]
+                    if isnothing(μₖₗ)
+                        ∇τ[k][l, n] = 0.0
+                    else
+                        local ϵₙ⁽ⁱ⁾ = @view pulsevals[(n-1)*L+1:n*L]
+                        local vals_dict = IdDict(
+                            control => val for (control, val) ∈ zip(wrk.controls, ϵₙ⁽ⁱ⁾)
+                        )
+                        local μₗₖₙ = evaluate(μₖₗ, tlist, n; vals_dict)
+                        evaluate!(Hₖₙ⁺, Hₖ⁺, tlist, n; vals_dict)
+                        local χ̃ₗₖ = wrk.taylor_grad_states[l, k][1]
+                        local ϕ_temp = wrk.taylor_grad_states[l, k][2:5]
+                        local dt = tlist[n] - tlist[n+1]
+                        @assert dt < 0.0
+                        taylor_grad_step!(
+                            χ̃ₗₖ,
+                            χₖ,
+                            Hₖₙ⁺,
+                            μₗₖₙ,
+                            dt,
+                            ϕ_temp;
+                            check_convergence=taylor_grad_check_convergence,
+                            max_order=taylor_grad_max_order,
+                            tolerance=taylor_grad_tolerance
+                        )
+                        ∇τ[k][l, n] = dot(χ̃ₗₖ, Ψₖ)
+                    end
+                end
+                χₖ = prop_step!(wrk.bw_propagators[k])
+            end
+        end
+
+        _grad_J_T_via_chi!(∇J_T, τ, ∇τ)
+        copyto!(G, ∇J_T)
+        if !isnothing(grad_J_a!)
+            grad_J_a!(∇J_a, pulsevals, tlist)
+            axpy!(λₐ, ∇J_a, G)
+        end
+        return J_val
+
+    end
+
     optimizer = get_optimizer(wrk)
-    run_optimizer(optimizer, wrk, fg!, info_hook, check_convergence!)
+    if gradient_method == :gradgen
+        run_optimizer(optimizer, wrk, fg_gradgen!, info_hook, check_convergence!)
+    elseif gradient_method == :taylor
+        run_optimizer(optimizer, wrk, fg_taylor!, info_hook, check_convergence!)
+    else
+        error("Invalid gradient_method=$(repr(gradient_method)) ∉ (:gradgen, :taylor)")
+    end
+
     finalize_result!(wrk)
     return wrk.result
 
@@ -366,6 +473,70 @@ function _grad_J_T_via_chi!(∇J_T, τ, ∇τ)
     end
     lmul!(-2, ∇J_T)
     return ∇J_T
+end
+
+
+# Evaluate `|Ψ̃̃ ≡ (∂ exp[-i Ĥ dt] / ∂ϵ) |Ψ⟩` with `μ̂ = ∂Ĥ/∂ϵ` via an expansion
+# into a Taylor series. See Kuprov and Rogers,  J. Chem. Phys. 131, 234108
+# (2009), Eq. (20). That equation can be rewritten in a recursive formula
+#
+# ```math
+# |Ψ̃⟩ = \sum_{n=1}^{∞} \frac{(-i dt)^n}{n!} |Φₙ⟩
+# ```
+#
+# with
+#
+# ```math
+# \begin{align}
+#   |Φ_1⟩ &= μ̂ |Ψ⟩                  \\
+#   |ϕ_n⟩ &= μ̂ Ĥⁿ⁻¹ |Ψ⟩ + Ĥ |Φₙ₋₁⟩
+# \end{align}
+# ```
+function taylor_grad_step!(
+    Ψ̃,
+    Ψ,
+    Ĥ,
+    μ̂,
+    dt,           # positive for fw-prop, negative for bw-prop
+    temp_states;  # need at least 4 states similar to Ψ
+    check_convergence=true,
+    max_order=100,
+    tolerance=1e-16
+)
+
+    ϕₙ, ϕₙ₋₁, ĤⁿΨ, Ĥⁿ⁻¹Ψ = temp_states
+    mul!(ϕₙ₋₁, μ̂, Ψ)
+    mul!(Ĥⁿ⁻¹Ψ, Ĥ, Ψ)
+    α = -1im * dt
+    mul!(Ψ̃, α, ϕₙ₋₁)
+
+    for n = 2:max_order
+
+        mul!(ϕₙ, Ĥ, ϕₙ₋₁)               # matrix-vector product
+        mul!(ϕₙ, μ̂, Ĥⁿ⁻¹Ψ, true, true)  # (added) matrix-vector product
+
+        α *= -1im * dt / n
+        mul!(Ψ̃, α, ϕₙ, true, true)      # (scaled) vector-vector sum
+        if check_convergence
+            r = abs(α * norm(ϕₙ))
+            if r < tolerance
+                return Ψ̃
+            end
+        end
+
+        mul!(ĤⁿΨ, Ĥ, Ĥⁿ⁻¹Ψ)             # matrix-vector product
+        ĤⁿΨ, Ĥⁿ⁻¹Ψ = Ĥⁿ⁻¹Ψ, ĤⁿΨ  # swap...
+        ϕₙ, ϕₙ₋₁ = ϕₙ₋₁, ϕₙ      # .... without copy
+
+    end
+
+    if check_convergence && max_order > 1
+        # should have returned inside the loop
+        error("taylor_grad_step! did not converge within $max_order iterations")
+    else
+        return Ψ̃
+    end
+
 end
 
 
