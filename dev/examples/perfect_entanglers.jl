@@ -207,7 +207,7 @@ U_opt = [basis[i] ⋅ opt_states[j] for i = 1:4, j = 1:4];
 
 objectives = [Objective(; initial_state=Ψ, generator=H) for Ψ ∈ basis];
 
-using QuantumControl.WeylChamber: D_PE, gate_concurrence, unitarity
+using TwoQubitWeylChamber: D_PE, gate_concurrence, unitarity
 using QuantumControl.Functionals: gate_functional
 
 J_T_PE = gate_functional(D_PE; unitarity_weight=0.5);
@@ -216,7 +216,7 @@ gate_concurrence(U_guess)
 
 @test gate_concurrence(U_guess) < 0.9
 
-using QuantumControl.WeylChamber: weyl_chamber_region
+using TwoQubitWeylChamber: weyl_chamber_region
 weyl_chamber_region(U_guess)
 
 @test weyl_chamber_region(U_guess) == "W0*"
