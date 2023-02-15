@@ -181,10 +181,10 @@ using GRAPELinesearchAnalysis
 
 opt_result_LBFGSB = @optimize_or_load(
     datadir("TLS", "opt_result_LBFGSB.jld2"),
-    problem,
-    method = :grape,
-    force = true,
-    info_hook = chain_infohooks(
+    problem;
+    method=:grape,
+    force=true,
+    info_hook=(
         GRAPELinesearchAnalysis.plot_linesearch(datadir("TLS", "Linesearch", "LBFGSB")),
         QuantumControl.GRAPE.print_table,
     )
@@ -232,14 +232,14 @@ import LineSearches
 
 opt_result_OptimLBFGS = @optimize_or_load(
     datadir("TLS", "opt_result_OptimLBFGS.jld2"),
-    problem,
-    method = :grape,
-    force = true,
-    info_hook = chain_infohooks(
+    problem;
+    method=:grape,
+    force=true,
+    info_hook=(
         GRAPELinesearchAnalysis.plot_linesearch(datadir("TLS", "Linesearch", "OptimLBFGS")),
         QuantumControl.GRAPE.print_table,
     ),
-    optimizer = Optim.LBFGS(;
+    optimizer=Optim.LBFGS(;
         alphaguess=LineSearches.InitialStatic(alpha=0.2),
         linesearch=LineSearches.HagerZhang(alphamax=2.0)
     )

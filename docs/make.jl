@@ -1,3 +1,4 @@
+using QuantumControlBase
 using GRAPE
 using Pkg
 using Documenter

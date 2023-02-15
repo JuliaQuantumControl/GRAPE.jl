@@ -376,7 +376,7 @@ objectives = [Objective(; initial_state=Ψ, generator=H) for Ψ ∈ basis];
 # we add a unitarity measure  to $D_{PE}$. The two terms are added with equal
 # weight.
 
-using QuantumControl.WeylChamber: D_PE, gate_concurrence, unitarity
+using TwoQubitWeylChamber: D_PE, gate_concurrence, unitarity
 using QuantumControl.Functionals: gate_functional
 
 J_T_PE = gate_functional(D_PE; unitarity_weight=0.5);
@@ -396,7 +396,7 @@ gate_concurrence(U_guess)
 # We find that the guess pulse produces a gate in the `W0*` region of the Weyl
 # chamber:
 
-using QuantumControl.WeylChamber: weyl_chamber_region
+using TwoQubitWeylChamber: weyl_chamber_region
 weyl_chamber_region(U_guess)
 
 #jl @test weyl_chamber_region(U_guess) == "W0*"

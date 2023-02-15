@@ -1,23 +1,23 @@
 using QuantumControlBase.QuantumPropagators.Generators: Operator
 using QuantumControlBase.QuantumPropagators.Controls: evaluate, evaluate!
-using QuantumControlBase.QuantumPropagators:
-    prop_step!, write_to_storage!, get_from_storage!, set_state!, reinit_prop!
-using QuantumControlBase: resetgradvec!
-using QuantumControlBase.Functionals: make_chi, make_grad_J_a
-using QuantumControlBase.ConditionalThreads: @threadsif
+using QuantumControlBase.QuantumPropagators: prop_step!, set_state!, reinit_prop!
+using QuantumControlBase.QuantumPropagators.Storage: write_to_storage!, get_from_storage!
+using QuantumGradientGenerators: resetgradvec!
+using QuantumControlBase: make_chi, make_grad_J_a
+using QuantumControlBase: @threadsif
 using LinearAlgebra
 using Printf
 
+import QuantumControlBase: optimize
 
-@doc raw"""Optimize a control problem using GRAPE.
-
+@doc raw"""
 ```julia
-result = optimize_grape(problem)
+result = optimize(problem; method=:GRAPE, kwargs...)
 ```
 
 optimizes the given
-control [`problem`](@ref QuantumControlBase.ControlProblem),
-by minimizing the functional
+control [`problem`](@ref QuantumControlBase.ControlProblem) via the GRAPE
+method, by minimizing the functional
 
 ```math
 J(\{ϵ_{ln}\}) = J_T(\{|ϕ_k(T)⟩\}) + λ_a J_a(\{ϵ_{ln}\})
@@ -29,12 +29,6 @@ pulse values ``ϵ_{nl}`` of the l'th control discretized on the n'th interval of
 the time grid.
 
 Returns a [`GrapeResult`](@ref).
-
-
-!!! note
-
-    It is recommended to call [`optimize`](@ref QuantumControlBase.optimize)
-    with `method=:GRAPE` instead of calling `optimize_grape` directly.
 
 Keyword arguments that control the optimization are taken from the keyword
 arguments used in the instantiation of `problem`.
@@ -51,8 +45,8 @@ arguments used in the instantiation of `problem`.
 
 * `chi`: A function `chi!(χ, ϕ, objectives)` what receives a list `ϕ`
   of the forward propagated states and must set ``|χₖ⟩ = -∂J_T/∂⟨ϕₖ|``. If not
-  given, it will be automatically determined from `J_T` via [`make_chi`](@ref
-  QuantumControlBase.Functionals.make_chi) with the default parameters.
+  given, it will be automatically determined from `J_T` via [`make_chi`](@ref)
+  with the default parameters.
 * `J_a`: A function `J_a(pulsevals, tlist)` that evaluates running costs over
   the pulse values, where `pulsevals` are the vectorized values ``ϵ_{nl}``.
   If not given, the optimization will not include a running cost.
@@ -95,12 +89,12 @@ arguments used in the instantiation of `problem`.
     an unconstrained lower bound for that time interval,
 
 * `update_hook`: Not implemented
-* `info_hook`: A function that receives the same arguments as `update_hook`, in
-  order to write information about the current iteration to the screen or to a
-  file. The default `info_hook` prints a table with convergence information to
-  the screen. Runs after `update_hook`. The `info_hook` function may return a
-  tuple, which is stored in the list of `records` inside the
-  [`GrapeResult`](@ref) object.
+* `info_hook`: A function (or tuple of functions) that receives the same
+  arguments as `update_hook`, in order to write information about the current
+  iteration to the screen or to a file. The default `info_hook` prints a table
+  with convergence information to the screen. Runs after `update_hook`. The
+  `info_hook` function may return a tuple, which is stored in the list of
+  `records` inside the [`GrapeResult`](@ref) object.
 * `check_convergence`: A function to check whether convergence has been
   reached. Receives a [`GrapeResult`](@ref) object `result`, and should set
   `result.converged` to `true` and `result.message` to an appropriate string in
@@ -137,6 +131,12 @@ but with `bw_prop_method` instead of `fw_prop_method`. The propagation method
 for the backward propagation of the extended gradient vector for each objective
 is determined from `grad_prop_method`, `fw_prop_method`, `prop_method` in order
 of precedence.
+"""
+optimize(problem, method::Val{:GRAPE}) = optimize_grape(problem)
+optimize(problem, method::Val{:grape}) = optimize_grape(problem)
+
+"""
+See [`optimize(problem; method=:GRAPE, kwargs...)`](@ref optimize(::Any, ::Val{:GRAPE})).
 """
 function optimize_grape(problem)
     update_hook! = get(problem.kwargs, :update_hook, (args...) -> nothing)
