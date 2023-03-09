@@ -4,6 +4,19 @@ CurrentModule = GRAPE
 
 # GRAPE.jl
 
+```@eval
+using Markdown
+using Pkg
+
+VERSION = Pkg.dependencies()[Base.UUID("6b52fcaf-80fe-489a-93e9-9f92080510be")].version
+
+github_badge = "[![Github](https://img.shields.io/badge/JuliaQuantumControl-GRAPE.jl-blue.svg?logo=github)](https://github.com/JuliaQuantumControl/GRAPE.jl)"
+
+version_badge = "![v$VERSION](https://img.shields.io/badge/version-v$VERSION-green.svg)"
+
+Markdown.parse("$github_badge $version_badge")
+```
+
 Implementation of ([second-order](https://arxiv.org/abs/1102.4096)) [GRadient Ascent Pulse Engineering](https://www.department.ch.tum.de/fileadmin/w00bzu/ocnmr/94_GRAPE_JMR_05_.pdf) (GRAPE) extended with automatic differentiation.
 
 Part of [`QuantumControl.jl`](https://github.com/JuliaQuantumControl/QuantumControl.jl#readme) and the [JuliaQuantumControl](https://github.com/JuliaQuantumControl) organization.
