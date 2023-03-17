@@ -1,6 +1,8 @@
 # generate examples
 import Literate
 
+with_suffix(filename, suffix) = string(splitext(filename)[1], suffix)
+
 println("Start generating Literate.jl examples")
 
 EXAMPLEDIR = joinpath(@__DIR__, "..", "examples")
@@ -13,7 +15,12 @@ for example in readdir(EXAMPLEDIR)
         code = strip(read(script, String))
         mdpost(str) = replace(str, "@__CODE__" => code)
         Literate.markdown(input, GENERATEDDIR, postprocess=mdpost)
-        Literate.notebook(input, GENERATEDDIR, execute=true)
+        nb_file = with_suffix(script, ".ipynb")
+        if !isfile(nb_file)
+            Literate.notebook(input, GENERATEDDIR, execute=true)
+        else
+            @info "$nb_file already exists. Skip regenerating"
+        end
     elseif any(endswith.(example, [".png", ".jpg", ".gif"]))
         cp(joinpath(EXAMPLEDIR, example), joinpath(GENERATEDDIR, example); force=true)
     else

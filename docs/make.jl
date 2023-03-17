@@ -2,6 +2,7 @@ using QuantumControlBase
 using GRAPE
 using Pkg
 using Documenter
+using QuantumCitations
 using Plots
 
 gr()
@@ -23,15 +24,19 @@ GITHUB = "https://github.com/JuliaQuantumControl/GRAPE.jl"
 
 println("Starting makedocs")
 
-makedocs(;
+bib = CitationBibliography(joinpath(@__DIR__, "src", "refs.bib"); style=:numeric)
+
+makedocs(
+    bib;
     modules=[GRAPE],
     authors=AUTHORS,
     repo="$GITHUB/blob/{commit}{path}#{line}",
     sitename="GRAPE.jl",
+    doctest=false,  # we have no doctests (but trying to run them is slow)
     format=Documenter.HTML(;
         prettyurls = true,
         canonical  = "https://juliaquantumcontrol.github.io/GRAPE.jl",
-        assets     = String[],
+        assets     = String["assets/citations.css"],
         mathengine = KaTeX(),
         footer     = "[$NAME.jl]($GITHUB) v$VERSION docs powered by [Documenter.jl](https://github.com/JuliaDocs/Documenter.jl)."
     ),
@@ -44,6 +49,7 @@ makedocs(;
             "Example 2 (PE)" => "examples/perfect_entanglers.md",
         ],
         "API" => "api.md",
+        "References" => "references.md",
     ]
 )
 

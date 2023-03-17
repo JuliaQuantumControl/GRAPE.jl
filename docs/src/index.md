@@ -17,7 +17,7 @@ version_badge = "![v$VERSION](https://img.shields.io/badge/version-v$VERSION-gre
 Markdown.parse("$github_badge $version_badge")
 ```
 
-Implementation of ([second-order](https://arxiv.org/abs/1102.4096)) [GRadient Ascent Pulse Engineering](https://www.department.ch.tum.de/fileadmin/w00bzu/ocnmr/94_GRAPE_JMR_05_.pdf) (GRAPE) extended with automatic differentiation.
+Implementation of ([second-order](https://arxiv.org/abs/1102.4096)) GRadient Ascent Pulse Engineering (GRAPE) [KhanejaJMR2005](@cite)[FouquieresJMR2011](@cite) extended with semi-automatic differentiation [GoerzQ2022](@cite).
 
 Part of [`QuantumControl.jl`](https://github.com/JuliaQuantumControl/QuantumControl.jl#readme) and the [JuliaQuantumControl](https://github.com/JuliaQuantumControl) organization.
 

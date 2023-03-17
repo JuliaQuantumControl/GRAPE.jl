@@ -55,7 +55,8 @@ arguments used in the instantiation of `problem`.
   [QuantumGradientGenerators]
   (https://github.com/JuliaQuantumControl/QuantumGradientGenerators.jl).
   With `gradient_method=:taylor`, it is evaluated via a Taylor series, see
-  Eq. (20) in Kuprov and Rogers,  J. Chem. Phys. 131, 234108 (2009).
+  Eq. (20) in Kuprov and Rogers,  J. Chem. Phys. 131, 234108
+  (2009) [KuprovJCP09](@cite).
 * `taylor_grad_max_order=100`: If given with `gradient_method=:taylor`, the
   maximum number of terms in the Taylor series. If
   `taylor_grad_check_convergence=true` (default), if the Taylor series does not

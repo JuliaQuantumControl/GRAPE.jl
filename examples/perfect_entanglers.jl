@@ -47,7 +47,6 @@
 
 using DrWatson
 @quickactivate "GRAPETests"
-using QuantumControl
 #jl using Test; println("")
 
 # This example illustrates the optimization towards a perfectly entangling
@@ -57,13 +56,14 @@ using QuantumControl
 # 1. The direct optimization for a ``\Op{O} = \sqrt{\text{iSWAP}}`` gate with a
 #    standard square-modulus functional
 # 2. The optimization towards a perfect entangler using the functional
-#    developed in Goerz et al., Phys. Rev. A 91, 062307 (2015)
+#    developed in Goerz *et al.*, Phys. Rev. A 91, 062307
+#    (2015) [GoerzPRA2015](@cite)
 # 3. The direct maximization of of the gate concurrence
 #
 # While the first example evaluates the gradient of the optimization functional
 # analytically, the latter two are examples for the use of automatic
 # differentiation, or more specifically semi-automatic differentiation, as
-# developed in Goerz et al., arXiv:2205.15044. The optimization of the gate
+# developed in [GoerzQ2022](@citet). The optimization of the gate
 # concurrence specifically illustrates the optimization of a functional that is
 # inherently non-analytical.
 
@@ -77,8 +77,8 @@ const MHz = 0.001GHz
 const ns = 1.0
 const μs = 1000ns;
 
-# The Hamiltonian and parameter are taken from Goerz et. al., Phys. Rev. A 91,
-# 062307 (2015)., cf. Table 1 in that Reference.
+# The Hamiltonian and parameters are taken from
+# Ref. [GoerzPRA2015; Table 1](@cite).
 
 ⊗ = kron
 const 𝕚 = 1im
@@ -86,6 +86,8 @@ const N = 6  # levels per transmon
 
 using LinearAlgebra
 using SparseArrays
+using QuantumControl
+
 
 function transmon_hamiltonian(;
     Ωre,
@@ -313,7 +315,7 @@ problem = ControlProblem(
 
 #-
 
-opt_result = @optimize_or_load(datadir("GATE_OCT.jld2"), problem; method=:GRAPE, force=true);
+opt_result = @optimize_or_load(datadir("GATE_OCT.jld2"), problem; method=:GRAPE);
 #-
 opt_result
 
@@ -484,7 +486,7 @@ problem = ControlProblem(
 
 # With this, we can easily find a solution to the control problem:
 
-opt_result = @optimize_or_load(datadir("PE_OCT.jld2"), problem; method=:GRAPE, force=true);
+opt_result = @optimize_or_load(datadir("PE_OCT.jld2"), problem; method=:GRAPE);
 #-
 opt_result
 
@@ -529,8 +531,8 @@ gate_concurrence(U_opt)
 # indirectly via a geometric function in the Weyl chamber. The entire reason
 # that perfect entangler functional was formulated is because calculating the
 # gate concurrence directly involves the eigenvalues of the unitary, see
-# Kraus, Cirac, Phys. Rev. A 63, 062309 (2001) and
-# Childs et al., PRA 68, 052311 (2003), which are inherently non-analytic.
+# [KrausPRA2001](@citet) and [ChildsPRA2003](@citet), which are inherently
+# non-analytic.
 
 # However, since we are able to obtain gradient from automatic differentiation,
 # this is no longer an insurmountable obstacle
@@ -547,15 +549,14 @@ J_T_C = U -> 0.5 * (1 - gate_concurrence(U)) + 0.5 * (1 - unitarity(U));
 # ``|χ_k⟩ = -\frac{∂}{∂⟨ϕ_k|} J_T`` of the backward-propagation via the
 # `make_gate_chi` routine.
 
-# Running the optimization, we again are able to find a perfect entangler.
+# Running this, we again are able to find a perfect entangler.
 
 opt_result_direct = @optimize_or_load(
     datadir("PE_OCT_direct.jld2"),
     problem;
     method=:GRAPE,
     J_T=gate_functional(J_T_C),
-    chi=make_gate_chi(J_T_C, objectives),
-    force=true
+    chi=make_gate_chi(J_T_C, objectives)
 );
 #-
 opt_result_direct
