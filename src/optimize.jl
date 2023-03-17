@@ -334,12 +334,19 @@ function optimize_grape(problem)
     end
 
     optimizer = get_optimizer(wrk)
-    if gradient_method == :gradgen
-        run_optimizer(optimizer, wrk, fg_gradgen!, info_hook, check_convergence!)
-    elseif gradient_method == :taylor
-        run_optimizer(optimizer, wrk, fg_taylor!, info_hook, check_convergence!)
-    else
-        error("Invalid gradient_method=$(repr(gradient_method)) ∉ (:gradgen, :taylor)")
+    try
+        if gradient_method == :gradgen
+            run_optimizer(optimizer, wrk, fg_gradgen!, info_hook, check_convergence!)
+        elseif gradient_method == :taylor
+            run_optimizer(optimizer, wrk, fg_taylor!, info_hook, check_convergence!)
+        else
+            error("Invalid gradient_method=$(repr(gradient_method)) ∉ (:gradgen, :taylor)")
+        end
+    catch exc
+        # Primarily, this is intended to catch Ctrl-C in interactive
+        # optimizations
+        exc_msg = sprint(showerror, exc)
+        wrk.result.message = "Exception: $exc_msg"
     end
 
     finalize_result!(wrk)
