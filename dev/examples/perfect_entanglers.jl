@@ -1,6 +1,5 @@
 using DrWatson
 @quickactivate "GRAPETests"
-using QuantumControl
 using Test; println("")
 
 const GHz = 2π
@@ -14,6 +13,8 @@ const N = 6  # levels per transmon
 
 using LinearAlgebra
 using SparseArrays
+using QuantumControl
+
 
 function transmon_hamiltonian(;
     Ωre,
@@ -180,7 +181,7 @@ problem = ControlProblem(
     use_threads=true,
 );
 
-opt_result = @optimize_or_load(datadir("GATE_OCT.jld2"), problem; method=:GRAPE, force=true);
+opt_result = @optimize_or_load(datadir("GATE_OCT.jld2"), problem; method=:GRAPE);
 
 opt_result
 
@@ -258,7 +259,7 @@ problem = ControlProblem(
     use_threads=true,
 );
 
-opt_result = @optimize_or_load(datadir("PE_OCT.jld2"), problem; method=:GRAPE, force=true);
+opt_result = @optimize_or_load(datadir("PE_OCT.jld2"), problem; method=:GRAPE);
 
 opt_result
 
@@ -292,8 +293,7 @@ opt_result_direct = @optimize_or_load(
     problem;
     method=:GRAPE,
     J_T=gate_functional(J_T_C),
-    chi=make_gate_chi(J_T_C, objectives),
-    force=true
+    chi=make_gate_chi(J_T_C, objectives)
 );
 
 opt_result_direct
