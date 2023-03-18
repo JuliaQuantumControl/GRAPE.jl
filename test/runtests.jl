@@ -12,6 +12,11 @@ include(joinpath(@__DIR__, "download_dumps.jl"))
 # Note: comment outer @testset to stop after first @safetestset failure
 @time @testset verbose = true "GRAPE.jl Package" begin
 
+    print("\n* Pulse Optimization (test_pulse_optimization.jl)")
+    @time @safetestset "Pulse Optimization" begin
+        include("test_pulse_optimization.jl")
+    end
+
     print("\n* Taylor Gradient (test_taylor_grad.jl):")
     @time @safetestset "Taylor Gradient" begin
         include("test_taylor_grad.jl")
