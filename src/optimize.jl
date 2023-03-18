@@ -3,7 +3,7 @@ using QuantumControlBase.QuantumPropagators.Controls: evaluate, evaluate!
 using QuantumControlBase.QuantumPropagators: prop_step!, set_state!, reinit_prop!
 using QuantumControlBase.QuantumPropagators.Storage: write_to_storage!, get_from_storage!
 using QuantumGradientGenerators: resetgradvec!
-using QuantumControlBase: make_chi, make_grad_J_a
+using QuantumControlBase: make_chi, make_grad_J_a, set_atexit_save_optimization
 using QuantumControlBase: @threadsif
 using LinearAlgebra
 using Printf
@@ -335,6 +335,17 @@ function optimize_grape(problem)
     end
 
     optimizer = get_optimizer(wrk)
+    atexit_filename = get(problem.kwargs, :atexit_filename, nothing)
+    # atexit_filename is undocumented on purpose: this is considered a feature
+    # of @optimize_or_load
+    if !isnothing(atexit_filename)
+        set_atexit_save_optimization(atexit_filename, wrk.result)
+        if !isinteractive()
+            @info "Set callback to store result in $atexit_filename on unexpected exit."
+            # In interactive mode, `atexit` is very unlikely, and
+            # `InterruptException` is handles via try/catch instead.
+        end
+    end
     try
         if gradient_method == :gradgen
             run_optimizer(optimizer, wrk, fg_gradgen!, info_hook, check_convergence!)
@@ -345,12 +356,16 @@ function optimize_grape(problem)
         end
     catch exc
         # Primarily, this is intended to catch Ctrl-C in interactive
-        # optimizations
+        # optimizations (InterruptException)
         exc_msg = sprint(showerror, exc)
         wrk.result.message = "Exception: $exc_msg"
     end
 
     finalize_result!(wrk)
+    if !isnothing(atexit_filename)
+        popfirst!(Base.atexit_hooks)
+    end
+
     return wrk.result
 
 end
