@@ -107,6 +107,9 @@ function GrapeWrk(problem::QuantumControlBase.ControlProblem; verbose=false)
     objectives = [obj for obj in problem.objectives]
     adjoint_objectives = [adjoint(obj) for obj in problem.objectives]
     controls = get_controls(objectives)
+    if length(controls) == 0
+        error("no controls in objectives: cannot optimize")
+    end
     tlist = problem.tlist
     # interleave the pulse values as [ϵ₁(t̃₁), ϵ₂(t̃₁), ..., ϵ₁(t̃₂), ϵ₂(t̃₂), ...]
     # to allow access as reshape(pulsevals, L, :)[l, n] where l is the control
