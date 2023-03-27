@@ -1,5 +1,6 @@
-using DrWatson
-@quickactivate "GRAPETests"
+const PROJECTDIR = dirname(Base.active_project())
+projectdir(names...) = joinpath(PROJECTDIR, names...)
+datadir(names...) = projectdir("data", names...)
 
 using QuantumControl
 
@@ -94,14 +95,11 @@ opt_result_LBFGSB = @optimize_or_load(
     method=:grape,
     force=true,
     info_hook=(
-        GRAPELinesearchAnalysis.plot_linesearch(datadir("TLS", "Linesearch", "LBFGSB")),
         QuantumControl.GRAPE.print_table,
     )
 );
 
 @test opt_result_LBFGSB.J_T < 1e-3
-
-datadir("TLS", "Linesearch", "LBFGSB")
 
 opt_result_LBFGSB
 
@@ -125,7 +123,6 @@ opt_result_OptimLBFGS = @optimize_or_load(
     method=:grape,
     force=true,
     info_hook=(
-        GRAPELinesearchAnalysis.plot_linesearch(datadir("TLS", "Linesearch", "OptimLBFGS")),
         QuantumControl.GRAPE.print_table,
     ),
     optimizer=Optim.LBFGS(;

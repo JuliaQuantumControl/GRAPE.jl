@@ -1,5 +1,6 @@
-using DrWatson
-@quickactivate "GRAPETests"
+const PROJECTDIR = dirname(Base.active_project());
+projectdir(names...) = joinpath(PROJECTDIR, names...);
+datadir(names...) = projectdir("data", names...);
 using Test; println("")
 
 const GHz = 2π
@@ -286,7 +287,7 @@ gate_concurrence(U_opt)
 
 @test 1 - unitarity(U_opt) < 0.04
 
-J_T_C = U -> 0.5 * (1 - gate_concurrence(U)) + 0.5 * (1 - unitarity(U));
+J_T_C(U) = 0.5 * (1 - gate_concurrence(U)) + 0.5 * (1 - unitarity(U));
 
 opt_result_direct = @optimize_or_load(
     datadir("PE_OCT_direct.jld2"),
