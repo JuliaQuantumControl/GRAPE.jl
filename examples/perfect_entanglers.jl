@@ -45,8 +45,9 @@
 #nb # \newcommand{Im}[0]{\operatorname{Im}}
 #nb # $
 
-using DrWatson
-@quickactivate "GRAPETests"
+const PROJECTDIR = dirname(Base.active_project());
+projectdir(names...) = joinpath(PROJECTDIR, names...);
+datadir(names...) = projectdir("data", names...);
 #jl using Test; println("")
 
 # This example illustrates the optimization towards a perfectly entangling
@@ -541,7 +542,7 @@ gate_concurrence(U_opt)
 # concurrence and (as above) a unitarity measure to penalize loss of population
 # from the logical subspace:
 
-J_T_C = U -> 0.5 * (1 - gate_concurrence(U)) + 0.5 * (1 - unitarity(U));
+J_T_C(U) = 0.5 * (1 - gate_concurrence(U)) + 0.5 * (1 - unitarity(U));
 
 # In the optimization, we will convert this functional to one that takes the
 # propagated states as arguments (via the `gate_functional` routine).

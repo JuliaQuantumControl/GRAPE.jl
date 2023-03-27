@@ -45,9 +45,10 @@
 
 # This first example illustrates the basic use of the `GRAPE.jl` by solving a simple canonical optimization problem: the transfer of population in a two level system.
 
-using DrWatson
-@quickactivate "GRAPETests"
-#-
+const PROJECTDIR = dirname(Base.active_project())
+projectdir(names...) = joinpath(PROJECTDIR, names...)
+datadir(names...) = projectdir("data", names...)
+
 using QuantumControl
 
 #jl using Test
@@ -185,7 +186,8 @@ opt_result_LBFGSB = @optimize_or_load(
     method=:grape,
     force=true,
     info_hook=(
-        GRAPELinesearchAnalysis.plot_linesearch(datadir("TLS", "Linesearch", "LBFGSB")),
+        GRAPELinesearchAnalysis.plot_linesearch(datadir("TLS", "Linesearch", "LBFGSB")), #md
+        GRAPELinesearchAnalysis.plot_linesearch(datadir("TLS", "Linesearch", "LBFGSB")), #nb
         QuantumControl.GRAPE.print_table,
     )
 );
@@ -193,10 +195,8 @@ opt_result_LBFGSB = @optimize_or_load(
 #jl @test opt_result_LBFGSB.J_T < 1e-3
 #-
 
-# When going through this tutorial locally, the [generated images for the linesearch](https://github.com/JuliaQuantumControl/GRAPE.jl/tree/data-dump/TLS/Linesearch/LBFGSB) can be found in `docs/TLS/Linesearch/LBFGSB`.
+# When going through this tutorial locally, the [generated images for the linesearch](https://github.com/JuliaQuantumControl/GRAPE.jl/tree/data-dump/TLS/Linesearch/LBFGSB) can be found in `datadir("TLS", "Linesearch, "LBFGS")`
 
-datadir("TLS", "Linesearch", "LBFGSB")
-#-
 opt_result_LBFGSB
 
 # We can plot the optimized field:
@@ -236,7 +236,8 @@ opt_result_OptimLBFGS = @optimize_or_load(
     method=:grape,
     force=true,
     info_hook=(
-        GRAPELinesearchAnalysis.plot_linesearch(datadir("TLS", "Linesearch", "OptimLBFGS")),
+        GRAPELinesearchAnalysis.plot_linesearch(datadir("TLS", "Linesearch", "OptimLBFGS")), #md
+        GRAPELinesearchAnalysis.plot_linesearch(datadir("TLS", "Linesearch", "OptimLBFGS")), #nb
         QuantumControl.GRAPE.print_table,
     ),
     optimizer=Optim.LBFGS(;

@@ -8,7 +8,10 @@ using LiveServer: LiveServer, serve, servedocs as _servedocs
 using Term
 include(joinpath(@__DIR__, "clean.jl"))
 
-servedocs(; kwargs...) = _servedocs(; skip_dirs=["docs/src/examples"], kwargs...)
+function servedocs(; kwargs...)
+    clean()
+    _servedocs(; skip_dirs=["docs/src/examples"], kwargs...)
+end
 
 REPL_MESSAGE = """
 *******************************************************************************
