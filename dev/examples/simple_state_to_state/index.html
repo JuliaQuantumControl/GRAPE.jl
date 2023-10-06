@@ -27,7 +27,7 @@ Plots.default(
     plot(tlist, pulse, xlabel=&quot;time&quot;, ylabel=&quot;amplitude&quot;, legend=false)
 end
 
-plot_control(ϵ::T, tlist) where {T&lt;:Function} = plot_control([ϵ(t) for t in tlist], tlist);</code></pre><pre><code class="language-julia hljs">fig = plot_control(ϵ, tlist)</code></pre><img src="663e8c4d.svg" alt="Example block output"/><h2 id="Optimization-target"><a class="docs-heading-anchor" href="#Optimization-target">Optimization target</a><a id="Optimization-target-1"></a><a class="docs-heading-anchor-permalink" href="#Optimization-target" title="Permalink"></a></h2><p>First, we define a convenience function for the eigenstates.</p><pre><code class="language-julia hljs">function ket(label)
+plot_control(ϵ::T, tlist) where {T&lt;:Function} = plot_control([ϵ(t) for t in tlist], tlist);</code></pre><pre><code class="language-julia hljs">fig = plot_control(ϵ, tlist)</code></pre><img src="b0276d4f.svg" alt="Example block output"/><h2 id="Optimization-target"><a class="docs-heading-anchor" href="#Optimization-target">Optimization target</a><a id="Optimization-target-1"></a><a class="docs-heading-anchor-permalink" href="#Optimization-target" title="Permalink"></a></h2><p>First, we define a convenience function for the eigenstates.</p><pre><code class="language-julia hljs">function ket(label)
     result = Dict(&quot;0&quot; =&gt; Vector{ComplexF64}([1, 0]), &quot;1&quot; =&gt; Vector{ComplexF64}([0, 1]))
     return result[string(label)]
 end;</code></pre><p>The physical objective of our optimization is to transform the initial state <span>$\ket{0}$</span> into the target state <span>$\ket{1}$</span> under the time evolution induced by the Hamiltonian <span>$\op{H}(t)$</span>.</p><pre><code class="language-julia hljs">objectives = [Objective(initial_state=ket(0), generator=H, target_state=ket(1))];</code></pre><p>The full control problem includes this objective, information about the time grid for the dynamics, and the functional to be used (the square modulus of the overlap <span>$\tau$</span> with the target state in this case).</p><pre><code class="language-julia hljs">using QuantumControl.Functionals: J_T_sm
@@ -51,7 +51,7 @@ problem = ControlProblem(
  0.0  7.73456e-40  2.03206e-11  2.96638e-10     0.0485427  0.048541  0.048541</code></pre><pre><code class="language-julia hljs">function plot_population(pop0::Vector, pop1::Vector, tlist)
     fig = plot(tlist, pop0, label=&quot;0&quot;, xlabel=&quot;time&quot;, ylabel=&quot;population&quot;)
     plot!(fig, tlist, pop1; label=&quot;1&quot;)
-end;</code></pre><pre><code class="language-julia hljs">fig = plot_population(guess_dynamics[1, :], guess_dynamics[2, :], tlist)</code></pre><img src="f2dbc288.svg" alt="Example block output"/><h2 id="Optimization-with-LBFGSB"><a class="docs-heading-anchor" href="#Optimization-with-LBFGSB">Optimization with LBFGSB</a><a id="Optimization-with-LBFGSB-1"></a><a class="docs-heading-anchor-permalink" href="#Optimization-with-LBFGSB" title="Permalink"></a></h2><p>In the following we optimize the guess field <span>$\epsilon_{0}(t)$</span> such that the intended state-to-state transfer <span>$\ket{\Psi_{\init}} \rightarrow \ket{\Psi_{\tgt}}$</span> is solved.</p><p>The GRAPE package performs the optimization by calculating the gradient of <span>$J_T$</span> with respect to the values of the control field at each point in time. This gradient is then fed into a backend solver that calculates an appropriate update based on that gradient.</p><p>By default, this backend is <a href="https://github.com/Gnimuc/LBFGSB.jl">LBFGSB.jl</a>, a wrapper around the true and tested <a href="http://users.iems.northwestern.edu/%7Enocedal/lbfgsb.html">L-BFGS-B Fortran library</a>. L-BFGS-B is a pseudo-Hessian method: it efficiently estimates the second-order Hessian from the gradient information. The search direction determined from that Hessian dramatically improves convergence compared to using the gradient directly as a search direction. The L-BFGS-B method performs its own linesearch to determine how far to go in the search direction.</p><p>It can be quite instructive to see how the improvement in the pseudo-Hessian search direction compares to the gradient, how the linesearch finds an appropriate step width. For this purpose, we have a <a href="https://github.com/JuliaQuantumControl/GRAPELinesearchAnalysis.jl">GRAPELinesearchAnalysis</a> package that automatically generates plots in every iteration of the optimization showing the linesearch behavior</p><pre><code class="language-julia hljs">using GRAPELinesearchAnalysis</code></pre><p>We feed this into the optimization as part of the <code>info_hook</code>.</p><pre><code class="language-julia hljs">opt_result_LBFGSB = @optimize_or_load(
+end;</code></pre><pre><code class="language-julia hljs">fig = plot_population(guess_dynamics[1, :], guess_dynamics[2, :], tlist)</code></pre><img src="271aab65.svg" alt="Example block output"/><h2 id="Optimization-with-LBFGSB"><a class="docs-heading-anchor" href="#Optimization-with-LBFGSB">Optimization with LBFGSB</a><a id="Optimization-with-LBFGSB-1"></a><a class="docs-heading-anchor-permalink" href="#Optimization-with-LBFGSB" title="Permalink"></a></h2><p>In the following we optimize the guess field <span>$\epsilon_{0}(t)$</span> such that the intended state-to-state transfer <span>$\ket{\Psi_{\init}} \rightarrow \ket{\Psi_{\tgt}}$</span> is solved.</p><p>The GRAPE package performs the optimization by calculating the gradient of <span>$J_T$</span> with respect to the values of the control field at each point in time. This gradient is then fed into a backend solver that calculates an appropriate update based on that gradient.</p><p>By default, this backend is <a href="https://github.com/Gnimuc/LBFGSB.jl">LBFGSB.jl</a>, a wrapper around the true and tested <a href="http://users.iems.northwestern.edu/%7Enocedal/lbfgsb.html">L-BFGS-B Fortran library</a>. L-BFGS-B is a pseudo-Hessian method: it efficiently estimates the second-order Hessian from the gradient information. The search direction determined from that Hessian dramatically improves convergence compared to using the gradient directly as a search direction. The L-BFGS-B method performs its own linesearch to determine how far to go in the search direction.</p><p>It can be quite instructive to see how the improvement in the pseudo-Hessian search direction compares to the gradient, how the linesearch finds an appropriate step width. For this purpose, we have a <a href="https://github.com/JuliaQuantumControl/GRAPELinesearchAnalysis.jl">GRAPELinesearchAnalysis</a> package that automatically generates plots in every iteration of the optimization showing the linesearch behavior</p><pre><code class="language-julia hljs">using GRAPELinesearchAnalysis</code></pre><p>We feed this into the optimization as part of the <code>info_hook</code>.</p><pre><code class="language-julia hljs">opt_result_LBFGSB = @optimize_or_load(
     datadir(&quot;TLS&quot;, &quot;opt_result_LBFGSB.jld2&quot;),
     problem;
     method=:grape,
@@ -62,41 +62,41 @@ end;</code></pre><pre><code class="language-julia hljs">fig = plot_population(gu
     )
 );</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">[ Info: Set callback to store result in /home/runner/work/GRAPE.jl/GRAPE.jl/test/data/TLS/opt_result_LBFGSB.jld2 on unexpected exit.
  iter.        J_T     |∇J_T|       ΔJ_T   FG(F)    secs
-     0   9.51e-01   5.40e-02        n/a    1(0)     2.4
-     1   9.49e-01   5.55e-02  -2.95e-03    1(0)     0.4
+     0   9.51e-01   5.40e-02        n/a    1(0)     2.3
+     1   9.49e-01   5.55e-02  -2.95e-03    1(0)     0.3
      2   3.94e-02   6.30e-02  -9.09e-01    6(0)     1.2
-     3   1.65e-02   3.82e-02  -2.29e-02    2(0)     1.2
+     3   1.65e-02   3.82e-02  -2.29e-02    2(0)     1.1
      4   1.27e-02   3.35e-02  -3.84e-03    1(0)     1.1
      5   1.65e-05   1.31e-03  -1.27e-02    1(0)     1.1</code></pre><p>When going through this tutorial locally, the <a href="https://github.com/JuliaQuantumControl/GRAPE.jl/tree/data-dump/TLS/Linesearch/LBFGSB">generated images for the linesearch</a> can be found in <code>datadir(&quot;TLS&quot;, &quot;Linesearch, &quot;LBFGS&quot;)</code></p><pre><code class="language-julia hljs">opt_result_LBFGSB</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">GRAPE Optimization Result
 -------------------------
-- Started at 2023-10-06T17:21:55.390
+- Started at 2023-10-06T21:00:42.414
 - Number of objectives: 1
 - Number of iterations: 5
 - Number of pure func evals: 0
 - Number of func/grad evals: 12
 - Value of functional: 1.65005e-05
 - Reason for termination: J_T &lt; 10⁻³
-- Ended at 2023-10-06T17:22:03.893 (8 seconds, 503 milliseconds)
-</code></pre><p>We can plot the optimized field:</p><pre><code class="language-julia hljs">fig = plot_control(opt_result_LBFGSB.optimized_controls[1], tlist)</code></pre><img src="995534fd.svg" alt="Example block output"/><h2 id="Optimization-via-semi-automatic-differentiation"><a class="docs-heading-anchor" href="#Optimization-via-semi-automatic-differentiation">Optimization via semi-automatic differentiation</a><a id="Optimization-via-semi-automatic-differentiation-1"></a><a class="docs-heading-anchor-permalink" href="#Optimization-via-semi-automatic-differentiation" title="Permalink"></a></h2><p>Our GRAPE implementation includes the analytic gradient of the optimization functional <code>J_T_sm</code>. Thus, we only had to pass the functional itself to the optimization. More generally, for functionals where the analytic gradient is not known, semi-automatic differentiation can be used to determine it automatically. For illustration, we may re-run the optimization forgoing the known analytic gradient and instead using an automatically determined gradient.</p><p>As shown in Goerz et al., arXiv:2205.15044, by evaluating the gradient of <span>$J_T$</span> via a chain rule in the propagated states, the dependency of the gradient on the final time functional is pushed into the boundary condition for the backward propagation, <span>$|χ_k⟩ = -∂J_T/∂⟨ϕ_k|$</span>. For functionals that can be written in terms of the overlaps <span>$τ_k$</span> of the forward-propagated states and target states, such as the <code>J_T_sm</code> used here, a further chain rule leaves derivatives of <code>J_T</code> with respect to the overlaps <span>$τ_k$</span>, which are easily obtained via automatic differentiation. This happens automatically if we use <code>make_chi</code> with <code>force_zygote=true</code> and pass the resulting <code>chi</code> to the optimization:</p><pre><code class="language-julia hljs">using QuantumControl.Functionals: make_chi
+- Ended at 2023-10-06T21:00:50.622 (8 seconds, 208 milliseconds)
+</code></pre><p>We can plot the optimized field:</p><pre><code class="language-julia hljs">fig = plot_control(opt_result_LBFGSB.optimized_controls[1], tlist)</code></pre><img src="533ea3e7.svg" alt="Example block output"/><h2 id="Optimization-via-semi-automatic-differentiation"><a class="docs-heading-anchor" href="#Optimization-via-semi-automatic-differentiation">Optimization via semi-automatic differentiation</a><a id="Optimization-via-semi-automatic-differentiation-1"></a><a class="docs-heading-anchor-permalink" href="#Optimization-via-semi-automatic-differentiation" title="Permalink"></a></h2><p>Our GRAPE implementation includes the analytic gradient of the optimization functional <code>J_T_sm</code>. Thus, we only had to pass the functional itself to the optimization. More generally, for functionals where the analytic gradient is not known, semi-automatic differentiation can be used to determine it automatically. For illustration, we may re-run the optimization forgoing the known analytic gradient and instead using an automatically determined gradient.</p><p>As shown in Goerz et al., arXiv:2205.15044, by evaluating the gradient of <span>$J_T$</span> via a chain rule in the propagated states, the dependency of the gradient on the final time functional is pushed into the boundary condition for the backward propagation, <span>$|χ_k⟩ = -∂J_T/∂⟨ϕ_k|$</span>. For functionals that can be written in terms of the overlaps <span>$τ_k$</span> of the forward-propagated states and target states, such as the <code>J_T_sm</code> used here, a further chain rule leaves derivatives of <code>J_T</code> with respect to the overlaps <span>$τ_k$</span>, which are easily obtained via automatic differentiation. This happens automatically if we use <code>make_chi</code> with <code>force_zygote=true</code> and pass the resulting <code>chi</code> to the optimization:</p><pre><code class="language-julia hljs">using QuantumControl.Functionals: make_chi
 
 chi_sm = make_chi(J_T_sm, objectives; force_zygote=true)
 
 opt_result_LBFGSB_via_χ = optimize(problem; method=:grape, chi=chi_sm);</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi"> iter.        J_T     |∇J_T|       ΔJ_T   FG(F)    secs
-     0   9.51e-01   5.40e-02        n/a    1(0)     2.2
+     0   9.51e-01   5.40e-02        n/a    1(0)     2.3
      1   9.49e-01   5.55e-02  -2.95e-03    1(0)     0.0
      2   3.94e-02   6.30e-02  -9.09e-01    6(0)     0.1
-     3   1.65e-02   3.82e-02  -2.29e-02    2(0)     0.1
+     3   1.65e-02   3.82e-02  -2.29e-02    2(0)     0.0
      4   1.27e-02   3.35e-02  -3.84e-03    1(0)     0.0
      5   1.65e-05   1.31e-03  -1.27e-02    1(0)     0.0</code></pre><pre><code class="language-julia hljs">opt_result_LBFGSB_via_χ</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">GRAPE Optimization Result
 -------------------------
-- Started at 2023-10-06T17:22:04.411
+- Started at 2023-10-06T21:00:51.156
 - Number of objectives: 1
 - Number of iterations: 5
 - Number of pure func evals: 0
 - Number of func/grad evals: 12
 - Value of functional: 1.65005e-05
 - Reason for termination: J_T &lt; 10⁻³
-- Ended at 2023-10-06T17:22:06.869 (2 seconds, 458 milliseconds)
+- Ended at 2023-10-06T21:00:53.650 (2 seconds, 494 milliseconds)
 </code></pre><h2 id="Optimization-with-Optim.jl"><a class="docs-heading-anchor" href="#Optimization-with-Optim.jl">Optimization with Optim.jl</a><a id="Optimization-with-Optim.jl-1"></a><a class="docs-heading-anchor-permalink" href="#Optimization-with-Optim.jl" title="Permalink"></a></h2><p>As an alternative to the default L-BFGS-B backend, we can also use any of the gradient-based optimizers in <a href="https://github.com/JuliaNLSolvers/Optim.jl">Optiml.jl</a>. This also gives full control over the linesearch method.</p><pre><code class="language-julia hljs">import Optim
 import LineSearches</code></pre><p>Here, we use the LBFGS implementation that is part of Optim (which is not exactly the same as L-BFGS-B; &quot;B&quot; being the variant of LBFGS with optional additional bounds on the control) with a Hager-Zhang linesearch</p><pre><code class="language-julia hljs">opt_result_OptimLBFGS = @optimize_or_load(
     datadir(&quot;TLS&quot;, &quot;opt_result_OptimLBFGS.jld2&quot;),
@@ -114,43 +114,43 @@ import LineSearches</code></pre><p>Here, we use the LBFGS implementation that is
 );</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">[ Info: Set callback to store result in /home/runner/work/GRAPE.jl/GRAPE.jl/test/data/TLS/opt_result_OptimLBFGS.jld2 on unexpected exit.
  iter.        J_T     |∇J_T|       ΔJ_T   FG(F)    secs
      0   9.51e-01   5.40e-02        n/a    1(0)     0.9
-     1   9.45e-01   5.71e-02  -5.99e-03    3(0)     0.1
+     1   9.45e-01   5.71e-02  -5.99e-03    3(0)     0.0
      2   9.39e-01   6.04e-02  -6.72e-03    3(0)     1.2
-     3   9.31e-01   6.39e-02  -7.52e-03    3(0)     1.2
-     4   9.23e-01   6.76e-02  -8.41e-03    3(0)     1.2
-     5   9.13e-01   7.14e-02  -9.39e-03    3(0)     1.2
+     3   9.31e-01   6.39e-02  -7.52e-03    3(0)     1.1
+     4   9.23e-01   6.76e-02  -8.41e-03    3(0)     1.1
+     5   9.13e-01   7.14e-02  -9.39e-03    3(0)     1.1
      6   9.03e-01   7.53e-02  -1.05e-02    3(0)     1.1
-     7   8.91e-01   7.94e-02  -1.16e-02    3(0)     1.2
-     8   8.78e-01   8.35e-02  -1.29e-02    3(0)     1.2
-     9   8.64e-01   8.78e-02  -1.43e-02    3(0)     1.2
-    10   8.48e-01   9.22e-02  -1.58e-02    3(0)     1.2
+     7   8.91e-01   7.94e-02  -1.16e-02    3(0)     1.1
+     8   8.78e-01   8.35e-02  -1.29e-02    3(0)     1.1
+     9   8.64e-01   8.78e-02  -1.43e-02    3(0)     1.1
+    10   8.48e-01   9.22e-02  -1.58e-02    3(0)     1.1
     11   8.31e-01   9.66e-02  -1.74e-02    3(0)     1.1
-    12   8.12e-01   1.01e-01  -1.91e-02    3(0)     1.2
-    13   7.91e-01   1.05e-01  -2.08e-02    3(0)     1.2
-    14   7.68e-01   1.10e-01  -2.26e-02    3(0)     1.2
+    12   8.12e-01   1.01e-01  -1.91e-02    3(0)     1.1
+    13   7.91e-01   1.05e-01  -2.08e-02    3(0)     1.1
+    14   7.68e-01   1.10e-01  -2.26e-02    3(0)     1.1
     15   7.44e-01   1.14e-01  -2.45e-02    3(0)     1.1
-    16   7.18e-01   1.17e-01  -2.63e-02    3(0)     1.2
-    17   6.90e-01   1.21e-01  -2.80e-02    3(0)     1.2
-    18   6.60e-01   1.24e-01  -2.97e-02    3(0)     1.2
+    16   7.18e-01   1.17e-01  -2.63e-02    3(0)     1.1
+    17   6.90e-01   1.21e-01  -2.80e-02    3(0)     1.1
+    18   6.60e-01   1.24e-01  -2.97e-02    3(0)     1.1
     19   6.29e-01   1.27e-01  -3.12e-02    3(0)     1.1
-    20   5.96e-01   1.29e-01  -3.26e-02    3(0)     1.2
-    21   5.62e-01   1.31e-01  -3.37e-02    3(0)     1.2
-    22   5.28e-01   1.32e-01  -3.45e-02    3(0)     1.2
+    20   5.96e-01   1.29e-01  -3.26e-02    3(0)     1.1
+    21   5.62e-01   1.31e-01  -3.37e-02    3(0)     1.1
+    22   5.28e-01   1.32e-01  -3.45e-02    3(0)     1.1
     23   4.93e-01   1.33e-01  -3.50e-02    3(0)     1.1
-    24   4.58e-01   1.32e-01  -3.51e-02    3(0)     1.2
+    24   4.58e-01   1.32e-01  -3.51e-02    3(0)     1.1
     25   7.25e-02   4.32e-02  -3.85e-01    2(0)     1.1
-    26   1.68e-02   4.51e-02  -5.57e-02    2(0)     1.2
-    27   2.50e-05   1.25e-03  -1.68e-02    3(0)     1.2</code></pre><pre><code class="language-julia hljs">opt_result_OptimLBFGS</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">GRAPE Optimization Result
+    26   1.68e-02   4.51e-02  -5.57e-02    2(0)     1.1
+    27   2.50e-05   1.25e-03  -1.68e-02    3(0)     1.1</code></pre><pre><code class="language-julia hljs">opt_result_OptimLBFGS</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">GRAPE Optimization Result
 -------------------------
-- Started at 2023-10-06T17:22:07.095
+- Started at 2023-10-06T21:00:53.873
 - Number of objectives: 1
 - Number of iterations: 27
 - Number of pure func evals: 0
 - Number of func/grad evals: 80
 - Value of functional: 2.49647e-05
 - Reason for termination: J_T &lt; 10⁻³
-- Ended at 2023-10-06T17:22:39.255 (32 seconds, 160 milliseconds)
-</code></pre><p>We can plot the optimized field:</p><pre><code class="language-julia hljs">fig = plot_control(opt_result_OptimLBFGS.optimized_controls[1], tlist)</code></pre><img src="f064aa7f.svg" alt="Example block output"/><p>We can see that the choice of linesearch parameters in particular strongly influence the convergence and the resulting field. Play around with different methods and parameters, and compare the different <a href="https://github.com/JuliaQuantumControl/GRAPE.jl/tree/data-dump/TLS/Linesearch/OptimLBFGS">plots generated by <code>GRAPELinesearchAnalysis</code></a>!</p><p>Empirically, we find the default L-BFGS-B to have a very well-behaved linesearch.</p><h2 id="Simulate-the-dynamics-under-the-optimized-field"><a class="docs-heading-anchor" href="#Simulate-the-dynamics-under-the-optimized-field">Simulate the dynamics under the optimized field</a><a id="Simulate-the-dynamics-under-the-optimized-field-1"></a><a class="docs-heading-anchor-permalink" href="#Simulate-the-dynamics-under-the-optimized-field" title="Permalink"></a></h2><p>Having obtained the optimized control field, we can simulate the dynamics to verify that the optimized field indeed drives the initial state <span>$\ket{\Psi_{\init}} = \ket{0}$</span> to the desired target state <span>$\ket{\Psi_{\tgt}} = \ket{1}$</span>.</p><pre><code class="language-julia hljs">using QuantumControl.Controls: substitute
+- Ended at 2023-10-06T21:01:24.979 (31 seconds, 106 milliseconds)
+</code></pre><p>We can plot the optimized field:</p><pre><code class="language-julia hljs">fig = plot_control(opt_result_OptimLBFGS.optimized_controls[1], tlist)</code></pre><img src="7d9ee719.svg" alt="Example block output"/><p>We can see that the choice of linesearch parameters in particular strongly influence the convergence and the resulting field. Play around with different methods and parameters, and compare the different <a href="https://github.com/JuliaQuantumControl/GRAPE.jl/tree/data-dump/TLS/Linesearch/OptimLBFGS">plots generated by <code>GRAPELinesearchAnalysis</code></a>!</p><p>Empirically, we find the default L-BFGS-B to have a very well-behaved linesearch.</p><h2 id="Simulate-the-dynamics-under-the-optimized-field"><a class="docs-heading-anchor" href="#Simulate-the-dynamics-under-the-optimized-field">Simulate the dynamics under the optimized field</a><a id="Simulate-the-dynamics-under-the-optimized-field-1"></a><a class="docs-heading-anchor-permalink" href="#Simulate-the-dynamics-under-the-optimized-field" title="Permalink"></a></h2><p>Having obtained the optimized control field, we can simulate the dynamics to verify that the optimized field indeed drives the initial state <span>$\ket{\Psi_{\init}} = \ket{0}$</span> to the desired target state <span>$\ket{\Psi_{\tgt}} = \ket{1}$</span>.</p><pre><code class="language-julia hljs">using QuantumControl.Controls: substitute
 
 opt_dynamics = propagate_objective(
     substitute(objectives[1], IdDict(ϵ =&gt; opt_result_LBFGSB.optimized_controls[1])),
@@ -159,4 +159,4 @@ opt_dynamics = propagate_objective(
     observables=(Ψ -&gt; abs.(Ψ) .^ 2,)
 )</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">2×500 Matrix{Float64}:
  1.0  0.99994     0.999762     …  0.000174609  3.65549e-5  1.65005e-5
- 0.0  5.96719e-5  0.000237653     0.999825     0.999963    0.999983</code></pre><pre><code class="language-julia hljs">fig = plot_population(opt_dynamics[1, :], opt_dynamics[2, :], tlist)</code></pre><img src="652768a8.svg" alt="Example block output"/><hr/><p><em>This page was generated using <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../">« List of Examples</a><a class="docs-footer-nextpage" href="../perfect_entanglers/">Example 2 (PE) »</a><div class="flexbox-break"></div><p class="footer-message"><a href="https://github.com/JuliaQuantumControl/GRAPE.jl">GRAPE.jl</a> v0.5.4+dev docs powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="auto">Automatic (OS)</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.1.0 on <span class="colophon-date" title="Friday 6 October 2023 17:22">Friday 6 October 2023</span>. Using Julia version 1.9.3.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
+ 0.0  5.96719e-5  0.000237653     0.999825     0.999963    0.999983</code></pre><pre><code class="language-julia hljs">fig = plot_population(opt_dynamics[1, :], opt_dynamics[2, :], tlist)</code></pre><img src="5bf8a963.svg" alt="Example block output"/><hr/><p><em>This page was generated using <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../">« List of Examples</a><a class="docs-footer-nextpage" href="../perfect_entanglers/">Example 2 (PE) »</a><div class="flexbox-break"></div><p class="footer-message"><a href="https://github.com/JuliaQuantumControl/GRAPE.jl">GRAPE.jl</a> v0.5.5+dev docs powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="auto">Automatic (OS)</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.1.0 on <span class="colophon-date" title="Friday 6 October 2023 21:01">Friday 6 October 2023</span>. Using Julia version 1.9.3.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
