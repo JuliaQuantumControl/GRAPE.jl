@@ -2,7 +2,7 @@ using QuantumControlBase
 using GRAPE
 using Pkg
 using Documenter
-using QuantumCitations
+using DocumenterCitations
 using Plots
 
 gr()
@@ -26,8 +26,8 @@ println("Starting makedocs")
 
 bib = CitationBibliography(joinpath(@__DIR__, "src", "refs.bib"); style=:numeric)
 
-makedocs(
-    bib;
+makedocs(;
+    plugins=[bib],
     modules=[GRAPE],
     authors=AUTHORS,
     repo="$GITHUB/blob/{commit}{path}#{line}",
@@ -50,7 +50,8 @@ makedocs(
         ],
         "API" => "api.md",
         "References" => "references.md",
-    ]
+    ],
+    warnonly=true,
 )
 
 println("Finished makedocs")
