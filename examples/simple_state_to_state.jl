@@ -181,7 +181,7 @@ using GRAPELinesearchAnalysis
 # We feed this into the optimization as part of the `info_hook`.
 
 opt_result_LBFGSB = @optimize_or_load(
-    datadir("TLS", "opt_result_LBFGSB.jld2"),
+    datadir("TLS", "GRAPE_opt_result_LBFGSB.jld2"),
     problem;
     method=:grape,
     force=true,
@@ -231,7 +231,7 @@ import LineSearches
 # Here, we use the LBFGS implementation that is part of Optim (which is not exactly the same as L-BFGS-B; "B" being the variant of LBFGS with optional additional bounds on the control) with a Hager-Zhang linesearch
 
 opt_result_OptimLBFGS = @optimize_or_load(
-    datadir("TLS", "opt_result_OptimLBFGS.jld2"),
+    datadir("TLS", "GRAPE_opt_result_OptimLBFGS.jld2"),
     problem;
     method=:grape,
     force=true,

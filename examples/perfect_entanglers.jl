@@ -316,7 +316,7 @@ problem = ControlProblem(
 
 #-
 
-opt_result = @optimize_or_load(datadir("GATE_OCT.jld2"), problem; method=:GRAPE);
+opt_result = @optimize_or_load(datadir("GRAPE_GATE_OCT.jld2"), problem; method=:GRAPE);
 #-
 opt_result
 
@@ -487,7 +487,7 @@ problem = ControlProblem(
 
 # With this, we can easily find a solution to the control problem:
 
-opt_result = @optimize_or_load(datadir("PE_OCT.jld2"), problem; method=:GRAPE);
+opt_result = @optimize_or_load(datadir("GRAPE_PE_OCT.jld2"), problem; method=:GRAPE);
 #-
 opt_result
 
@@ -553,7 +553,7 @@ J_T_C(U) = 0.5 * (1 - gate_concurrence(U)) + 0.5 * (1 - unitarity(U));
 # Running this, we again are able to find a perfect entangler.
 
 opt_result_direct = @optimize_or_load(
-    datadir("PE_OCT_direct.jld2"),
+    datadir("GRAPE_PE_OCT_direct.jld2"),
     problem;
     method=:GRAPE,
     J_T=gate_functional(J_T_C),
