@@ -43,7 +43,8 @@ function clean(; distclean=false, _exit=true)
     _push!(CLEAN, joinpath(ROOT, "docs", "build"))
     _push!(CLEAN, joinpath(ROOT, "docs", "LocalPreferences.toml"))
     _push!(CLEAN, joinpath(ROOT, "test", "LocalPreferences.toml"))
-    _push!(CLEAN, joinpath(ROOT, "lcov.info"))
+    append!(CLEAN, _glob(ROOT, ".info"))
+    append!(CLEAN, _glob(joinpath(ROOT, ".coverage"), ".info"))
     ###########################################################################
 
     ###########################################################################
