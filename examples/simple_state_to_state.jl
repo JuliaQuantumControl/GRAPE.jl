@@ -50,6 +50,7 @@ projectdir(names...) = joinpath(PROJECTDIR, names...)
 datadir(names...) = projectdir("data", names...)
 
 using QuantumControl
+using QuantumPropagators: ExpProp
 
 #jl using Test
 #jl println("")
@@ -103,7 +104,7 @@ function plot_control(pulse::Vector, tlist)
     plot(tlist, pulse, xlabel="time", ylabel="amplitude", legend=false)
 end
 
-plot_control(ϵ::T, tlist) where {T<:Function} = plot_control([ϵ(t) for t in tlist], tlist);
+plot_control(ϵ::Function, tlist) = plot_control([ϵ(t) for t in tlist], tlist);
 #-
 fig = plot_control(ϵ, tlist)
 #jl display(fig)
@@ -137,8 +138,9 @@ using QuantumControl.Functionals: J_T_sm
 problem = ControlProblem(
     objectives=objectives,
     tlist=tlist,
-    pulse_options=Dict(),
     iter_stop=500,
+    prop_method=ExpProp,
+    pulse_options=Dict(),
     J_T=J_T_sm,
     check_convergence=res -> begin
         ((res.J_T < 1e-3) && (res.converged = true) && (res.message = "J_T < 10⁻³"))
@@ -150,9 +152,11 @@ problem = ControlProblem(
 
 # Before running the optimization procedure, we first simulate the dynamics under the guess field $\epsilon_{0}(t)$. The following solves equation of motion for the defined objective, which contains the initial state $\ket{\Psi_{\init}}$ and the Hamiltonian $\op{H}(t)$ defining its evolution.
 
+
 guess_dynamics = propagate_objective(
     objectives[1],
     problem.tlist;
+    method=ExpProp,
     storage=true,
     observables=(Ψ -> abs.(Ψ) .^ 2,)
 )
@@ -184,6 +188,7 @@ opt_result_LBFGSB = @optimize_or_load(
     datadir("TLS", "GRAPE_opt_result_LBFGSB.jld2"),
     problem;
     method=:grape,
+    prop_method=ExpProp,
     force=true,
     info_hook=(
         GRAPELinesearchAnalysis.plot_linesearch(datadir("TLS", "Linesearch", "LBFGSB")), #md
@@ -270,6 +275,7 @@ using QuantumControl.Controls: substitute
 opt_dynamics = propagate_objective(
     substitute(objectives[1], IdDict(ϵ => opt_result_LBFGSB.optimized_controls[1])),
     problem.tlist;
+    method=ExpProp,
     storage=true,
     observables=(Ψ -> abs.(Ψ) .^ 2,)
 )

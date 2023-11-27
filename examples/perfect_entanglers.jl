@@ -277,7 +277,9 @@ objectives = [
 # We can analyze how all of the basis states evolve under the guess controls in
 # one go:
 
-guess_states = propagate_objectives(objectives, tlist; use_threads=true);
+using QuantumPropagators: Cheby
+
+guess_states = propagate_objectives(objectives, tlist; method=Cheby, use_threads=true);
 
 # The gate implemented by the guess controls is
 
@@ -346,6 +348,7 @@ opt_states = propagate_objectives(
         IdDict(zip(get_controls(objectives), opt_result.optimized_controls))
     ),
     tlist;
+    method=Cheby,
     use_threads=true
 );
 
@@ -468,6 +471,7 @@ problem = ControlProblem(
     objectives=objectives,
     tlist=tlist,
     iter_stop=100,
+    prop_method=Cheby,
     J_T=J_T_PE,
     chi=chi_pe,
     check_convergence=res -> begin
@@ -509,6 +513,7 @@ opt_states = propagate_objectives(
         IdDict(zip(get_controls(objectives), opt_result.optimized_controls))
     ),
     tlist;
+    method=Cheby,
     use_threads=true
 );
 
@@ -568,6 +573,7 @@ opt_states_direct = propagate_objectives(
         IdDict(zip(get_controls(objectives), opt_result_direct.optimized_controls))
     ),
     tlist;
+    method=Cheby,
     use_threads=true
 );
 
