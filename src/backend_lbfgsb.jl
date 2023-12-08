@@ -3,10 +3,11 @@ using QuantumControlBase.QuantumPropagators.Controls: discretize
 
 function run_optimizer(optimizer::LBFGSB.L_BFGS_B, wrk, fg!, info_hook, check_convergence!)
 
-    m = 10
-    factr = 1e7
-    pgtol = 1e-5
-    iprint = -1 # TODO: set this based on the value of some verbosity flag
+    m = get(wrk.kwargs, :lbfgsb_m, 10)
+    factr = get(wrk.kwargs, :lbfgsb_factr, 1e7)
+    pgtol = get(wrk.kwargs, :lbfgsb_pgtol, 1e-5)
+    iprint = get(wrk.kwargs, :lbfgsb_iprint, -1)
+    # TODO: set `iprint` based on the value of some verbosity flag
     x = wrk.pulsevals
     n = length(x)
     obj = optimizer
