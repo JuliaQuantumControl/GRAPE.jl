@@ -3,6 +3,7 @@ using GRAPE
 using Pkg
 using Documenter
 using DocumenterCitations
+using DocumenterInterLinks
 using Plots
 
 gr()
@@ -34,11 +35,19 @@ makedocs(;
     sitename="GRAPE.jl",
     doctest=false,  # we have no doctests (but trying to run them is slow)
     format=Documenter.HTML(;
-        prettyurls = true,
-        canonical  = "https://juliaquantumcontrol.github.io/GRAPE.jl",
-        assets     = String["assets/citations.css"],
-        mathengine = KaTeX(),
-        footer     = "[$NAME.jl]($GITHUB) v$VERSION docs powered by [Documenter.jl](https://github.com/JuliaDocs/Documenter.jl)."
+        prettyurls=true,
+        canonical="https://juliaquantumcontrol.github.io/GRAPE.jl",
+        assets=[
+            "assets/citations.css",
+            asset(
+                "https://juliaquantumcontrol.github.io/QuantumControl.jl/dev/assets/topbar/topbar.css"
+            ),
+            asset(
+                "https://juliaquantumcontrol.github.io/QuantumControl.jl/dev/assets/topbar/topbar.js"
+            ),
+        ],
+        mathengine=KaTeX(),
+        footer="[$NAME.jl]($GITHUB) v$VERSION docs powered by [Documenter.jl](https://github.com/JuliaDocs/Documenter.jl)."
     ),
     pages=[
         "Home" => "index.md",
