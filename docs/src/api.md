@@ -1,6 +1,7 @@
 # API
 
 ```@index
+Modules = [GRAPE]
 ```
 
 ```@autodocs

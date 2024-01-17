@@ -31,14 +31,6 @@ function clean(; distclean=false, _exit=true)
 
     ###########################################################################
     CLEAN = String[]
-    for folder in ["", "src", "test", "examples"]
-        append!(CLEAN, _glob(joinpath(ROOT, folder), ".cov"))
-    end
-    append!(CLEAN, _glob_star(joinpath(ROOT, "test", "examples")))
-    append!(
-        CLEAN,
-        _glob_star(joinpath(ROOT, "docs", "src", "examples"), except=["index.md"])
-    )
     _push!(CLEAN, joinpath(ROOT, "coverage"))
     _push!(CLEAN, joinpath(ROOT, "docs", "build"))
     _push!(CLEAN, joinpath(ROOT, "docs", "LocalPreferences.toml"))
@@ -53,7 +45,6 @@ function clean(; distclean=false, _exit=true)
         _push!(DISTCLEAN, joinpath(joinpath(ROOT, folder), "Manifest.toml"))
     end
     _push!(DISTCLEAN, joinpath(ROOT, "docs", "Project.toml"))
-    _push!(DISTCLEAN, joinpath(ROOT, "docs", "src", "examples", ".ipynb_checkpoints"))
     append!(DISTCLEAN, _glob_star(joinpath(ROOT, "test", "data")))
     append!(DISTCLEAN, _glob_star(joinpath(ROOT, "docs", "data")))
     _push!(DISTCLEAN, joinpath(ROOT, ".JuliaFormatter.toml"))

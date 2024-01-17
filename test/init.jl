@@ -4,13 +4,9 @@ using Plots
 unicodeplots()
 using JuliaFormatter
 using QuantumControlTestUtils: test, show_coverage, generate_coverage_html
-using LiveServer: LiveServer, serve, servedocs as _servedocs
+using LiveServer: LiveServer, serve, servedocs
 include(joinpath(@__DIR__, "clean.jl"))
 
-function servedocs(; kwargs...)
-    clean()
-    _servedocs(; skip_dirs=["docs/src/examples"], kwargs...)
-end
 
 REPL_MESSAGE = """
 *******************************************************************************
@@ -20,9 +16,6 @@ Revise, JuliaFormatter, LiveServer, Plots with unicode backend are active.
 
 * `help()` – Show this message
 * `include("test/runtests.jl")` – Run the entire test suite
-* `include("test/generate_example_tests.jl")` – Convert all examples to tests
-* `include("test/examples/simple_state_to_state.jl")` –
-  Run an individual example test (after converting examples)!
 * `test()` – Run the entire test suite in a subprocess with coverage
 * `show_coverage()` – Print a tabular overview of coverage data
 * `generate_coverage_html()` – Generate an HTML coverage report

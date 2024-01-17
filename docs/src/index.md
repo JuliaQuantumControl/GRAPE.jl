@@ -17,41 +17,18 @@ version_badge = "![v$VERSION](https://img.shields.io/badge/version-v$VERSION-gre
 Markdown.parse("$github_badge $version_badge")
 ```
 
-Implementation of ([second-order](https://arxiv.org/abs/1102.4096)) GRadient Ascent Pulse Engineering (GRAPE) [KhanejaJMR2005](@cite)[FouquieresJMR2011](@cite) extended with semi-automatic differentiation [GoerzQ2022](@cite).
+Implementation of ([second-order](https://arxiv.org/abs/1102.4096)) GRadient Ascent Pulse Engineering (GRAPE) [KhanejaJMR2005, FouquieresJMR2011](@cite) extended with semi-automatic differentiation [GoerzQ2022](@cite).
 
 Part of [`QuantumControl.jl`](https://github.com/JuliaQuantumControl/QuantumControl.jl#readme) and the [JuliaQuantumControl](https://github.com/JuliaQuantumControl) organization.
 
 ## Contents
 
-### Overview
 
 ```@contents
-Pages = [
-    "overview.md",
-]
-Depth = 1
+Depth = 2
+Pages = [pair[2] for pair in Main.PAGES[2:end-1]]
 ```
 
-### Examples
-
-```@contents
-Pages = [
-    "examples/simple_state_to_state.md",
-    "examples/perfect_entanglers.md",
-]
-Depth = 1
-```
-
-See also the [general examples](https://juliaquantumcontrol.github.io/QuantumControl.jl/stable/examples/) of the [QuantumControl](https://juliaquantumcontrol.github.io/QuantumControl.jl/stable/) package.
-
-### API
-
-```@contents
-Pages = [
-    "api.md",
-]
-Depth = 1
-```
 
 ## History
 

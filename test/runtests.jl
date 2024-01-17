@@ -3,11 +3,6 @@ using SafeTestsets
 using Plots
 
 unicodeplots()
-ENV["GRAPE_LINESEARCH_ANALYSIS_VERBOSE"] = "1"
-
-include("generate_example_tests.jl")
-
-include("download_dumps.jl")
 
 # Note: comment outer @testset to stop after first @safetestset failure
 @time @testset verbose = true "GRAPE.jl Package" begin
@@ -27,16 +22,5 @@ include("download_dumps.jl")
         include("test_taylor_grad.jl")
     end
 
-    println("\n* Example 1 (examples/simple_state_to_state.jl):")
-    @time @safetestset "Example 1 (simple_state_to_state)" begin
-        include(joinpath("examples", "simple_state_to_state.jl"))
-    end
-
-    println("\n* Example 2 (examples/perfect_entanglers.jl):")
-    @time @safetestset "Example 2 (perfect_entanglers)" begin
-        include(joinpath("examples", "perfect_entanglers.jl"))
-    end
-
-    println("")
-
 end
+nothing
