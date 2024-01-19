@@ -169,7 +169,12 @@ function optimize_grape(problem)
     ∇J_T = wrk.grad_J_T
     ∇J_a = wrk.grad_J_a
     λₐ = get(wrk.kwargs, :lambda_a, 1.0)
-    chi! = get(wrk.kwargs, :chi, make_chi(J_T_func, wrk.objectives))
+    if haskey(wrk.kwargs, :chi)
+        chi! = wrk.kwargs[:chi]
+    else
+        # we only want to evaluate `make_chi` if `chi` is not a kwarg
+        chi! = make_chi(J_T_func, wrk.objectives)
+    end
     grad_J_a! = nothing
     if !isnothing(J_a_func)
         grad_J_a! = get(wrk.kwargs, :grad_J_a, make_grad_J_a(J_a_func, tlist))
