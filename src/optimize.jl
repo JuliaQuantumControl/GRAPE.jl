@@ -1,10 +1,10 @@
 using QuantumControlBase.QuantumPropagators.Generators: Operator
 using QuantumControlBase.QuantumPropagators.Controls: evaluate, evaluate!
-using QuantumControlBase.QuantumPropagators: prop_step!, set_state!, reinit_prop!
+using QuantumControlBase.QuantumPropagators: prop_step!, set_state!, reinit_prop!, propagate
 using QuantumControlBase.QuantumPropagators.Storage: write_to_storage!, get_from_storage!
 using QuantumGradientGenerators: resetgradvec!
 using QuantumControlBase: make_chi, make_grad_J_a, set_atexit_save_optimization
-using QuantumControlBase: @threadsif
+using QuantumControlBase: @threadsif, Trajectory
 using LinearAlgebra
 using Printf
 
@@ -15,9 +15,8 @@ import QuantumControlBase: optimize
 result = optimize(problem; method=:GRAPE, kwargs...)
 ```
 
-optimizes the given
-control [`problem`](@ref QuantumControlBase.ControlProblem) via the GRAPE
-method, by minimizing the functional
+optimizes the given control [`problem`](@ref QuantumControlBase.ControlProblem)
+via the GRAPE method, by minimizing the functional
 
 ```math
 J(\{ϵ_{ln}\}) = J_T(\{|ϕ_k(T)⟩\}) + λ_a J_a(\{ϵ_{ln}\})
@@ -31,19 +30,21 @@ the time grid.
 Returns a [`GrapeResult`](@ref).
 
 Keyword arguments that control the optimization are taken from the keyword
-arguments used in the instantiation of `problem`.
+arguments used in the instantiation of `problem`; any of these can be overridden
+with explicit keyword arguments to `optimize`.
+
 
 # Required problem keyword arguments
 
-* `J_T`: A function `J_T(ϕ, objectives; τ=τ)` that evaluates the final time
+* `J_T`: A function `J_T(ϕ, trajectories; τ=τ)` that evaluates the final time
   functional from a vector `ϕ` of forward-propagated states and
-  `problem.objectives`. For all `objectives` that define a `target_state`, the
-  element `τₖ` of the vector `τ` will contain the overlap of the state `ϕₖ`
-  with the `target_state` of the `k`'th objective, or `NaN` otherwise.
+  `problem.trajectories`. For all `trajectories` that define a `target_state`,
+  the element `τₖ` of the vector `τ` will contain the overlap of the state `ϕₖ`
+  with the `target_state` of the `k`'th trajectory, or `NaN` otherwise.
 
 # Optional problem keyword arguments
 
-* `chi`: A function `chi!(χ, ϕ, objectives)` what receives a list `ϕ`
+* `chi`: A function `chi!(χ, ϕ, trajectories)` what receives a list `ϕ`
   of the forward propagated states and must set ``|χₖ⟩ = -∂J_T/∂⟨ϕₖ|``. If not
   given, it will be automatically determined from `J_T` via [`make_chi`](@ref)
   with the default parameters.
@@ -81,7 +82,7 @@ arguments used in the instantiation of `problem`.
 * `pulse_options`: A dictionary that maps every control (as obtained by
   [`get_controls`](@ref
   QuantumControlBase.QuantumPropagators.Controls.get_controls) from the
-  `problem.objectives`) to a dict with the following possible keys:
+  `problem.trajectories`) to a dict with the following possible keys:
 
   - `:upper_bounds`: A vector of upper bound values, one for each intervals of
     the time grid. Values of `Inf` indicate an unconstrained upper bound for
@@ -112,26 +113,34 @@ arguments used in the instantiation of `problem`.
 * `optimizer`: An optional Optim.jl optimizer (`Optim.AbstractOptimizer`
   instance). If not given, an [L-BFGS-B](https://github.com/Gnimuc/LBFGSB.jl)
   optimizer will be used.
-* `prop_method`/`fw_prop_method`/`bw_prop_method`: The propagation method to
-  use for each objective, see below.
-* `prop_method`/`fw_prop_method`/`grad_prop_method`: The propagation method to
-  use for the extended gradient vector for each objective, see below.
+* `prop_method`: The propagation method to use for each trajectory, see below.
 * `verbose=false`: If `true`, print information during initialization
 
-The propagation method for the forward propagation of each objective is
-determined by the first available item of the following:
+# Trajectory propagation
 
-* a `fw_prop_method` keyword argument
-* a `prop_method` keyword argument
-* a property `fw_prop_method` of the objective
-* a property `prop_method` of the objective
-* the value `:auto`
+GRAPE may involve three types of propagation:
 
-The propagation method for the backward propagation is determined similarly,
-but with `bw_prop_method` instead of `fw_prop_method`. The propagation method
-for the backward propagation of the extended gradient vector for each objective
-is determined from `grad_prop_method`, `fw_prop_method`, `prop_method` in order
-of precedence.
+* A forward propagation for every [`Trajectory`](@ref) in the `problem`
+* A backward propagation for every trajectory
+* A backward propagation of a
+  [gradient generator](@extref QuantumGradientGenerators.GradGenerator)
+  for every trajectory.
+
+The keyword arguments for each propagation (see [`propagate`](@ref)) are
+determined from any properties of each [`Trajectory`](@ref) that have a `prop_`
+prefix, cf. [`init_prop_trajectory`](@ref).
+
+In situations where different parameters are required for the forward and
+backward propagation, instead of the `prop_` prefix, the `fw_prop_` and
+`bw_prop_` prefix can be used, respectively. These override any setting with
+the `prop_` prefix. Similarly, properties for the backward propagation of the
+gradient generators can be set with properties that have a `grad_prop_` prefix.
+These prefixes apply both to the properties of each [`Trajectory`](@ref) and
+the problem keyword arguments.
+
+Note that the propagation method for each propagation must be specified. In
+most cases, it is sufficient (and recommended) to pass a global `prop_method`
+problem keyword argument.
 """
 optimize(problem, method::Val{:GRAPE}) = optimize_grape(problem)
 optimize(problem, method::Val{:grape}) = optimize_grape(problem)
@@ -156,10 +165,10 @@ function optimize_grape(problem)
     wrk = GrapeWrk(problem; verbose)
 
     χ = wrk.chi_states
-    Ψ₀ = [obj.initial_state for obj ∈ wrk.objectives]
+    Ψ₀ = [traj.initial_state for traj ∈ wrk.trajectories]
     Ψtgt = Union{eltype(Ψ₀),Nothing}[
-        (hasproperty(obj, :target_state) ? obj.target_state : nothing) for
-        obj ∈ wrk.objectives
+        (hasproperty(traj, :target_state) ? traj.target_state : nothing) for
+        traj ∈ wrk.trajectories
     ]
 
     J = wrk.J_parts
@@ -173,7 +182,7 @@ function optimize_grape(problem)
         chi! = wrk.kwargs[:chi]
     else
         # we only want to evaluate `make_chi` if `chi` is not a kwarg
-        chi! = make_chi(J_T_func, wrk.objectives)
+        chi! = make_chi(J_T_func, wrk.trajectories)
     end
     grad_J_a! = nothing
     if !isnothing(J_a_func)
@@ -183,7 +192,7 @@ function optimize_grape(problem)
     τ = wrk.result.tau_vals
     ∇τ = wrk.tau_grads
     N_T = length(tlist) - 1
-    N = length(wrk.objectives)
+    N = length(wrk.trajectories)
     L = length(wrk.controls)
     Φ = wrk.fw_storage
 
@@ -215,7 +224,7 @@ function optimize_grape(problem)
             τ[k] = isnothing(Ψtgt[k]) ? NaN : (Ψtgt[k] ⋅ Ψₖ)
         end
         Ψ = [p.state for p ∈ wrk.fw_propagators]
-        J[1] = J_T_func(Ψ, wrk.objectives; τ=τ)
+        J[1] = J_T_func(Ψ, wrk.trajectories; τ=τ)
         if !isnothing(J_a_func)
             J[2] = λₐ * J_a_func(pulsevals, tlist)
         end
@@ -239,7 +248,7 @@ function optimize_grape(problem)
 
         # backward propagation of combined χ-state and gradient
         Ψ = [p.state for p ∈ wrk.fw_propagators]
-        chi!(χ, Ψ, wrk.objectives; τ=τ)  # τ from f(...)
+        chi!(χ, Ψ, wrk.trajectories; τ=τ)  # τ from f(...)
         @threadsif wrk.use_threads for k = 1:N
             local Ψₖ = wrk.fw_propagators[k].state
             local χ̃ₖ = wrk.bw_grad_propagators[k].state
@@ -283,12 +292,12 @@ function optimize_grape(problem)
 
         # backward propagation of χ-state
         Ψ = [p.state for p ∈ wrk.fw_propagators]
-        chi!(χ, Ψ, wrk.objectives; τ=τ)  # τ from f(...)
+        chi!(χ, Ψ, wrk.trajectories; τ=τ)  # τ from f(...)
         @threadsif wrk.use_threads for k = 1:N
             local Ψₖ = wrk.fw_propagators[k].state
             reinit_prop!(wrk.bw_propagators[k], χ[k]; transform_control_ranges)
             local χₖ = wrk.bw_propagators[k].state
-            local Hₖ⁺ = wrk.adjoint_objectives[k].generator
+            local Hₖ⁺ = wrk.adjoint_trajectories[k].generator
             local Hₖₙ⁺ = wrk.taylor_genops[k]
             for n = N_T:-1:1  # N_T is the number of time slices
                 # TODO: It would be cleaner to encapsulate this in a
@@ -491,7 +500,7 @@ end
 # minus sign in front of the derivative, compensated by the minus sign in the
 # factor ``(-2)`` of the final ``(∇J_T)_{ln}``.
 function _grad_J_T_via_chi!(∇J_T, τ, ∇τ)
-    N = length(τ) # number of objectives
+    N = length(τ) # number of trajectories
     L, N_T = size(∇τ[1])  # number of controls/time intervals
     ∇J_T′ = reshape(∇J_T, L, N_T)  # writing to ∇J_T′ modifies ∇J_T
     for l = 1:L

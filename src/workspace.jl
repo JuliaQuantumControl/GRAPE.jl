@@ -2,19 +2,22 @@ import QuantumControlBase
 using QuantumControlBase.QuantumPropagators: init_prop
 using QuantumControlBase.QuantumPropagators.Storage: init_storage
 using QuantumControlBase.QuantumPropagators.Controls: get_controls, discretize_on_midpoints
-using QuantumControlBase: get_control_derivs
+using QuantumControlBase: Trajectory, get_control_derivs, init_prop_trajectory
 using QuantumGradientGenerators: GradVector, GradGenerator
 using ConcreteStructs
 
 # GRAPE workspace (for internal use)
 @concrete terse mutable struct GrapeWrk
 
-    # a copy of the objectives
-    objectives
+    # a copy of the trajectories
+    trajectories
 
-    # the adjoint objectives, containing the adjoint generators for the
+    # the adjoint trajectories, containing the adjoint generators for the
     # backward propagation
-    adjoint_objectives
+    adjoint_trajectories
+
+    # trajectories for bw-prop of gradients
+    grad_trajectories
 
     # The kwargs from the control problem
     kwargs
@@ -58,7 +61,7 @@ using ConcreteStructs
     result
 
     #################################
-    # scratch objects, per objective:
+    # scratch objects, per trajectory:
 
     # backward-propagated states
     chi_states
@@ -66,11 +69,7 @@ using ConcreteStructs
     # gradients ∂τₖ/ϵₗ(tₙ)
     tau_grads::Vector{Matrix{ComplexF64}}
 
-    # dynamical generator for grad-bw-propagation, time-dependent
-    # gradient_method=:gradgen only
-    gradgen
-
-    # backward storage array (per objective)
+    # backward storage array
     fw_storage
 
     # for normal forward propagation
@@ -92,7 +91,7 @@ using ConcreteStructs
     # gradient_method=:taylor only
     control_derivs
 
-    # 5 temporary states for each objective and each control, for evaluating
+    # 5 temporary states for each trajectory and each control, for evaluating
     # gradients via Taylor expansions
     # gradient_method=:taylor only
     taylor_grad_states
@@ -104,11 +103,11 @@ end
 function GrapeWrk(problem::QuantumControlBase.ControlProblem; verbose=false)
     use_threads = get(problem.kwargs, :use_threads, false)
     gradient_method = get(problem.kwargs, :gradient_method, :gradgen)
-    objectives = [obj for obj in problem.objectives]
-    adjoint_objectives = [adjoint(obj) for obj in problem.objectives]
-    controls = get_controls(objectives)
+    trajectories = [traj for traj in problem.trajectories]
+    adjoint_trajectories = [adjoint(traj) for traj in problem.trajectories]
+    controls = get_controls(trajectories)
     if length(controls) == 0
-        error("no controls in objectives: cannot optimize")
+        error("no controls in trajectories: cannot optimize")
     end
     tlist = problem.tlist
     # interleave the pulse values as [ϵ₁(t̃₁), ϵ₂(t̃₁), ..., ϵ₁(t̃₂), ϵ₂(t̃₂), ...]
@@ -182,103 +181,82 @@ function GrapeWrk(problem::QuantumControlBase.ControlProblem; verbose=false)
     end
     alpha = 0.0
     dummy_vals = IdDict(control => 1.0 for (i, control) in enumerate(controls))
-    fw_storage = [init_storage(obj.initial_state, tlist) for obj in objectives]
+    fw_storage = [init_storage(traj.initial_state, tlist) for traj in trajectories]
     kwargs[:piecewise] = true  # only accept piecewise propagators
-    fw_prop_method = [
-        QuantumControlBase.get_objective_prop_method(
-            obj,
-            :fw_prop_method,
-            :prop_method;
-            kwargs...
-        ) for obj in objectives
-    ]
-    bw_prop_method = [
-        QuantumControlBase.get_objective_prop_method(
-            obj,
-            :bw_prop_method,
-            :prop_method;
-            kwargs...
-        ) for obj in objectives
-    ]
-    grad_prop_method = [
-        QuantumControlBase.get_objective_prop_method(
-            obj,
-            :grad_prop_method,
-            :bw_prop_method,
-            :prop_method;
-            kwargs...
-        ) for obj in objectives
-    ]
-
+    _prefixes = ["prop_", "fw_prop_"]
     fw_propagators = [
-        begin
-            verbose &&
-                @info "Initializing fw-prop of objective $k with method $(fw_prop_method[k])"
-            init_prop(
-                obj.initial_state,
-                obj.generator,
-                tlist;
-                method=fw_prop_method[k],
-                parameters=parameters,
-                kwargs...
-            )
-        end for (k, obj) in enumerate(objectives)
+        init_prop_trajectory(
+            traj,
+            tlist;
+            verbose,
+            _msg="Initializing fw-prop of trajectory $k",
+            _prefixes,
+            _filter_kwargs=true,
+            fw_prop_parameters=parameters,  # will filter to `parameters`
+            kwargs...
+        ) for (k, traj) in enumerate(trajectories)
     ]
-    chi_states = [similar(obj.initial_state) for obj in objectives]
+    chi_states = [similar(traj.initial_state) for traj in trajectories]
     tau_grads::Vector{Matrix{ComplexF64}} =
-        [zeros(ComplexF64, length(controls), length(tlist) - 1) for _ in objectives]
+        [zeros(ComplexF64, length(controls), length(tlist) - 1) for _ in trajectories]
     if gradient_method == :gradgen
-        gradgen = [GradGenerator(obj.generator) for obj in adjoint_objectives]
-        bw_grad_propagators = [
+        grad_trajectories = [
             begin
-                verbose &&
-                    @info "Initializing gradient bw-prop of objective $k with method $(grad_prop_method[k])"
                 χ̃ₖ = GradVector(chi_states[k], length(controls))
-                init_prop(
-                    χ̃ₖ,
-                    gradgen[k],
-                    tlist;
-                    method=grad_prop_method[k],
-                    backward=true,
-                    parameters=parameters,
-                    kwargs...
-                )
-            end for k ∈ eachindex(objectives)
+                G̃ₖ = GradGenerator(traj.generator)
+                Trajectory(χ̃ₖ, G̃ₖ, getfield(traj, :kwargs)...)
+            end for (k, traj) in enumerate(adjoint_trajectories)
+        ]
+        _prefixes = ["prop_", "bw_prop_", "grad_prop_"]
+        bw_grad_propagators = [
+            init_prop_trajectory(
+                traj,
+                tlist;
+                verbose,
+                _msg="Initializing bw-gradient-prop of trajectory $k",
+                _prefixes,
+                _filter_kwargs=true,
+                grad_prop_backward=true,  # will filter to `backward=true`
+                grad_prop_parameters=parameters,  # will filter to `parameters`
+                kwargs...
+            ) for (k, traj) in enumerate(grad_trajectories)
         ]
         bw_propagators = []
         taylor_genops = []
         control_derivs = []
         taylor_grad_states = []
     elseif gradient_method == :taylor
-        gradgen = []
+        grad_trajectories = []
         bw_grad_propagators = []
+        _prefixes = ["prop_", "bw_prop_"]
         bw_propagators = [
-            begin
-                verbose &&
-                    @info "Initializing bw-prop of objective $k with method $(bw_prop_method[k])"
-                init_prop(
-                    obj.initial_state,
-                    obj.generator,
-                    tlist;
-                    method=bw_prop_method[k],
-                    backward=true,
-                    parameters=parameters,
-                    kwargs...
-                )
-            end for (k, obj) in enumerate(adjoint_objectives)
+            init_prop_trajectory(
+                traj,
+                tlist;
+                verbose,
+                _msg="Initializing bw-prop of trajectory $k",
+                _prefixes,
+                _filter_kwargs=true,
+                bw_prop_backward=true,  # will filter to `backward=true`
+                bw_prop_parameters=parameters,  # will filter to `parameters`
+                kwargs...
+            ) for (k, traj) in enumerate(adjoint_trajectories)
         ]
-        taylor_genops = [evaluate(obj.generator, tlist, 1) for obj in adjoint_objectives]
-        control_derivs = [get_control_derivs(obj.generator, controls) for obj in objectives]
+        taylor_genops =
+            [evaluate(traj.generator, tlist, 1) for traj in adjoint_trajectories]
+        control_derivs =
+            [get_control_derivs(traj.generator, controls) for traj in trajectories]
         taylor_grad_states = [
-            Tuple(similar(objectives[k].initial_state) for _ = 1:5) for
-            l = 1:length(controls), k = 1:length(objectives)
+            Tuple(similar(trajectories[k].initial_state) for _ = 1:5) for
+            l = 1:length(controls), k = 1:length(trajectories)
         ]
     else
         error("Invalid gradient_method=$(repr(gradient_method)) ∉ (:gradgen, :taylor)")
     end
     GrapeWrk(
-        objectives,
-        adjoint_objectives,
+        trajectories,
+        adjoint_trajectories,
+        grad_trajectories,
         kwargs,
         controls,
         pulsevals_guess,
@@ -296,7 +274,6 @@ function GrapeWrk(problem::QuantumControlBase.ControlProblem; verbose=false)
         result,
         chi_states,
         tau_grads,
-        gradgen,
         fw_storage,
         fw_propagators,
         bw_grad_propagators,

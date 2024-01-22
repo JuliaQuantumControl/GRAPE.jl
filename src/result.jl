@@ -25,17 +25,17 @@ mutable struct GrapeResult{STST}
 
     function GrapeResult(problem)
         tlist = problem.tlist
-        controls = get_controls(problem.objectives)
+        controls = get_controls(problem.trajectories)
         iter_start = get(problem.kwargs, :iter_start, 0)
         iter_stop = get(problem.kwargs, :iter_stop, 5000)
         iter = iter_start
         secs = 0
-        tau_vals = zeros(ComplexF64, length(problem.objectives))
+        tau_vals = zeros(ComplexF64, length(problem.trajectories))
         guess_controls = [discretize(control, tlist) for control in controls]
         J_T = 0.0
         J_T_prev = 0.0
         optimized_controls = [copy(guess) for guess in guess_controls]
-        states = [similar(obj.initial_state) for obj in problem.objectives]
+        states = [similar(traj.initial_state) for traj in problem.trajectories]
         start_local_time = now()
         end_local_time = now()
         records = Vector{Tuple}()
@@ -74,7 +74,7 @@ Base.show(io::IO, ::MIME"text/plain", r::GrapeResult) = print(
 GRAPE Optimization Result
 -------------------------
 - Started at $(r.start_local_time)
-- Number of objectives: $(length(r.states))
+- Number of trajectories: $(length(r.states))
 - Number of iterations: $(max(r.iter - r.iter_start, 0))
 - Number of pure func evals: $(r.f_calls)
 - Number of func/grad evals: $(r.fg_calls)
