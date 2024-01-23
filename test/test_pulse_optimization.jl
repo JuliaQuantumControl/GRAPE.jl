@@ -5,6 +5,7 @@ using StableRNGs
 using QuantumControlTestUtils.DummyOptimization: dummy_control_problem
 using QuantumControl.Controls: get_controls, discretize_on_midpoints
 using QuantumControl.Functionals: J_T_re
+using GRAPE
 
 @testset "pulse optimization" begin
 
@@ -24,7 +25,7 @@ using QuantumControl.Functionals: J_T_re
     guess_pulse_copy = copy(QuantumControl.Controls.get_controls(problem.trajectories)[1])
 
     # Optimizing this should not modify the original generator in any way
-    res = optimize(problem; method=:GRAPE, J_T=J_T_re, iter_stop=2)
+    res = optimize(problem; method=GRAPE, J_T=J_T_re, iter_stop=2)
     opt_control = res.optimized_controls[1]
     @test length(opt_control) == nt  # optimized_controls are always *on* tlist
     opt_pulse = discretize_on_midpoints(opt_control, problem.tlist)

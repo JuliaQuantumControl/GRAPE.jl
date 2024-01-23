@@ -4,6 +4,7 @@ using QuantumControl: hamiltonian, optimize, ControlProblem, Trajectory
 using QuantumControl.Controls: get_controls
 using QuantumControl.Functionals: J_T_re
 using QuantumControlTestUtils.RandomObjects: random_matrix, random_state_vector
+using GRAPE
 
 @testset "empty optimization" begin
 
@@ -29,6 +30,6 @@ using QuantumControlTestUtils.RandomObjects: random_matrix, random_state_vector
     problem = ControlProblem(trajectories, tlist; J_T=J_T_re)
 
     msg = "no controls in trajectories: cannot optimize"
-    @test_throws ErrorException(msg) optimize(problem; method=:GRAPE)
+    @test_throws ErrorException(msg) optimize(problem; method=GRAPE)
 
 end

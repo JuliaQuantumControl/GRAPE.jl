@@ -12,7 +12,8 @@ import QuantumControlBase: optimize
 
 @doc raw"""
 ```julia
-result = optimize(problem; method=:GRAPE, kwargs...)
+using GRAPE
+result = optimize(problem; method=GRAPE, kwargs...)
 ```
 
 optimizes the given control [`problem`](@ref QuantumControlBase.ControlProblem)
@@ -146,7 +147,7 @@ optimize(problem, method::Val{:GRAPE}) = optimize_grape(problem)
 optimize(problem, method::Val{:grape}) = optimize_grape(problem)
 
 """
-See [`optimize(problem; method=:GRAPE, kwargs...)`](@ref optimize(::Any, ::Val{:GRAPE})).
+See [`optimize(problem; method=GRAPE, kwargs...)`](@ref optimize(::Any, ::Val{:GRAPE})).
 """
 function optimize_grape(problem)
     update_hook! = get(problem.kwargs, :update_hook, (args...) -> nothing)
