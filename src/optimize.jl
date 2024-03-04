@@ -356,7 +356,7 @@ function optimize_grape(problem)
     if !isnothing(atexit_filename)
         set_atexit_save_optimization(atexit_filename, wrk.result)
         if !isinteractive()
-            @info "Set callback to store result in $atexit_filename on unexpected exit."
+            @info "Set callback to store result in $(relpath(atexit_filename)) on unexpected exit."
             # In interactive mode, `atexit` is very unlikely, and
             # `InterruptException` is handles via try/catch instead.
         end
