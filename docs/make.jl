@@ -27,11 +27,21 @@ links = InterLinks(
         "https://github.com/KristofferC/TimerOutputs.jl",
         joinpath(@__DIR__, "src", "inventories", "TimerOutputs.toml")
     ),
+    "QuantumControlBase" => "https://juliaquantumcontrol.github.io/QuantumControlBase.jl/$DEV_OR_STABLE",
     "QuantumPropagators" => "https://juliaquantumcontrol.github.io/QuantumPropagators.jl/$DEV_OR_STABLE",
     "QuantumGradientGenerators" => "https://juliaquantumcontrol.github.io/QuantumGradientGenerators.jl/$DEV_OR_STABLE",
     "QuantumControl" => "https://juliaquantumcontrol.github.io/QuantumControl.jl/$DEV_OR_STABLE",
     "GRAPE" => "https://juliaquantumcontrol.github.io/GRAPE.jl/$DEV_OR_STABLE",
     "Examples" => "https://juliaquantumcontrol.github.io/QuantumControlExamples.jl/$DEV_OR_STABLE",
+)
+
+fallbacks = ExternalFallbacks(
+    "QuantumControlBase.ControlProblem" => "@extref QuantumControlBase.ControlProblem",
+    "make_chi" => "@extref QuantumControlBase.make_chi",
+    "QuantumControlBase.QuantumPropagators.Controls.get_controls" => "@extref QuantumPropagators.Controls.get_controls",
+    "Trajectory" => "@extref QuantumControlBase.Trajectory",
+    "propagate" => "@extref QuantumPropagators.propagate",
+    "init_prop_trajectory" => "@extref QuantumControlBase.init_prop_trajectory"
 )
 
 println("Starting makedocs")
@@ -44,11 +54,10 @@ PAGES = [
     "Examples" => "examples.md",
     "API" => "api.md",
     "References" => "references.md",
-    hide("externals.md"),
 ]
 
 makedocs(;
-    plugins=[bib, links],
+    plugins=[bib, links, fallbacks],
     modules=[GRAPE],
     authors=AUTHORS,
     sitename="GRAPE.jl",
@@ -65,7 +74,6 @@ makedocs(;
                 "https://juliaquantumcontrol.github.io/QuantumControl.jl/dev/assets/topbar/topbar.js"
             ),
         ],
-        size_threshold_ignore=["externals.md"],
         mathengine=KaTeX(),
         footer="[$NAME.jl]($GITHUB) v$VERSION docs powered by [Documenter.jl](https://github.com/JuliaDocs/Documenter.jl).",
     ),
