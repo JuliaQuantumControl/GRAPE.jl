@@ -1,10 +1,9 @@
-using QuantumControlBase.QuantumPropagators.Generators: Operator
 using QuantumControlBase.QuantumPropagators.Controls: evaluate, evaluate!
 using QuantumControlBase.QuantumPropagators: prop_step!, set_state!, reinit_prop!, propagate
 using QuantumControlBase.QuantumPropagators.Storage: write_to_storage!, get_from_storage!
 using QuantumGradientGenerators: resetgradvec!
 using QuantumControlBase: make_chi, make_grad_J_a, set_atexit_save_optimization
-using QuantumControlBase: @threadsif, Trajectory
+using QuantumControlBase: @threadsif
 using LinearAlgebra
 using Printf
 
