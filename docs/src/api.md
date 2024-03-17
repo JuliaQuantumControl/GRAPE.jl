@@ -1,8 +1,8 @@
-# API
-
-```@index
-Modules = [GRAPE]
+```@meta
+CollapsedDocStrings = true
 ```
+
+# API
 
 ```@autodocs
 Modules = [GRAPE]

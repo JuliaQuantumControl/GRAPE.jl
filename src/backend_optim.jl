@@ -20,16 +20,17 @@ function run_optimizer(
     initial_x = wrk.pulsevals
     method = optimizer
     objective = Optim.promote_objtype(method, initial_x, :finite, true, Optim.only_fg!(fg!))
-    optimizer_state = Optim.initial_state(method, tol_options, objective, initial_x)
-    # Instantiation of `optimizer_state` calls `fg!` and sets the value of the
-    # functional and gradient for the  `initial_x` in objective.F and
-    # objective.DF, respectively. The `optimizer_state` is set correspondingly:
-    @assert optimizer_state.x ==
-            optimizer_state.x_previous ==
+    wrk.optimizer_state = Optim.initial_state(method, tol_options, objective, initial_x)
+    # Instantiation of `wrk.optimizer_state` calls `fg!` and sets the value of
+    # the functional and gradient for the  `initial_x` in objective.F and
+    # objective.DF, respectively. The `wrk.optimizer_state` is set
+    # correspondingly:
+    @assert wrk.optimizer_state.x ==
+            wrk.optimizer_state.x_previous ==
             objective.x_f ==
             objective.x_df
     # ... but `f_x_previous` does not match the initial `x_previous`:
-    @assert isnan(optimizer_state.f_x_previous)
+    @assert isnan(wrk.optimizer_state.f_x_previous)
 
     # update the result object and check convergence
     function callback(optimization_state::Optim.OptimizationState)
@@ -37,16 +38,10 @@ function run_optimizer(
         #@assert optimization_state.value == objective.F
         #if optimization_state.iteration > 0
         #    @assert norm(
-        #       optimizer_state.x .-
-        #       (optimizer_state.x_previous .+ optimizer_state.alpha .* optimizer_state.s)
+        #       wrk.optimizer_state.x .-
+        #       (wrk.optimizer_state.x_previous .+ wrk.optimizer_state.alpha .* wrk.optimizer_state.s)
         #    ) < 1e-14
         #end
-        if hasproperty(optimizer_state, :s) && hasproperty(optimizer_state, :alpha)
-            wrk.searchdirection .= optimizer_state.s
-            wrk.alpha = optimizer_state.alpha
-        elseif (optimization_state.iteration == 1)
-            @error "Cannot determine search direction/step width"
-        end
         update_result!(wrk, iter)
         #update_hook!(...) # TODO
         info_tuple = info_hook(wrk, wrk.result.iter)
@@ -78,7 +73,7 @@ function run_optimizer(
         allow_f_increases=get(wrk.kwargs, :allow_f_increases, false),
     )
 
-    res = Optim.optimize(objective, initial_x, method, options, optimizer_state)
+    res = Optim.optimize(objective, initial_x, method, options, wrk.optimizer_state)
 
     if !res.ls_success
         @error "optimization failed (linesearch)"
@@ -94,4 +89,14 @@ function run_optimizer(
 
     return nothing
 
+end
+
+
+function step_width(wrk::GrapeWrk{O}) where {O<:Optim.AbstractOptimizer}
+    return wrk.optimizer_state.alpha
+end
+
+
+function search_direction(wrk::GrapeWrk{O}) where {O<:Optim.AbstractOptimizer}
+    return wrk.optimizer_state.s
 end

@@ -7,7 +7,7 @@ function run_optimizer(optimizer::LBFGSB.L_BFGS_B, wrk, fg!, info_hook, check_co
     factr = get(wrk.kwargs, :lbfgsb_factr, 1e7)
     pgtol = get(wrk.kwargs, :lbfgsb_pgtol, 1e-5)
     iprint = get(wrk.kwargs, :lbfgsb_iprint, -1)
-    # TODO: set `iprint` based on the value of some verbosity flag
+    trace_debugging = (iprint == 100)
     x = wrk.pulsevals
     n = length(x)
     obj = optimizer
@@ -47,7 +47,6 @@ function run_optimizer(optimizer::LBFGSB.L_BFGS_B, wrk, fg!, info_hook, check_co
     obj.task[1:5] = b"START"
     message_in = "START"
     message_out = ""
-    # iprint = 100  # enable for L-BFGS-B internal trace printing
 
     while true # task loop
 
@@ -92,9 +91,6 @@ function run_optimizer(optimizer::LBFGSB.L_BFGS_B, wrk, fg!, info_hook, check_co
         elseif obj.task[1:5] == b"NEW_X"
             # x is the optimized pulses for the current iteration
             iter = wrk.result.iter_start + obj.isave[30]
-            n0 = obj.isave[13]
-            wrk.searchdirection .= obj.wa[n0:n0+n-1]
-            wrk.alpha = obj.dsave[14]
             update_result!(wrk, iter)
             #update_hook!(...) # TODO
             info_tuple = info_hook(wrk, wrk.result.iter)
@@ -114,10 +110,14 @@ function run_optimizer(optimizer::LBFGSB.L_BFGS_B, wrk, fg!, info_hook, check_co
             end
             fill!(obj.task, Cuchar(' '))
             obj.task[1:10] = b"STOP: DONE"
-            # print_lbfgsb_trace(wrk, obj, message_in, message_out)  # enable for trace-debugging
+            if trace_debugging
+                print_lbfgsb_trace(wrk, obj, message_in, message_out)
+            end
             break
         end
-        # print_lbfgsb_trace(wrk, obj, message_in, message_out)  # enable for trace-debugging
+        if trace_debugging
+            print_lbfgsb_trace(wrk, obj, message_in, message_out)  # enable for trace-debugging
+        end
 
     end # task loop
 
@@ -178,4 +178,26 @@ function print_lbfgsb_trace(
         println("   dsave[16] = $(optimizer.dsave[16]):\t the square of the 2-norm of the line search direction vector")
     end
     #! format: on
+end
+
+
+function gradient(wrk::GrapeWrk{O}; which=:initial) where {O<:Optim.AbstractOptimizer}
+    if which == :initial
+        return wrk.gradient
+    elseif which == :final
+        return wrk.optimizer.g
+    else
+        throw(ArgumentError("`which` must be :initial or :final, not $(repr(which))"))
+    end
+end
+
+function step_width(wrk::GrapeWrk{O}) where {O<:LBFGSB.L_BFGS_B}
+    return wrk.optimizer.dsave[14]
+end
+
+
+function search_direction(wrk::GrapeWrk{O}) where {O<:LBFGSB.L_BFGS_B}
+    n = length(wrk.pulsevals)
+    n0 = wrk.optimizer.isave[13]
+    return wrk.optimizer.wa[n0:n0+n-1]
 end

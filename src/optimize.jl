@@ -348,7 +348,7 @@ function optimize_grape(problem)
 
     end
 
-    optimizer = get_optimizer(wrk)
+    optimizer = wrk.optimizer
     atexit_filename = get(problem.kwargs, :atexit_filename, nothing)
     # atexit_filename is undocumented on purpose: this is considered a feature
     # of @optimize_or_load
@@ -583,12 +583,4 @@ function transform_control_ranges(c, ϵ_min, ϵ_max, check)
     else
         return (min(ϵ_min, 5 * ϵ_min), max(ϵ_max, 5 * ϵ_max))
     end
-end
-
-
-function get_optimizer(wrk)
-    n = length(wrk.pulsevals)
-    m = 10 # TODO: kwarg for number of limited memory corrections
-    optimizer = get(wrk.kwargs, :optimizer, LBFGSB.L_BFGS_B(n, m))
-    return optimizer
 end

@@ -18,7 +18,7 @@ using GRAPE
 
     rng = StableRNG(1244561944)
 
-    problem = dummy_control_problem(; pulses_as_controls=true)
+    problem = dummy_control_problem(; pulses_as_controls=true, rng)
     nt = length(problem.tlist)
     guess_pulse = QuantumControl.Controls.get_controls(problem.trajectories)[1]
     @test length(guess_pulse) == nt - 1
