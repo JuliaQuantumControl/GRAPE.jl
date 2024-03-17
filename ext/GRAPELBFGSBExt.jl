@@ -1,5 +1,9 @@
+module GRAPELBFGSBExt
+
 import LBFGSB
-using QuantumControlBase.QuantumPropagators.Controls: discretize
+using GRAPE: GrapeWrk, update_result!
+import GRAPE: run_optimizer, gradient, step_width, search_direction
+
 
 function run_optimizer(optimizer::LBFGSB.L_BFGS_B, wrk, fg!, info_hook, check_convergence!)
 
@@ -126,16 +130,6 @@ function run_optimizer(optimizer::LBFGSB.L_BFGS_B, wrk, fg!, info_hook, check_co
 end
 
 
-function finalize_result!(wrk::GrapeWrk)
-    L = length(wrk.controls)
-    res = wrk.result
-    res.end_local_time = now()
-    ϵ_opt = reshape(wrk.pulsevals, L, :)
-    for l = 1:L
-        res.optimized_controls[l] = discretize(ϵ_opt[l, :], res.tlist)
-    end
-end
-
 function print_lbfgsb_trace(
     wrk,
     optimizer::LBFGSB.L_BFGS_B,
@@ -200,4 +194,6 @@ function search_direction(wrk::GrapeWrk{O}) where {O<:LBFGSB.L_BFGS_B}
     n = length(wrk.pulsevals)
     n0 = wrk.optimizer.isave[13]
     return wrk.optimizer.wa[n0:n0+n-1]
+end
+
 end

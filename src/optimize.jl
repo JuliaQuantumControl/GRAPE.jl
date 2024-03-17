@@ -1,4 +1,4 @@
-using QuantumControlBase.QuantumPropagators.Controls: evaluate, evaluate!
+using QuantumControlBase.QuantumPropagators.Controls: evaluate, evaluate!, discretize
 using QuantumControlBase.QuantumPropagators: prop_step!, set_state!, reinit_prop!, propagate
 using QuantumControlBase.QuantumPropagators.Storage: write_to_storage!, get_from_storage!
 using QuantumGradientGenerators: resetgradvec!
@@ -385,6 +385,9 @@ function optimize_grape(problem)
 end
 
 
+function run_optimizer end
+
+
 function update_result!(wrk::GrapeWrk, i::Int64)
     res = wrk.result
     for (k, propagator) in enumerate(wrk.fw_propagators)
@@ -403,6 +406,18 @@ function update_result!(wrk::GrapeWrk, i::Int64)
     res.end_local_time = now()
     res.secs = Dates.toms(res.end_local_time - prev_time) / 1000.0
 end
+
+
+function finalize_result!(wrk::GrapeWrk)
+    L = length(wrk.controls)
+    res = wrk.result
+    res.end_local_time = now()
+    ϵ_opt = reshape(wrk.pulsevals, L, :)
+    for l = 1:L
+        res.optimized_controls[l] = discretize(ϵ_opt[l, :], res.tlist)
+    end
+end
+
 
 
 """Print optimization progress as a table.

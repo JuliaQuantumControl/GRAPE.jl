@@ -3,6 +3,7 @@ using QuantumControlBase.QuantumPropagators.Storage: init_storage
 using QuantumControlBase.QuantumPropagators.Controls: get_controls, discretize_on_midpoints
 using QuantumControlBase: Trajectory, get_control_derivs, init_prop_trajectory
 using QuantumGradientGenerators: GradVector, GradGenerator
+import LBFGSB
 
 """Grape Workspace.
 

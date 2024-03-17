@@ -16,6 +16,9 @@ Optim = "429524aa-4258-5aef-a3af-852621145aeb"
 
 [extensions]
 GRAPEOptimExt = "Optim"
+# GRAPELBFGSBExt = "LBFGSB"
+# Cannot load GRAPELBFGSBExt as an extension if LBFGSB is a hard
+# dependency. See `include` in `src/GRAPE.jl`.
 
 [compat]
 Dates = "1"
