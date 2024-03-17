@@ -181,7 +181,7 @@ function print_lbfgsb_trace(
 end
 
 
-function gradient(wrk::GrapeWrk{O}; which=:initial) where {O<:Optim.AbstractOptimizer}
+function gradient(wrk::GrapeWrk{O}; which=:initial) where {O<:LBFGSB.L_BFGS_B}
     if which == :initial
         return wrk.gradient
     elseif which == :final

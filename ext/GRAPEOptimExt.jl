@@ -1,4 +1,8 @@
+module GRAPEOptimExt
+
 import Optim
+using GRAPE: GrapeWrk, update_result!
+import GRAPE: run_optimizer, step_width, search_direction
 
 function run_optimizer(
     optimizer::Optim.AbstractOptimizer,
@@ -99,4 +103,6 @@ end
 
 function search_direction(wrk::GrapeWrk{O}) where {O<:Optim.AbstractOptimizer}
     return wrk.optimizer_state.s
+end
+
 end

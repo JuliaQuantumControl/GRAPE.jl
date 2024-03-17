@@ -7,10 +7,15 @@ version = "0.6.0+dev"
 Dates = "ade2ca70-3891-5945-98fb-dc099432e06a"
 LBFGSB = "5be7bae1-8223-5378-bac3-9e7378a2f6e6"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
-Optim = "429524aa-4258-5aef-a3af-852621145aeb"
 Printf = "de0858da-6303-5e67-8744-51eddeeeb8d7"
 QuantumControlBase = "f10a33bc-5a64-497c-be7b-6f86b4f0c2aa"
 QuantumGradientGenerators = "a563f35e-61db-434d-8c01-8b9e3ccdfd85"
+
+[weakdeps]
+Optim = "429524aa-4258-5aef-a3af-852621145aeb"
+
+[extensions]
+GRAPEOptimExt = "Optim"
 
 [compat]
 Dates = "1"

@@ -6,6 +6,8 @@ using DocumenterCitations
 using DocumenterInterLinks
 using Pkg
 using Plots
+import Optim
+import LBFGSB
 
 gr()
 ENV["GKSwstype"] = "100"
