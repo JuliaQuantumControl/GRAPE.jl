@@ -19,7 +19,7 @@ optimizes the given control [`problem`](@ref QuantumControlBase.ControlProblem)
 via the GRAPE method, by minimizing the functional
 
 ```math
-J(\{ϵ_{ln}\}) = J_T(\{|ϕ_k(T)⟩\}) + λ_a J_a(\{ϵ_{ln}\})
+J(\{ϵ_{nl}\}) = J_T(\{|ϕ_k(T)⟩\}) + λ_a J_a(\{ϵ_{nl}\})
 ```
 
 where the final time functional ``J_T`` depends explicitly on the
@@ -49,8 +49,11 @@ with explicit keyword arguments to `optimize`.
   given, it will be automatically determined from `J_T` via [`make_chi`](@ref)
   with the default parameters.
 * `J_a`: A function `J_a(pulsevals, tlist)` that evaluates running costs over
-  the pulse values, where `pulsevals` are the vectorized values ``ϵ_{nl}``.
-  If not given, the optimization will not include a running cost.
+  the pulse values, where `pulsevals` are the vectorized values ``ϵ_{nl}``,
+  where `n` are in indices of the time intervals and `l` are the indices over
+  the controls, i.e., `[ϵ₁₁, ϵ₂₁, …, ϵ₁₂, ϵ₂₂, …]` (the pulse values for each
+  control are contiguous). If not given, the optimization will not include a
+  running cost.
 * `gradient_method=:gradgen`: One of `:gradgen` (default) or `:taylor`.
   With `gradient_method=:gradgen`, the gradient is calculated using
   [QuantumGradientGenerators]
@@ -258,7 +261,7 @@ function optimize_grape(problem)
                 χ̃ₖ = prop_step!(wrk.bw_grad_propagators[k])
                 get_from_storage!(Ψₖ, Φ[k], n)
                 for l = 1:L
-                    ∇τ[k][l, n] = χ̃ₖ.grad_states[l] ⋅ Ψₖ
+                    ∇τ[k][n, l] = χ̃ₖ.grad_states[l] ⋅ Ψₖ
                 end
                 resetgradvec!(χ̃ₖ)
                 set_state!(wrk.bw_grad_propagators[k], χ̃ₖ)
@@ -308,7 +311,7 @@ function optimize_grape(problem)
                 for l = 1:L
                     local μₖₗ = wrk.control_derivs[k][l]
                     if isnothing(μₖₗ)
-                        ∇τ[k][l, n] = 0.0
+                        ∇τ[k][n, l] = 0.0
                     else
                         local ϵₙ⁽ⁱ⁾ = @view pulsevals[(n-1)*L+1:n*L]
                         local vals_dict = IdDict(
@@ -331,7 +334,7 @@ function optimize_grape(problem)
                             max_order=taylor_grad_max_order,
                             tolerance=taylor_grad_tolerance
                         )
-                        ∇τ[k][l, n] = dot(χ̃ₗₖ, Ψₖ)
+                        ∇τ[k][n, l] = dot(χ̃ₗₖ, Ψₖ)
                     end
                 end
                 χₖ = prop_step!(wrk.bw_propagators[k])
@@ -412,9 +415,10 @@ function finalize_result!(wrk::GrapeWrk)
     L = length(wrk.controls)
     res = wrk.result
     res.end_local_time = now()
-    ϵ_opt = reshape(wrk.pulsevals, L, :)
+    N_T = length(res.tlist) - 1
     for l = 1:L
-        res.optimized_controls[l] = discretize(ϵ_opt[l, :], res.tlist)
+        ϵ_opt = wrk.pulsevals[(l-1)*N_T+1:l*N_T]
+        res.optimized_controls[l] = discretize(ϵ_opt, res.tlist)
     end
 end
 
@@ -487,40 +491,39 @@ end
 # ```
 #
 # sets the (vectorized) elements of the gradient `∇J_T` to the gradient
-# ``∂J_T/∂ϵ_{ln}`` for an arbitrary functional ``J_T=J_T(\{|ϕ_k(T)⟩\})``, under
+# ``∂J_T/∂ϵ_{nl}`` for an arbitrary functional ``J_T=J_T(\{|ϕ_k(T)⟩\})``, under
 # the assumption that
 #
 # ```math
 # \begin{aligned}
 #     τ_k &= ⟨χ_k|ϕ_k(T)⟩ \quad \text{with} \quad |χ_k⟩ &= -∂J_T/∂⟨ϕ_k(T)|
 #     \quad \text{and} \\
-#     ∇τ_{kln} &= ∂τ_k/∂ϵ_{ln}\,,
+#     ∇τ_{knl} &= ∂τ_k/∂ϵ_{nl}\,,
 # \end{aligned}
 # ```
 #
 # where ``|ϕ_k(T)⟩`` is a state resulting from the forward propagation of some
-# initial state ``|ϕ_k⟩`` under the pulse values ``ϵ_{ln}`` where ``l`` numbers
+# initial state ``|ϕ_k⟩`` under the pulse values ``ϵ_{nl}`` where ``l`` numbers
 # the controls and ``n`` numbers the time slices. The ``τ_k`` are the elements
-# of `τ` and ``∇τ_{kln}`` corresponds to `∇τ[k][l, n]`.
+# of `τ` and ``∇τ_{knl}`` corresponds to `∇τ[k][n, l]`.
 #
 # In this case,
 #
 # ```math
-# (∇J_T)_{ln} = ∂J_T/∂ϵ_{ln} = -2 \Re \sum_k ∇τ_{kln}\,.
+# (∇J_T)_{nl} = ∂J_T/∂ϵ_{nl} = -2 \Re \sum_k ∇τ_{knl}\,.
 # ```
 #
 # Note that the definition of the ``|χ_k⟩`` matches exactly the definition of
 # the boundary condition for the backward propagation in Krotov's method, see
 # [`QuantumControlBase.Functionals.make_chi`](@ref). Specifically, there is a
 # minus sign in front of the derivative, compensated by the minus sign in the
-# factor ``(-2)`` of the final ``(∇J_T)_{ln}``.
+# factor ``(-2)`` of the final ``(∇J_T)_{nl}``.
 function _grad_J_T_via_chi!(∇J_T, τ, ∇τ)
     N = length(τ) # number of trajectories
-    L, N_T = size(∇τ[1])  # number of controls/time intervals
-    ∇J_T′ = reshape(∇J_T, L, N_T)  # writing to ∇J_T′ modifies ∇J_T
+    N_T, L = size(∇τ[1])  # number of time intervals/controls
     for l = 1:L
         for n = 1:N_T
-            ∇J_T′[l, n] = real(sum([∇τ[k][l, n] for k = 1:N]))
+            ∇J_T[(l-1)*N_T+n] = real(sum([∇τ[k][n, l] for k = 1:N]))
         end
     end
     lmul!(-2, ∇J_T)

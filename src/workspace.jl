@@ -117,18 +117,11 @@ function GrapeWrk(problem::QuantumControlBase.ControlProblem; verbose=false)
         error("no controls in trajectories: cannot optimize")
     end
     tlist = problem.tlist
-    # interleave the pulse values as [ϵ₁(t̃₁), ϵ₂(t̃₁), ..., ϵ₁(t̃₂), ϵ₂(t̃₂), ...]
-    # to allow access as reshape(pulsevals, L, :)[l, n] where l is the control
-    # index and n is the time index
-    pulsevals = convert(
-        Vector{Float64},
-        reshape(
-            transpose(
-                hcat([discretize_on_midpoints(control, tlist) for control in controls]...)
-            ),
-            :
-        )
-    )
+    N_T = length(tlist) - 1
+    # Concatenate pulse values. For `N_T = length(tlist) - 1` time intervals,
+    # `pulsesvals[(l-1)*N_T + n]` is the value for the l'th control and time
+    # index n
+    pulsevals = vcat([discretize_on_midpoints(control, tlist) for control in controls]...)
     kwargs = Dict(problem.kwargs)  # creates a shallow copy; ok to modify
     default_pulse_options = IdDict()  # not used
     pulse_options = get(kwargs, :pulse_options, default_pulse_options)
@@ -146,16 +139,11 @@ function GrapeWrk(problem::QuantumControlBase.ControlProblem; verbose=false)
         result.message = "in progress"
         pulsevals = convert(
             Vector{Float64},
-            reshape(
-                transpose(
-                    hcat(
-                        [
-                            discretize_on_midpoints(control, result.tlist) for
-                            control in result.optimized_controls
-                        ]...
-                    )
-                ),
-                :
+            vcat(
+                [
+                    discretize_on_midpoints(control, result.tlist) for
+                    control in result.optimized_controls
+                ]...
             )
         )
     else
@@ -164,7 +152,7 @@ function GrapeWrk(problem::QuantumControlBase.ControlProblem; verbose=false)
     parameters = IdDict(
         # The view-aliasing below ensures that we can mutate `pulsevals` and
         # the updated values are immediately accessible in the propagation
-        control => @view pulsevals[l:length(controls):end] for
+        control => @view pulsevals[(l-1)*N_T+1:l*N_T] for
         (l, control) in enumerate(controls)
     )
     gradient = zeros(length(pulsevals))
@@ -203,7 +191,7 @@ function GrapeWrk(problem::QuantumControlBase.ControlProblem; verbose=false)
     ]
     chi_states = [similar(traj.initial_state) for traj in trajectories]
     tau_grads::Vector{Matrix{ComplexF64}} =
-        [zeros(ComplexF64, length(controls), length(tlist) - 1) for _ in trajectories]
+        [zeros(ComplexF64, length(tlist) - 1, length(controls)) for _ in trajectories]
     if gradient_method == :gradgen
         grad_trajectories = [
             begin
