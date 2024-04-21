@@ -3,6 +3,7 @@ using QuantumControl
 using QuantumPropagators: ExpProp
 using QuantumControl.Functionals: J_T_sm
 using GRAPE
+import Krotov
 using LinearAlgebra
 using Printf
 import IOCapture
@@ -47,6 +48,12 @@ function ls_info_hook(wrk, iter)
         @test norm(Δu - α * s) < 1e-10
     end
     return (iter, g_norm, s_norm, ratio, angle, α)
+end
+
+
+function J_T_info_hook(wrk, iter, args...)
+    J_T = wrk.result.J_T
+    return (J_T,)
 end
 
 
@@ -218,6 +225,71 @@ end
     display(res)
     @test res.J_T < 1e-3
     @test 0.75 < maximum(abs.(res.optimized_controls[1])) < 0.85
+    println("===================================================\n")
+
+end
+
+
+@testset "TLS (continue from Krotov)" begin
+
+    println("\n============ TLS (Krotov continuation) ============\n")
+    H = tls_hamiltonian()
+    tlist = collect(range(0, 5, length=501))
+    Ψ₀ = ComplexF64[1, 0]
+    Ψtgt = ComplexF64[0, 1]
+    problem = ControlProblem(
+        [Trajectory(Ψ₀, H, target_state=Ψtgt)],
+        tlist;
+        iter_stop=5,
+        prop_method=ExpProp,
+        J_T=J_T_sm,
+        check_convergence=res -> begin
+            ((res.J_T < 1e-10) && (res.converged = true) && (res.message = "J_T < 10⁻¹⁰"))
+        end,
+    )
+    res_krotov = optimize(problem; method=Krotov, lambda_a=100.0, iter_stop=2)
+    res = optimize(
+        problem;
+        method=GRAPE,
+        continue_from=res_krotov,
+        info_hook=(J_T_info_hook, GRAPE.print_table,)
+    )
+    display(res)
+    @test res.J_T < 1e-3
+    @test abs(res.records[1][1] - res_krotov.J_T) < 1e-14
+    println("===================================================\n")
+
+end
+
+
+@testset "TLS (continue with Krotov)" begin
+
+    println("\n=========== TLS (continue with Krotov) ============\n")
+    H = tls_hamiltonian()
+    tlist = collect(range(0, 5, length=501))
+    Ψ₀ = ComplexF64[1, 0]
+    Ψtgt = ComplexF64[0, 1]
+    problem = ControlProblem(
+        [Trajectory(Ψ₀, H, target_state=Ψtgt)],
+        tlist;
+        iter_stop=5,
+        prop_method=ExpProp,
+        J_T=J_T_sm,
+        check_convergence=res -> begin
+            ((res.J_T < 1e-10) && (res.converged = true) && (res.message = "J_T < 10⁻¹⁰"))
+        end,
+    )
+    res_grape = optimize(problem; method=GRAPE, iter_stop=2)
+    res = optimize(
+        problem;
+        method=Krotov,
+        continue_from=res_grape,
+        lambda_a=1.0,
+        info_hook=(J_T_info_hook, Krotov.print_table,)
+    )
+    display(res)
+    @test res.J_T < 1e-3
+    @test abs(res.records[1][1] - res_grape.J_T) < 1e-14
     println("===================================================\n")
 
 end

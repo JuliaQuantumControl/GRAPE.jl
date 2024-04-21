@@ -23,47 +23,48 @@ mutable struct GrapeResult{STST}
     fg_calls::Int64
     message::String
 
-    function GrapeResult(problem)
-        tlist = problem.tlist
-        controls = get_controls(problem.trajectories)
-        iter_start = get(problem.kwargs, :iter_start, 0)
-        iter_stop = get(problem.kwargs, :iter_stop, 5000)
-        iter = iter_start
-        secs = 0
-        tau_vals = zeros(ComplexF64, length(problem.trajectories))
-        guess_controls = [discretize(control, tlist) for control in controls]
-        J_T = 0.0
-        J_T_prev = 0.0
-        optimized_controls = [copy(guess) for guess in guess_controls]
-        states = [similar(traj.initial_state) for traj in problem.trajectories]
-        start_local_time = now()
-        end_local_time = now()
-        records = Vector{Tuple}()
-        converged = false
-        message = "in progress"
-        f_calls = 0
-        fg_calls = 0
-        new{eltype(states)}(
-            tlist,
-            iter_start,
-            iter_stop,
-            iter,
-            secs,
-            tau_vals,
-            J_T,
-            J_T_prev,
-            guess_controls,
-            optimized_controls,
-            states,
-            start_local_time,
-            end_local_time,
-            records,
-            converged,
-            f_calls,
-            fg_calls,
-            message
-        )
-    end
+end
+
+function GrapeResult(problem)
+    tlist = problem.tlist
+    controls = get_controls(problem.trajectories)
+    iter_start = get(problem.kwargs, :iter_start, 0)
+    iter_stop = get(problem.kwargs, :iter_stop, 5000)
+    iter = iter_start
+    secs = 0
+    tau_vals = zeros(ComplexF64, length(problem.trajectories))
+    guess_controls = [discretize(control, tlist) for control in controls]
+    J_T = 0.0
+    J_T_prev = 0.0
+    optimized_controls = [copy(guess) for guess in guess_controls]
+    states = [similar(traj.initial_state) for traj in problem.trajectories]
+    start_local_time = now()
+    end_local_time = now()
+    records = Vector{Tuple}()
+    converged = false
+    message = "in progress"
+    f_calls = 0
+    fg_calls = 0
+    GrapeResult{eltype(states)}(
+        tlist,
+        iter_start,
+        iter_stop,
+        iter,
+        secs,
+        tau_vals,
+        J_T,
+        J_T_prev,
+        guess_controls,
+        optimized_controls,
+        states,
+        start_local_time,
+        end_local_time,
+        records,
+        converged,
+        f_calls,
+        fg_calls,
+        message
+    )
 end
 
 

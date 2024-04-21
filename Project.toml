@@ -13,9 +13,12 @@ QuantumGradientGenerators = "a563f35e-61db-434d-8c01-8b9e3ccdfd85"
 
 [weakdeps]
 Optim = "429524aa-4258-5aef-a3af-852621145aeb"
+Krotov = "b05dcdc7-62f6-4360-bf2c-0898bba419de"
+
 
 [extensions]
 GRAPEOptimExt = "Optim"
+GRAPEKrotovExt = "Krotov"
 # GRAPELBFGSBExt = "LBFGSB"
 # Cannot load GRAPELBFGSBExt as an extension if LBFGSB is a hard
 # dependency. See `include` in `src/GRAPE.jl`.
@@ -23,6 +26,7 @@ GRAPEOptimExt = "Optim"
 [compat]
 Dates = "1"
 LBFGSB = "0.4"
+Krotov = "0.6"
 LinearAlgebra = "1"
 Optim = "1"
 Printf = "1"
