@@ -2,7 +2,30 @@ using QuantumControlBase.QuantumPropagators.Controls: get_controls, discretize
 using Printf
 using Dates
 
-"""Result object returned by [`optimize_grape`](@ref)."""
+"""Result object returned by [`optimize_grape`](@ref).
+
+# Attributes
+
+The attributes of a `GrapeResult` object include
+
+* `iter`:  The number of the current iteration
+* `J_T`: The value of the final-time functional in the current iteration
+* `J_T_prev`: The value of the final-time functional in the previous iteration
+* `tlist`: The time grid on which the control are discetized.
+* `guess_controls`: A vector of the original control fields (each field
+  discretized to the points of `tlist`)
+* optimized_controls: A vector of the optimized control fileds in the current
+  iterations
+* records: A vector of tuples with values returned by an `info_hook` routine
+  passed to [`optimize`](@ref)
+* converged: A boolean flag on whether the optimization is converged. This
+  may be set to `true` by a `check_convergence` function.
+* message: A message string to explain the reason for convergence. This may be
+  set by a `check_convergence` function.
+
+All of the above attributes may be referenced in a `check_convergence` function
+passed to [`optimize(problem; method=GRAPE)`](@ref QuantumControlBase.optimize(::ControlProblem, ::Val{:GRAPE}))
+"""
 mutable struct GrapeResult{STST}
     tlist::Vector{Float64}
     iter_start::Int64  # the starting iteration number
