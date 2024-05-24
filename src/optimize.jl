@@ -119,6 +119,12 @@ with explicit keyword arguments to `optimize`.
   optimizer will be used.
 * `prop_method`: The propagation method to use for each trajectory, see below.
 * `verbose=false`: If `true`, print information during initialization
+* `rethrow_exceptions`: By default, any exception ends the optimization, but
+  still returns a [`GrapeResult`](@ref) that captures the message associated
+  with the exception. This is to avoid losing results from a long-running
+  optimization when an exception occurs in a later iteration. If
+  `rethrow_exceptions=true`, instead of capturing the exception, it will be
+  thrown normally.
 
 # Trajectory propagation
 
@@ -381,6 +387,9 @@ function optimize_grape(problem)
             error("Invalid gradient_method=$(repr(gradient_method)) ∉ (:gradgen, :taylor)")
         end
     catch exc
+        if get(problem.kwargs, :rethrow_exceptions, false)
+            rethrow()
+        end
         # Primarily, this is intended to catch Ctrl-C in interactive
         # optimizations (InterruptException)
         exc_msg = sprint(showerror, exc)
