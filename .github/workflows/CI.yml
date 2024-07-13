@@ -8,7 +8,7 @@ on:
       - '*'
   pull_request:
     branches:
-    - master
+      - master
 env:
   GKSwstype: 100
   JULIA_PKG_PRECOMPILE_AUTO: false
@@ -20,31 +20,30 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - title: 'Linux - latest'
+          - title: 'Linux - Latest'
             os: ubuntu-latest
             version: '1'
-            arch: x64
     steps:
       - uses: actions/checkout@v4
       - uses: julia-actions/cache@v2
       - uses: julia-actions/setup-julia@v2
         with:
           version: ${{ matrix.version }}
-          arch: ${{ matrix.arch }}
-      - run: |
+      - name: "Instantiate test environment"
+        run: |
           # Instantiate Pkg
           wget https://raw.githubusercontent.com/JuliaQuantumControl/JuliaQuantumControl/master/scripts/installorg.jl
           julia --project=test installorg.jl
-      - run: |
-          # Run tests
+      - name: "Run tests"
+        run: |
           julia --project=test --color=auto --startup-file=yes --code-coverage="user" --depwarn="yes" --check-bounds="yes" -e 'include("test/runtests.jl")'
       - uses: julia-actions/julia-processcoverage@v1
-      - run: |
-          # Summarize coverage
-          julia --project=test -e 'using QuantumControlTestUtils; show_coverage();'
-      - uses: codecov/codecov-action@v3
+      - name: "Summarize coverage"
+        run: julia --project=test -e 'using QuantumControlTestUtils; show_coverage();'
+      - uses: codecov/codecov-action@v4
         with:
           file: lcov.info
+          token: ${{ secrets.CODECOV_TOKEN }}
   docs:
     name: Documentation
     runs-on: ubuntu-latest
@@ -54,32 +53,23 @@ jobs:
       - uses: julia-actions/setup-julia@v2
         with:
           version: '1'
-      - run: |
-          # Install Python dependencies
+      - name: "Install Python dependencies"
+        run: |
           set -x
           /usr/bin/python3 -m pip install zip-files
-      - run: |
-          # Instantiate Pkg
+      - name: "Instantiate test environment"
+        run: |
           wget https://raw.githubusercontent.com/JuliaQuantumControl/JuliaQuantumControl/master/scripts/installorg.jl
           julia --project=test installorg.jl
-      - run: cp test/*.toml docs/  # Prepare DrWatson
-      - run: |
-          # Run doctests
-          julia  --threads auto --project=test -e '
-            using Documenter: DocMeta, doctest
-            using GRAPE
-            DocMeta.setdocmeta!(GRAPE, :DocTestSetup, :(using GRAPE); recursive=true)
-            doctest(GRAPE)'
-      - run: |
-          # Make documentation
-          julia  --threads auto --project=test docs/make.jl
+      - name: "Build documentation"
+        run: julia  --threads auto --project=test docs/make.jl
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           DOCUMENTER_KEY: ${{ secrets.DOCUMENTER_KEY }}
-      - name: Zip the HTML documentation
+      - name: "Zip the HTML documentation"
         run: zip-folder --debug --auto-root --outfile "docs.zip" docs/build
-      - uses: actions/upload-artifact@v2
-        name: Upload documentation artifacts
+      - uses: actions/upload-artifact@v4
+        name: "Upload documentation artifacts"
         with:
           name: GRAPE
           # We need at least two files in the artifact to avoid a weird
