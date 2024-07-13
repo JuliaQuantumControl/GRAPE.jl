@@ -5,7 +5,7 @@ using GRAPE: GrapeWrk, update_result!
 import GRAPE: run_optimizer, gradient, step_width, search_direction
 
 
-function run_optimizer(optimizer::LBFGSB.L_BFGS_B, wrk, fg!, info_hook, check_convergence!)
+function run_optimizer(optimizer::LBFGSB.L_BFGS_B, wrk, fg!, callback, check_convergence!)
 
     m = get(wrk.kwargs, :lbfgsb_m, 10)
     factr = get(wrk.kwargs, :lbfgsb_factr, 1e7)
@@ -87,19 +87,21 @@ function run_optimizer(optimizer::LBFGSB.L_BFGS_B, wrk, fg!, info_hook, check_co
                 # x is the guess for the 0 iteration
                 copyto!(wrk.gradient, obj.g)
                 update_result!(wrk, 0)
-                #update_hook!(...) # TODO
-                info_tuple = info_hook(wrk, 0)
+                info_tuple = callback(wrk, 0)
                 wrk.fg_count .= 0
-                (info_tuple !== nothing) && push!(wrk.result.records, info_tuple)
+                if !(isnothing(info_tuple) || isempty(info_tuple))
+                    push!(wrk.result.records, info_tuple)
+                end
             end
         elseif obj.task[1:5] == b"NEW_X"
             # x is the optimized pulses for the current iteration
             iter = wrk.result.iter_start + obj.isave[30]
             update_result!(wrk, iter)
-            #update_hook!(...) # TODO
-            info_tuple = info_hook(wrk, wrk.result.iter)
+            info_tuple = callback(wrk, wrk.result.iter)
             wrk.fg_count .= 0
-            (info_tuple !== nothing) && push!(wrk.result.records, info_tuple)
+            if !(isnothing(info_tuple) || isempty(info_tuple))
+                push!(wrk.result.records, info_tuple)
+            end
             check_convergence!(wrk.result)
             if wrk.result.converged
                 fill!(obj.task, Cuchar(' '))

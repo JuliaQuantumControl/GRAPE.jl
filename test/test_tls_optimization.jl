@@ -51,12 +51,6 @@ function ls_info_hook(wrk, iter)
 end
 
 
-function J_T_info_hook(wrk, iter, args...)
-    J_T = wrk.result.J_T
-    return (J_T,)
-end
-
-
 function print_ls_table(res)
     println("")
     @printf("%6s", "iter")
@@ -95,7 +89,7 @@ end
         check_convergence=res -> begin
             ((res.J_T < 1e-10) && (res.converged = true) && (res.message = "J_T < 10⁻¹⁰"))
         end,
-        info_hook=(ls_info_hook, GRAPE.print_table,)
+        callback=ls_info_hook,
     )
     res = optimize(problem; method=GRAPE)
     print_ls_table(res)
@@ -125,7 +119,7 @@ end
         check_convergence=res -> begin
             ((res.J_T < 1e-10) && (res.converged = true) && (res.message = "J_T < 10⁻¹⁰"))
         end,
-        info_hook=(ls_info_hook, GRAPE.print_table,)
+        callback=ls_info_hook,
     )
     res = optimize(problem; method=GRAPE)
     print_ls_table(res)
@@ -151,7 +145,7 @@ end
             iter_stop=5,
             prop_method=ExpProp,
             J_T=J_T_sm,
-            info_hook=(ls_info_hook, GRAPE.print_table,),
+            callback=ls_info_hook,
             lbfgsb_iprint=100,
         )
         res = optimize(problem; method=GRAPE)
@@ -186,7 +180,7 @@ end
         check_convergence=res -> begin
             ((res.J_T < 1e-10) && (res.converged = true) && (res.message = "J_T < 10⁻¹⁰"))
         end,
-        info_hook=(ls_info_hook, GRAPE.print_table,)
+        callback=ls_info_hook,
     )
     res = optimize(problem; method=GRAPE)
     print_ls_table(res)
@@ -218,7 +212,7 @@ end
         check_convergence=res -> begin
             ((res.J_T < 1e-10) && (res.converged = true) && (res.message = "J_T < 10⁻¹⁰"))
         end,
-        info_hook=(ls_info_hook, GRAPE.print_table,)
+        callback=ls_info_hook,
     )
     res = optimize(problem; method=GRAPE)
     print_ls_table(res)
@@ -248,12 +242,8 @@ end
         end,
     )
     res_krotov = optimize(problem; method=Krotov, lambda_a=100.0, iter_stop=2)
-    res = optimize(
-        problem;
-        method=GRAPE,
-        continue_from=res_krotov,
-        info_hook=(J_T_info_hook, GRAPE.print_table,)
-    )
+    res =
+        optimize(problem; method=GRAPE, continue_from=res_krotov, store_iter_info=["J_T"],)
     display(res)
     @test res.J_T < 1e-3
     @test abs(res.records[1][1] - res_krotov.J_T) < 1e-14
@@ -285,7 +275,7 @@ end
         method=Krotov,
         continue_from=res_grape,
         lambda_a=1.0,
-        info_hook=(J_T_info_hook, Krotov.print_table,)
+        store_iter_info=["J_T"],
     )
     display(res)
     @test res.J_T < 1e-3

@@ -5,9 +5,44 @@ using QuantumControlBase: Trajectory, get_control_derivs, init_prop_trajectory
 using QuantumGradientGenerators: GradVector, GradGenerator
 import LBFGSB
 
-"""Grape Workspace.
+"""GRAPE Workspace.
 
-# Methods
+The workspace is for internal use. However, it is also accessible in a
+`callback` function. The callback may use or modify some of the following
+attributes:
+
+* `trajectories`: a copy of the trajectories defining the control problem
+* `adjoint_trajectories`: The `trajectories` with the adjoint generator
+* `kwargs`: The keyword arguments from the [`ControlProblem`](@ref) or the
+  call to [`optimize`](@ref).
+* `controls`: A tuple of the original controls (probably functions)
+* `pulsevals_guess`: The combined vector of pulse values that are the guess in
+  the current iteration. Initially, the vector is the concatenation of
+  discretizing `controls` to the midpoints of the time grid.
+* `pulsevals`: The combined vector of updated pulse values in the current
+  iteration.
+* `gradient`: The total gradient for the guess in the current iteration
+* `grad_J_T`: The current gradient for the final-time part of the functional.
+* `grad_J_a`: The current gradient for the running cost part of the functional.
+* `J_parts`: The two-component vector ``[J_T, J_a]``
+* `result`: The current result object
+* `upper_bounds`: Upper bound for every `pulsevals`; `+Inf` indicates no bound.
+* `lower_bounds`: Lower bound for every `pulsevals`; `-Inf` indicates no bound.
+* `fg_count`: The total number of evaluations of the functional and evaluations
+  of the gradient, as a two-element vector.
+* `optimizer`: The backend optimizer object
+* `optimizer_state`: The internal state object of the `optimizer` (`nothing` if
+  the `optimizer` has no internal state)
+* `result`: The current result object
+* `tau_grads`: The gradients ∂τₖ/ϵₗ(tₙ)
+* `fw_storage`: The storage of states for the forward propagation
+* `fw_propagators`: The propagators used for the forward propagation
+* `bw_propagators`: The propagators used for the backward propagation
+* `use_threads`: Flag indicating whether the propagations are performed in
+  parallel.
+
+In addition, the following methods provide safer (non-mutating) access to
+information in the workspace
 
 * [`step_width`](@ref)
 * [`search_direction`](@ref)
@@ -16,55 +51,23 @@ import LBFGSB
 """
 mutable struct GrapeWrk{O}
 
-    # a copy of the trajectories
     trajectories
-
-    # the adjoint trajectories, containing the adjoint generators for the
-    # backward propagation
     adjoint_trajectories
-
     # trajectories for bw-prop of gradients
     grad_trajectories
-
-    # The kwargs from the control problem
     kwargs
-
-    # Tuple of the original controls (probably functions)
     controls
-
     pulsevals_guess::Vector{Float64}
-
     pulsevals::Vector{Float64}
-
-    # total gradient for guess in iterations
     gradient::Vector{Float64}
-
-    # storage for current final time gradient
     grad_J_T::Vector{Float64}
-
-    # storage for current running cost gradient
     grad_J_a::Vector{Float64}
-
-    # two-component vector [J_T, J_a]
     J_parts::Vector{Float64}
-
-    # Upper bound for every `pulsevals`, +Inf indicates no bound
     upper_bounds::Vector{Float64}
-
-    # Upper bound for every `pulsevals`, -Inf indicates no bound
     lower_bounds::Vector{Float64}
-
     fg_count::Vector{Int64}
-
-    # map of controls to options
-    pulse_options
-
-    # The optimizer
     optimizer::O
-
-    # Internal optimizer state (`nothing` if `optimizer` has not state)
     optimizer_state
-
     result
 
     #################################
@@ -72,37 +75,25 @@ mutable struct GrapeWrk{O}
 
     # backward-propagated states
     chi_states
-
-    # gradients ∂τₖ/ϵₗ(tₙ)
     tau_grads::Vector{Matrix{ComplexF64}}
-
-    # backward storage array
     fw_storage
-
-    # for normal forward propagation
     fw_propagators
-
     # for gradient backward propagation
     # gradient_method=:gradgen only
     bw_grad_propagators
-
     # for normal backward propagation
     # gradient_method=:taylor only
     bw_propagators
-
     # evaluated Hₖ for a particular point in time
     # gradient_method=:taylor only
     taylor_genops
-
     # derivatives ∂Hₖ/∂ϵₗ(t)
     # gradient_method=:taylor only
     control_derivs
-
     # 5 temporary states for each trajectory and each control, for evaluating
     # gradients via Taylor expansions
     # gradient_method=:taylor only
     taylor_grad_states
-
     use_threads::Bool
 
 end
@@ -173,7 +164,6 @@ function GrapeWrk(problem::QuantumControlBase.ControlProblem; verbose=false)
             lb .= options[:lower_bounds]
         end
     end
-    dummy_vals = IdDict(control => 1.0 for (i, control) in enumerate(controls))
     fw_storage = [init_storage(traj.initial_state, tlist) for traj in trajectories]
     kwargs[:piecewise] = true  # only accept piecewise propagators
     _prefixes = ["prop_", "fw_prop_"]
@@ -264,7 +254,6 @@ function GrapeWrk(problem::QuantumControlBase.ControlProblem; verbose=false)
         upper_bounds,
         lower_bounds,
         fg_count,
-        pulse_options,
         optimizer,
         optimizer_state,
         result,
@@ -297,8 +286,8 @@ end
 
 returns the scalar `α` so that `pulse_update(wrk) = α * search_direction(wrk)`,
 see [`pulse_update`](@ref) and [`search_direction`](@ref) for the iteration
-desribed by the current [`GrapeWrk`](@ref) (for the state of `wrk` as available
-in the `info_hook` of the current iteration.
+described by the current [`GrapeWrk`](@ref) (for the state of `wrk` as available
+in the `callback` of the current iteration.
 """
 function step_width(wrk)
     u = pulse_update(wrk)
@@ -362,7 +351,7 @@ end
 Δu = pulse_update(wrk)
 ```
 
-returns a vector conntaining the different between the optimized pulse values
+returns a vector containing the different between the optimized pulse values
 and the guess pulse values of the current iteration. This should be
 proportional to [`search_direction`](@ref) with the
 proportionality factor [`step_width`](@ref).

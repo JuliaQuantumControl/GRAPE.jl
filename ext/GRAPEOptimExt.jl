@@ -9,12 +9,12 @@ function run_optimizer(
     optimizer::Optim.AbstractOptimizer,
     wrk,
     fg!,
-    info_hook,
+    callback,
     check_convergence!
 )
 
     tol_options = Optim.Options(
-        # just so we can instantiate `optimizer_state` before `callback`
+        # just so we can instantiate `optimizer_state` before `optim_callback`
         x_tol=get(wrk.kwargs, :x_tol, 0.0),
         f_tol=get(wrk.kwargs, :f_tol, 0.0),
         g_tol=get(wrk.kwargs, :g_tol, 1e-8),
@@ -38,7 +38,7 @@ function run_optimizer(
     @assert isnan(wrk.optimizer_state.f_x_previous)
 
     # update the result object and check convergence
-    function callback(optimization_state::Optim.OptimizationState)
+    function optim_callback(optimization_state::Optim.OptimizationState)
         iter = wrk.result.iter_start + optimization_state.iteration
         #@assert optimization_state.value == objective.F
         #if optimization_state.iteration > 0
@@ -48,11 +48,10 @@ function run_optimizer(
         #    ) < 1e-14
         #end
         update_result!(wrk, iter)
-        #update_hook!(...) # TODO
-        info_tuple = info_hook(wrk, wrk.result.iter)
+        info_tuple = callback(wrk, wrk.result.iter)
         if hasproperty(objective, :DF)
             # DF is the *current* gradient, i.e., the gradient of the updated
-            # pulsevals, which (after the call to `info_hook`) is the gradient
+            # pulsevals, which (after the call to `callback`) is the gradient
             # for the the guess of the next iteration.
             wrk.gradient .= objective.DF
         elseif (optimization_state.iteration == 1)
@@ -60,13 +59,15 @@ function run_optimizer(
         end
         copyto!(wrk.pulsevals_guess, wrk.pulsevals)
         wrk.fg_count .= 0
-        (info_tuple !== nothing) && push!(wrk.result.records, info_tuple)
+        if !(isnothing(info_tuple) || isempty(info_tuple))
+            push!(wrk.result.records, info_tuple)
+        end
         check_convergence!(wrk.result)
         return wrk.result.converged
     end
 
     options = Optim.Options(
-        callback=callback,
+        callback=optim_callback,
         iterations=wrk.result.iter_stop - wrk.result.iter_start, # TODO
         x_tol=get(wrk.kwargs, :x_tol, 0.0),
         f_tol=get(wrk.kwargs, :f_tol, 0.0),

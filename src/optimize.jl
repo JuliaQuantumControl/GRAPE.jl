@@ -8,7 +8,7 @@ using QuantumControlBase: @threadsif
 using LinearAlgebra
 using Printf
 
-import QuantumControlBase: optimize
+import QuantumControlBase: optimize, make_print_iters
 
 @doc raw"""
 ```julia
@@ -94,19 +94,25 @@ with explicit keyword arguments to `optimize`.
   - `:lower_bounds`: A vector of lower bound values. Values of `-Inf` indicate
     an unconstrained lower bound for that time interval,
 
-* `update_hook`: Not implemented
-* `info_hook`: A function (or tuple of functions) that receives the same
-  arguments as `update_hook`, in order to write information about the current
-  iteration to the screen or to a file. The default `info_hook` prints a table
-  with convergence information to the screen. Runs after `update_hook`. The
-  `info_hook` function may return a tuple, which is stored in the list of
-  `records` inside the [`GrapeResult`](@ref) object.
+* `print_iters=true`: Whether to print information after each iteration.
+* `store_iter_info=Set()`: Which fields from `print_iters` to store in
+  `result.records`. A subset of
+  `Set(["iter.", "J_T", "|∇J_T|", "ΔJ_T", "FG(F)", "secs"])`.
+* `callback`: A function (or tuple of functions) that receives the
+  [GRAPE workspace](@ref GrapeWrk) and the iteration number. The function
+  may return a tuple of values which are stored in the
+  [`GrapeResult`](@ref) object `result.records`. The function can also mutate
+  the workspace, in particular the updated `pulsevals`. This may be used,
+  e.g., to apply a spectral filter to the updated pulses or to perform
+  similar manipulations. Note that `print_iters=true` (default) adds an
+  automatic callback to print information after each iteration. With
+  `store_iter_info`, that callback automatically stores a subset of the
+  printed information.
 * `check_convergence`: A function to check whether convergence has been
   reached. Receives a [`GrapeResult`](@ref) object `result`, and should set
   `result.converged` to `true` and `result.message` to an appropriate string in
   case of convergence. Multiple convergence checks can be performed by chaining
-  functions with `∘`. The convergence check is performed after any calls to
-  `update_hook` and `info_hook`.
+  functions with `∘`. The convergence check is performed after any `callback`.
 * `x_tol`: Parameter for Optim.jl
 * `f_tol`: Parameter for Optim.jl
 * `g_tol`: Parameter for Optim.jl
@@ -159,11 +165,12 @@ optimize(problem, method::Val{:grape}) = optimize_grape(problem)
 See [`optimize(problem; method=GRAPE, kwargs...)`](@ref optimize(::Any, ::Val{:GRAPE})).
 """
 function optimize_grape(problem)
-    update_hook! = get(problem.kwargs, :update_hook, (args...) -> nothing)
-    # TODO: implement update_hook
-    # TODO: streamline the interface for info_hook
     # TODO: check if x_tol, f_tol, g_tol are used necessary / used correctly
-    info_hook = get(problem.kwargs, :info_hook, print_table)
+    callback = get(problem.kwargs, :callback, (args...) -> nothing)
+    if haskey(problem.kwargs, :update_hook) || haskey(problem.kwargs, :info_hook)
+        msg = "The `update_hook` and `info_hook` arguments have been superseded by the `callback` argument"
+        throw(ArgumentError(msg))
+    end
     check_convergence! = get(problem.kwargs, :check_convergence, res -> res)
     verbose = get(problem.kwargs, :verbose, false)
     gradient_method = get(problem.kwargs, :gradient_method, :gradgen)
@@ -380,9 +387,9 @@ function optimize_grape(problem)
     end
     try
         if gradient_method == :gradgen
-            run_optimizer(optimizer, wrk, fg_gradgen!, info_hook, check_convergence!)
+            run_optimizer(optimizer, wrk, fg_gradgen!, callback, check_convergence!)
         elseif gradient_method == :taylor
-            run_optimizer(optimizer, wrk, fg_taylor!, info_hook, check_convergence!)
+            run_optimizer(optimizer, wrk, fg_taylor!, callback, check_convergence!)
         else
             error("Invalid gradient_method=$(repr(gradient_method)) ∉ (:gradgen, :taylor)")
         end
@@ -441,64 +448,103 @@ function finalize_result!(wrk::GrapeWrk)
 end
 
 
+make_print_iters(::Val{:GRAPE}; kwargs...) = make_grape_print_iters(; kwargs...)
+make_print_iters(::Val{:grape}; kwargs...) = make_grape_print_iters(; kwargs...)
+
 
 """Print optimization progress as a table.
 
 This functions serves as the default `info_hook` for an optimization with
 GRAPE.
 """
-function print_table(wrk, iteration, args...)
-    # TODO: make_print_table that precomputes headers and such, and maybe
-    # allows for more options.
-    # TODO: should we report ΔJ instead of ΔJ_T?
-
-    J_T = wrk.result.J_T
-    ΔJ_T = J_T - wrk.result.J_T_prev
-    secs = wrk.result.secs
+function make_grape_print_iters(; kwargs...)
 
     headers = ["iter.", "J_T", "|∇J_T|", "ΔJ_T", "FG(F)", "secs"]
-    if wrk.J_parts[2] ≠ 0.0
-        headers = ["iter.", "J_T", "|∇J_T|", "|∇J_a|", "ΔJ_T", "FG(F)", "secs"]
+    store_iter_info = Set(get(kwargs, :store_iter_info, Set()))
+    info_vals = Vector{Any}(undef, length(headers))
+    fill!(info_vals, nothing)
+    store_iter = false
+    store_J_T = false
+    store_grad_norm = false
+    store_ΔJ_T = false
+    store_counts = false
+    store_secs = false
+    for item in store_iter_info
+        if item == "iter."
+            store_iter = true
+        elseif item == "J_T"
+            store_J_T = true
+        elseif item == "|∇J_T|"
+            store_grad_norm = true
+        elseif item == "ΔJ_T"
+            store_ΔJ_T = true
+        elseif item == "FG(F)"
+            store_counts = true
+        elseif item == "secs"
+            store_secs = true
+        else
+            msg = "Item $(repr(item)) in `store_iter_info` is not one of $(repr(headers)))"
+            throw(ArgumentError(msg))
+        end
     end
 
-    iter_stop = "$(get(wrk.kwargs, :iter_stop, 5000))"
-    width = Dict(
-        "iter." => max(length("$iter_stop"), 6),
-        "J_T" => 11,
-        "|∇J_T|" => 11,
-        "|∇J_a|" => 11,
-        "|∇J|" => 11,
-        "ΔJ" => 11,
-        "ΔJ_T" => 11,
-        "FG(F)" => 8,
-        "secs" => 8,
-    )
+    function print_table(wrk, iteration, args...)
 
-    if iteration == 0
-        for header in headers
+        J_T = wrk.result.J_T
+        ΔJ_T = J_T - wrk.result.J_T_prev
+        secs = wrk.result.secs
+        grad_norm = norm(wrk.grad_J_T)
+        counts = Tuple(wrk.fg_count)
+
+        iter_stop = "$(get(wrk.kwargs, :iter_stop, 5000))"
+        width = Dict(
+            "iter." => max(length("$iter_stop"), 6),
+            "J_T" => 11,
+            "|∇J_T|" => 11,
+            "|∇J_a|" => 11,
+            "|∇J|" => 11,
+            "ΔJ" => 11,
+            "ΔJ_T" => 11,
+            "FG(F)" => 8,
+            "secs" => 8,
+        )
+
+        store_iter && (info_vals[1] = iteration)
+        store_J_T && (info_vals[2] = J_T)
+        store_grad_norm && (info_vals[3] = grad_norm)
+        store_ΔJ_T && (info_vals[4] = ΔJ_T)
+        store_counts && (info_vals[5] = counts)
+        store_secs && (info_vals[6] = secs)
+
+        if iteration == 0
+            for header in headers
+                w = width[header]
+                print(lpad(header, w))
+            end
+            print("\n")
+        end
+
+        strs = [
+            "$iteration",
+            @sprintf("%.2e", J_T),
+            @sprintf("%.2e", grad_norm),
+            (iteration > 0) ? @sprintf("%.2e", ΔJ_T) : "n/a",
+            @sprintf("%d(%d)", counts[1], counts[2]),
+            @sprintf("%.1f", secs),
+        ]
+        for (str, header) in zip(strs, headers)
             w = width[header]
-            print(lpad(header, w))
+            print(lpad(str, w))
         end
         print("\n")
+        flush(stdout)
+
+        return Tuple((value for value in info_vals if (value !== nothing)))
+
     end
 
-    strs = [
-        "$iteration",
-        @sprintf("%.2e", J_T),
-        @sprintf("%.2e", norm(wrk.grad_J_T)),
-        (iteration > 0) ? @sprintf("%.2e", ΔJ_T) : "n/a",
-        @sprintf("%d(%d)", wrk.fg_count[1], wrk.fg_count[2]),
-        @sprintf("%.1f", secs),
-    ]
-    if wrk.J_parts[2] ≠ 0.0
-        insert!(strs, 4, @sprintf("%.2e", norm(wrk.grad_J_a)))
-    end
-    for (str, header) in zip(strs, headers)
-        w = width[header]
-        print(lpad(str, w))
-    end
-    print("\n")
-    flush(stdout)
+    return print_table
+
 end
 
 

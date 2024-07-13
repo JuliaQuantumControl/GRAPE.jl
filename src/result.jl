@@ -16,7 +16,7 @@ The attributes of a `GrapeResult` object include
   discretized to the points of `tlist`)
 * optimized_controls: A vector of the optimized control fileds in the current
   iterations
-* records: A vector of tuples with values returned by an `info_hook` routine
+* records: A vector of tuples with values returned by a `callback` routine
   passed to [`optimize`](@ref)
 * converged: A boolean flag on whether the optimization is converged. This
   may be set to `true` by a `check_convergence` function.
@@ -40,7 +40,7 @@ mutable struct GrapeResult{STST}
     states::Vector{STST}
     start_local_time::DateTime
     end_local_time::DateTime
-    records::Vector{Tuple}  # storage for info_hook to write data into at each iteration
+    records::Vector{Tuple}  # storage for callback to write data into at each iteration
     converged::Bool
     f_calls::Int64
     fg_calls::Int64
