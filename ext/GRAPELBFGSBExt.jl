@@ -94,7 +94,7 @@ function run_optimizer(optimizer::LBFGSB.L_BFGS_B, wrk, fg!, callback, check_con
             end
         elseif obj.task[1:5] == b"NEW_X"
             # x is the optimized pulses for the current iteration
-            iter = wrk.result.iter_start + obj.isave[30]
+            iter = wrk.result.iter + 1  # Cf. `obj.isave[30]`
             update_result!(wrk, iter)
             info_tuple = callback(wrk, wrk.result.iter)
             wrk.fg_count .= 0

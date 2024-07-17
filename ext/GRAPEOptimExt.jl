@@ -39,7 +39,7 @@ function run_optimizer(
 
     # update the result object and check convergence
     function optim_callback(optimization_state::Optim.OptimizationState)
-        iter = wrk.result.iter_start + optimization_state.iteration
+        iter = wrk.result.iter + 1  # Cf. optimization_state.iteration
         #@assert optimization_state.value == objective.F
         #if optimization_state.iteration > 0
         #    @assert norm(

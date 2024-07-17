@@ -242,10 +242,12 @@ end
         end,
     )
     res_krotov = optimize(problem; method=Krotov, lambda_a=100.0, iter_stop=2)
+    @test res_krotov.iter == 2
     res =
         optimize(problem; method=GRAPE, continue_from=res_krotov, store_iter_info=["J_T"],)
     display(res)
-    @test res.J_T < 1e-3
+    @test res.J_T < 2e-2
+    @test length(res.records) == 4
     @test abs(res.records[1][1] - res_krotov.J_T) < 1e-14
     println("===================================================\n")
 
@@ -277,6 +279,7 @@ end
         lambda_a=1.0,
         store_iter_info=["J_T"],
     )
+    @test length(res.records) == 4
     display(res)
     @test res.J_T < 1e-3
     @test abs(res.records[1][1] - res_grape.J_T) < 1e-14
