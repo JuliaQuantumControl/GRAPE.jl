@@ -37,18 +37,21 @@ with explicit keyword arguments to `optimize`.
 
 # Required problem keyword arguments
 
-* `J_T`: A function `J_T(ϕ, trajectories; τ=τ)` that evaluates the final time
-  functional from a vector `ϕ` of forward-propagated states and
-  `problem.trajectories`. For all `trajectories` that define a `target_state`,
-  the element `τₖ` of the vector `τ` will contain the overlap of the state `ϕₖ`
-  with the `target_state` of the `k`'th trajectory, or `NaN` otherwise.
+* `J_T`: A function `J_T(Ψ, trajectories)` that evaluates the final time
+  functional from a list `Ψ` of forward-propagated states and
+  `problem.trajectories`. The function `J_T` may also take a keyword argument
+  `tau`. If it does, a vector containing the complex overlaps of the target
+  states (`target_state` property of each trajectory in `problem.trajectories`)
+  with the propagated states will be passed to `J_T`.
 
 # Optional problem keyword arguments
 
-* `chi`: A function `chi!(χ, ϕ, trajectories)` what receives a list `ϕ`
-  of the forward propagated states and must set ``|χₖ⟩ = -∂J_T/∂⟨ϕₖ|``. If not
-  given, it will be automatically determined from `J_T` via [`make_chi`](@ref)
-  with the default parameters.
+* `chi`: A function `chi(Ψ, trajectories)` that receives a list `Ψ`
+  of the forward propagated states and returns a vector of states
+  ``|χₖ⟩ = -∂J_T/∂⟨Ψₖ|``. If not given, it will be automatically determined
+  from `J_T` via [`make_chi`](@ref) with the default parameters. Similarly to
+  `J_T`, if `chi` accepts a keyword argument `tau`, it will be passed a vector
+  of complex overlaps.
 * `J_a`: A function `J_a(pulsevals, tlist)` that evaluates running costs over
   the pulse values, where `pulsevals` are the vectorized values ``ϵ_{nl}``,
   where `n` are in indices of the time intervals and `l` are the indices over
@@ -181,7 +184,6 @@ function optimize_grape(problem)
 
     wrk = GrapeWrk(problem; verbose)
 
-    χ = wrk.chi_states
     Ψ₀ = [traj.initial_state for traj ∈ wrk.trajectories]
     Ψtgt = Union{eltype(Ψ₀),Nothing}[
         (hasproperty(traj, :target_state) ? traj.target_state : nothing) for
@@ -190,17 +192,12 @@ function optimize_grape(problem)
 
     J = wrk.J_parts
     tlist = wrk.result.tlist
-    J_T_func = wrk.kwargs[:J_T]
+    J_T = wrk.kwargs[:J_T]
     J_a_func = get(wrk.kwargs, :J_a, nothing)
     ∇J_T = wrk.grad_J_T
     ∇J_a = wrk.grad_J_a
     λₐ = get(wrk.kwargs, :lambda_a, 1.0)
-    if haskey(wrk.kwargs, :chi)
-        chi! = wrk.kwargs[:chi]
-    else
-        # we only want to evaluate `make_chi` if `chi` is not a kwarg
-        chi! = make_chi(J_T_func, wrk.trajectories)
-    end
+    chi = wrk.kwargs[:chi]  # guaranteed to exist in `GrapeWrk` constructor
     grad_J_a! = nothing
     if !isnothing(J_a_func)
         grad_J_a! = get(wrk.kwargs, :grad_J_a, make_grad_J_a(J_a_func, tlist))
@@ -241,7 +238,11 @@ function optimize_grape(problem)
             τ[k] = isnothing(Ψtgt[k]) ? NaN : (Ψtgt[k] ⋅ Ψₖ)
         end
         Ψ = [p.state for p ∈ wrk.fw_propagators]
-        J[1] = J_T_func(Ψ, wrk.trajectories; τ=τ)
+        if wrk.J_T_takes_tau
+            J[1] = J_T(Ψ, wrk.trajectories; tau=τ)
+        else
+            J[1] = J_T(Ψ, wrk.trajectories)
+        end
         if !isnothing(J_a_func)
             J[2] = λₐ * J_a_func(pulsevals, tlist)
         end
@@ -265,7 +266,11 @@ function optimize_grape(problem)
 
         # backward propagation of combined χ-state and gradient
         Ψ = [p.state for p ∈ wrk.fw_propagators]
-        chi!(χ, Ψ, wrk.trajectories; τ=τ)  # τ from f(...)
+        if wrk.chi_takes_tau
+            χ = chi(Ψ, wrk.trajectories; tau=τ)  # τ is set in f()
+        else
+            χ = chi(Ψ, wrk.trajectories)
+        end
         @threadsif wrk.use_threads for k = 1:N
             local Ψₖ = wrk.fw_propagators[k].state  # memory reuse
             local χ̃ₖ = wrk.bw_grad_propagators[k].state
@@ -313,7 +318,11 @@ function optimize_grape(problem)
 
         # backward propagation of χ-state
         Ψ = [p.state for p ∈ wrk.fw_propagators]
-        chi!(χ, Ψ, wrk.trajectories; τ=τ)  # τ from f(...)
+        if wrk.chi_takes_tau
+            χ = chi(Ψ, wrk.trajectories; tau=τ)  # τ is set in f()
+        else
+            χ = chi(Ψ, wrk.trajectories)
+        end
         @threadsif wrk.use_threads for k = 1:N
             local Ψₖ = wrk.fw_propagators[k].state  # memory reuse
             reinit_prop!(wrk.bw_propagators[k], χ[k]; transform_control_ranges)
@@ -356,6 +365,7 @@ function optimize_grape(problem)
                             max_order=taylor_grad_max_order,
                             tolerance=taylor_grad_tolerance
                         )
+                        # TODO: taylor_grad_step for immutable states
                         ∇τ[k][n, l] = dot(χ̃ₗₖ, Ψₖ)
                     end
                 end

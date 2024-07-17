@@ -68,13 +68,13 @@ mutable struct GrapeWrk{O}
     fg_count::Vector{Int64}
     optimizer::O
     optimizer_state
+    J_T_takes_tau::Bool  # Does J_T have a tau keyword arg?
+    chi_takes_tau::Bool # Does chi have a tau keyword arg?
     result
 
     #################################
     # scratch objects, per trajectory:
 
-    # backward-propagated states
-    chi_states
     tau_grads::Vector{Matrix{ComplexF64}}
     fw_storage
     fw_propagators
@@ -231,7 +231,7 @@ function GrapeWrk(problem::QuantumControlBase.ControlProblem; verbose=false)
             [get_control_derivs(traj.generator, controls) for traj in trajectories]
         taylor_grad_states = [
             Tuple(similar(trajectories[k].initial_state) for _ = 1:5) for
-            l = 1:length(controls), k = 1:length(trajectories)
+            l in eachindex(controls), k in eachindex(trajectories)
         ]
     else
         error("Invalid gradient_method=$(repr(gradient_method)) ∉ (:gradgen, :taylor)")
@@ -239,6 +239,21 @@ function GrapeWrk(problem::QuantumControlBase.ControlProblem; verbose=false)
     optimizer = get_optimizer(length(pulsevals); kwargs...)
     optimizer_state = nothing  # set in run_optimizer, if applicable
     O = typeof(optimizer)
+    J_T_takes_tau = false
+    if haskey(kwargs, :J_T)
+        J_T = kwargs[:J_T]
+    else
+        msg = "`optimize` for `method=Krotov` must be passed the functional `J_T`."
+        throw(ArgumentError(msg))
+    end
+    J_T_takes_tau =
+        hasmethod(J_T, Tuple{typeof(result.states),typeof(trajectories)}, (:tau,))
+    if !haskey(kwargs, :chi)
+        kwargs[:chi] = make_chi(J_T, trajectories)
+    end
+    chi = kwargs[:chi]
+    chi_takes_tau =
+        hasmethod(chi, Tuple{typeof(result.states),typeof(trajectories)}, (:tau,))
     GrapeWrk{O}(
         trajectories,
         adjoint_trajectories,
@@ -256,8 +271,9 @@ function GrapeWrk(problem::QuantumControlBase.ControlProblem; verbose=false)
         fg_count,
         optimizer,
         optimizer_state,
+        J_T_takes_tau,
+        chi_takes_tau,
         result,
-        chi_states,
         tau_grads,
         fw_storage,
         fw_propagators,
@@ -386,7 +402,8 @@ function vec_angle(
     if unit == :degree
         a = a * 180 / π
     elseif unit != :rad
-        throw(ValueError("`unit` must be :rad or :degree, not $(repr(unit))"))
+        msg = "`unit` must be :rad or :degree, not $(repr(unit))"
+        throw(ArgumentError(msg))
     end
     return a
 end

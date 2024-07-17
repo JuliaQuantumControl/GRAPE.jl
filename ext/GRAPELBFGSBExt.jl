@@ -16,7 +16,6 @@ function run_optimizer(optimizer::LBFGSB.L_BFGS_B, wrk, fg!, callback, check_con
     n = length(x)
     obj = optimizer
     f = 0.0
-    message = "n/a"
     # clean up
     fill!(obj.task, Cuchar(' '))
     fill!(obj.csave, Cuchar(' '))

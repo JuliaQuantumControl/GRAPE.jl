@@ -14,7 +14,7 @@ The attributes of a `GrapeResult` object include
 * `tlist`: The time grid on which the control are discetized.
 * `guess_controls`: A vector of the original control fields (each field
   discretized to the points of `tlist`)
-* optimized_controls: A vector of the optimized control fileds in the current
+* optimized_controls: A vector of the optimized control fields in the current
   iterations
 * records: A vector of tuples with values returned by a `callback` routine
   passed to [`optimize`](@ref)

@@ -38,7 +38,8 @@ links = InterLinks(
 )
 
 fallbacks = ExternalFallbacks(
-    "QuantumControlBase.ControlProblem" => "@extref QuantumControlBase.ControlProblem",
+    "ControlProblem" => "@extref QuantumControl :jl:type:`QuantumControlBase.ControlProblem`",
+    "QuantumControlBase.ControlProblem" => "@extref QuantumControl :jl:type:`QuantumControlBase.ControlProblem`",
     "make_chi" => "@extref QuantumControlBase.make_chi",
     "QuantumControlBase.QuantumPropagators.Controls.get_controls" => "@extref QuantumPropagators.Controls.get_controls",
     "Trajectory" => "@extref QuantumControlBase.Trajectory",
