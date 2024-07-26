@@ -179,7 +179,7 @@ function GrapeWrk(problem::QuantumControlBase.ControlProblem; verbose=false)
             kwargs...
         ) for (k, traj) in enumerate(trajectories)
     ]
-    chi_states = [similar(traj.initial_state) for traj in trajectories]
+    chi_states = [zero(traj.initial_state) for traj in trajectories]
     tau_grads::Vector{Matrix{ComplexF64}} =
         [zeros(ComplexF64, length(tlist) - 1, length(controls)) for _ in trajectories]
     if gradient_method == :gradgen

@@ -9,6 +9,7 @@ using Printf
 import IOCapture
 import Optim
 using LineSearches
+using StaticArrays: @SMatrix, @SVector
 using GRAPE: step_width, pulse_update, search_direction, gradient, vec_angle
 
 ϵ(t) = 0.2 * QuantumControl.Shapes.flattop(t, T=5, t_rise=0.3, func=:blackman);
@@ -21,6 +22,22 @@ function tls_hamiltonian(Ω=1.0, ϵ=ϵ)
         0 -1
     ]
     σ̂_x = ComplexF64[
+        0  1
+        1  0
+    ]
+    Ĥ₀ = -0.5 * Ω * σ̂_z
+    Ĥ₁ = σ̂_x
+    return hamiltonian(Ĥ₀, (Ĥ₁, ϵ))
+end;
+
+
+"""Two-level-system Hamiltonian, using StaticArrays."""
+function tls_hamiltonian_static(Ω=1.0, ϵ=ϵ)
+    σ̂_z = @SMatrix ComplexF64[
+        1  0
+        0 -1
+    ]
+    σ̂_x = @SMatrix ComplexF64[
         0  1
         1  0
     ]
@@ -216,6 +233,33 @@ end
     )
     res = optimize(problem; method=GRAPE)
     print_ls_table(res)
+    display(res)
+    @test res.J_T < 1e-3
+    @test 0.75 < maximum(abs.(res.optimized_controls[1])) < 0.85
+    println("===================================================\n")
+
+end
+
+
+@testset "TLS (static)" begin
+
+    println("\n================ TLS (static) ======================\n")
+    H = tls_hamiltonian_static()
+    tlist = collect(range(0, 5, length=501))
+    Ψ₀ = @SVector ComplexF64[1, 0]
+    Ψtgt = @SVector ComplexF64[0, 1]
+    problem = ControlProblem(
+        [Trajectory(Ψ₀, H, target_state=Ψtgt)],
+        tlist;
+        iter_stop=5,
+        prop_method=ExpProp,
+        J_T=J_T_sm,
+        rethrow_exceptions=true,
+        check_convergence=res -> begin
+            ((res.J_T < 1e-10) && (res.converged = true) && (res.message = "J_T < 10⁻¹⁰"))
+        end,
+    )
+    res = optimize(problem; method=GRAPE)
     display(res)
     @test res.J_T < 1e-3
     @test 0.75 < maximum(abs.(res.optimized_controls[1])) < 0.85

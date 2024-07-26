@@ -25,13 +25,12 @@ jobs:
             version: '1'
     steps:
       - uses: actions/checkout@v4
-      - uses: julia-actions/cache@v2
       - uses: julia-actions/setup-julia@v2
         with:
           version: ${{ matrix.version }}
+      - uses: julia-actions/cache@v2
       - name: "Instantiate test environment"
         run: |
-          # Instantiate Pkg
           wget https://raw.githubusercontent.com/JuliaQuantumControl/JuliaQuantumControl/master/scripts/installorg.jl
           julia --project=test installorg.jl
       - name: "Run tests"
@@ -49,10 +48,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: julia-actions/cache@v2
       - uses: julia-actions/setup-julia@v2
         with:
           version: '1'
+      - uses: julia-actions/cache@v2
       - name: "Install Python dependencies"
         run: |
           set -x

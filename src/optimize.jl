@@ -2,6 +2,7 @@ using QuantumControlBase.QuantumPropagators.Controls: evaluate, evaluate!, discr
 using QuantumControlBase.QuantumPropagators: prop_step!, set_state!, reinit_prop!, propagate
 using QuantumControlBase.QuantumPropagators.Storage:
     write_to_storage!, get_from_storage!, get_from_storage
+using QuantumControlBase.QuantumPropagators.Interfaces: supports_inplace
 using QuantumGradientGenerators: resetgradvec!
 using QuantumControlBase: make_chi, make_grad_J_a, set_atexit_save_optimization
 using QuantumControlBase: @threadsif
@@ -273,12 +274,11 @@ function optimize_grape(problem)
         end
         @threadsif wrk.use_threads for k = 1:N
             local Ψₖ = wrk.fw_propagators[k].state  # memory reuse
-            local χ̃ₖ = wrk.bw_grad_propagators[k].state
-            resetgradvec!(χ̃ₖ, χ[k])
+            local χ̃ₖ = GradVector(χ[k], N)
             reinit_prop!(wrk.bw_grad_propagators[k], χ̃ₖ; transform_control_ranges)
             for n = N_T:-1:1  # N_T is the number of time slices
                 χ̃ₖ = prop_step!(wrk.bw_grad_propagators[k])
-                if ismutable(Ψₖ)
+                if supports_inplace(Ψₖ)
                     get_from_storage!(Ψₖ, Φ[k], n)
                 else
                     Ψₖ = get_from_storage(Φ[k], n)
