@@ -274,7 +274,7 @@ function optimize_grape(problem)
         end
         @threadsif wrk.use_threads for k = 1:N
             local Ψₖ = wrk.fw_propagators[k].state  # memory reuse
-            local χ̃ₖ = GradVector(χ[k], N)
+            local χ̃ₖ = GradVector(χ[k], length(wrk.controls))
             reinit_prop!(wrk.bw_grad_propagators[k], χ̃ₖ; transform_control_ranges)
             for n = N_T:-1:1  # N_T is the number of time slices
                 χ̃ₖ = prop_step!(wrk.bw_grad_propagators[k])
