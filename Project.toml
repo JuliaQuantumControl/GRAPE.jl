@@ -1,7 +1,7 @@
 name = "GRAPE"
 uuid = "6b52fcaf-80fe-489a-93e9-9f92080510be"
 authors = ["Michael Goerz <mail@michaelgoerz.net>"]
-version = "0.7.0+dev"
+version = "0.7.1"
 
 [deps]
 Dates = "ade2ca70-3891-5945-98fb-dc099432e06a"
@@ -26,10 +26,10 @@ GRAPEKrotovExt = "Krotov"
 [compat]
 Dates = "1"
 LBFGSB = "0.4"
-Krotov = ">=0.7.0"
+Krotov = "0.7.0"
 LinearAlgebra = "1"
 Optim = "1"
 Printf = "1"
-QuantumControlBase = ">=0.10.0"
-QuantumGradientGenerators = ">=0.1.7"
+QuantumControlBase = "0.10.0"
+QuantumGradientGenerators = "0.1.7"
 julia = "1.9"
