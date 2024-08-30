@@ -201,7 +201,13 @@ function optimize_grape(problem)
     chi = wrk.kwargs[:chi]  # guaranteed to exist in `GrapeWrk` constructor
     grad_J_a! = nothing
     if !isnothing(J_a_func)
-        grad_J_a! = get(wrk.kwargs, :grad_J_a, make_grad_J_a(J_a_func, tlist))
+        if haskey(wrk.kwargs, :grad_J_a)
+            grad_J_a! = wrk.kwargs[:grad_J_a]
+        else
+            # With a manually given `grad_J_a`, the `make_grad_J_a` function
+            # should never be called. So we can't use `get` to set this.
+            grad_J_a! = make_grad_J_a(J_a_func, tlist)
+        end
     end
 
     τ = wrk.result.tau_vals
