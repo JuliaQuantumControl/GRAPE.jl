@@ -1,7 +1,8 @@
-import QuantumControlBase
-using QuantumControlBase.QuantumPropagators.Storage: init_storage
-using QuantumControlBase.QuantumPropagators.Controls: get_controls, discretize_on_midpoints
-using QuantumControlBase: Trajectory, get_control_derivs, init_prop_trajectory
+import QuantumControl
+using QuantumControl.QuantumPropagators.Storage: init_storage
+using QuantumControl.QuantumPropagators.Controls: get_controls, discretize_on_midpoints
+using QuantumControl: Trajectory, init_prop_trajectory
+using QuantumControl.Controls: get_control_derivs
 using QuantumGradientGenerators: GradVector, GradGenerator
 import LBFGSB
 
@@ -98,7 +99,8 @@ mutable struct GrapeWrk{O}
 
 end
 
-function GrapeWrk(problem::QuantumControlBase.ControlProblem; verbose=false)
+
+function GrapeWrk(problem::QuantumControl.ControlProblem; verbose=false)
     use_threads = get(problem.kwargs, :use_threads, false)
     gradient_method = get(problem.kwargs, :gradient_method, :gradgen)
     trajectories = [traj for traj in problem.trajectories]
@@ -243,7 +245,7 @@ function GrapeWrk(problem::QuantumControlBase.ControlProblem; verbose=false)
     if haskey(kwargs, :J_T)
         J_T = kwargs[:J_T]
     else
-        msg = "`optimize` for `method=Krotov` must be passed the functional `J_T`."
+        msg = "`optimize` for `method=GRAPE` must be passed the functional `J_T`."
         throw(ArgumentError(msg))
     end
     J_T_takes_tau =

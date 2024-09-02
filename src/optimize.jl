@@ -1,15 +1,15 @@
-using QuantumControlBase.QuantumPropagators.Controls: evaluate, evaluate!, discretize
-using QuantumControlBase.QuantumPropagators: prop_step!, set_state!, reinit_prop!, propagate
-using QuantumControlBase.QuantumPropagators.Storage:
+using QuantumControl.QuantumPropagators.Controls: evaluate, evaluate!, discretize
+using QuantumControl.QuantumPropagators: prop_step!, set_state!, reinit_prop!, propagate
+using QuantumControl.QuantumPropagators.Storage:
     write_to_storage!, get_from_storage!, get_from_storage
-using QuantumControlBase.QuantumPropagators.Interfaces: supports_inplace
+using QuantumControl.QuantumPropagators.Interfaces: supports_inplace
 using QuantumGradientGenerators: resetgradvec!
-using QuantumControlBase: make_chi, make_grad_J_a, set_atexit_save_optimization
-using QuantumControlBase: @threadsif
+using QuantumControl: set_atexit_save_optimization, @threadsif
+using QuantumControl.Functionals: make_chi, make_grad_J_a
 using LinearAlgebra
 using Printf
 
-import QuantumControlBase: optimize, make_print_iters
+import QuantumControl: optimize, make_print_iters
 
 @doc raw"""
 ```julia
@@ -17,7 +17,7 @@ using GRAPE
 result = optimize(problem; method=GRAPE, kwargs...)
 ```
 
-optimizes the given control [`problem`](@ref QuantumControlBase.ControlProblem)
+optimizes the given control [`problem`](@ref QuantumControl.ControlProblem)
 via the GRAPE method, by minimizing the functional
 
 ```math
@@ -89,7 +89,7 @@ with explicit keyword arguments to `optimize`.
   Time-dependent lower bounds can be specified via `pulse_options`.
 * `pulse_options`: A dictionary that maps every control (as obtained by
   [`get_controls`](@ref
-  QuantumControlBase.QuantumPropagators.Controls.get_controls) from the
+  QuantumControl.QuantumPropagators.Controls.get_controls) from the
   `problem.trajectories`) to a dict with the following possible keys:
 
   - `:upper_bounds`: A vector of upper bound values, one for each intervals of
@@ -595,7 +595,7 @@ end
 #
 # Note that the definition of the ``|χ_k⟩`` matches exactly the definition of
 # the boundary condition for the backward propagation in Krotov's method, see
-# [`QuantumControlBase.Functionals.make_chi`](@ref). Specifically, there is a
+# [`QuantumControl.Functionals.make_chi`](@ref). Specifically, there is a
 # minus sign in front of the derivative, compensated by the minus sign in the
 # factor ``(-2)`` of the final ``(∇J_T)_{nl}``.
 function _grad_J_T_via_chi!(∇J_T, τ, ∇τ)

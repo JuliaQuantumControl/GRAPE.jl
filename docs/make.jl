@@ -1,4 +1,3 @@
-using QuantumControlBase
 using QuantumPropagators
 using GRAPE
 using Documenter
@@ -29,7 +28,6 @@ links = InterLinks(
         "https://github.com/KristofferC/TimerOutputs.jl",
         joinpath(@__DIR__, "src", "inventories", "TimerOutputs.toml")
     ),
-    "QuantumControlBase" => "https://juliaquantumcontrol.github.io/QuantumControlBase.jl/$DEV_OR_STABLE",
     "QuantumPropagators" => "https://juliaquantumcontrol.github.io/QuantumPropagators.jl/$DEV_OR_STABLE",
     "QuantumGradientGenerators" => "https://juliaquantumcontrol.github.io/QuantumGradientGenerators.jl/$DEV_OR_STABLE",
     "QuantumControl" => "https://juliaquantumcontrol.github.io/QuantumControl.jl/$DEV_OR_STABLE",
@@ -38,13 +36,13 @@ links = InterLinks(
 )
 
 fallbacks = ExternalFallbacks(
-    "ControlProblem" => "@extref QuantumControl :jl:type:`QuantumControlBase.ControlProblem`",
-    "QuantumControlBase.ControlProblem" => "@extref QuantumControl :jl:type:`QuantumControlBase.ControlProblem`",
-    "make_chi" => "@extref QuantumControlBase.make_chi",
-    "QuantumControlBase.QuantumPropagators.Controls.get_controls" => "@extref QuantumPropagators.Controls.get_controls",
-    "Trajectory" => "@extref QuantumControlBase.Trajectory",
+    "ControlProblem" => "@extref QuantumControl :jl:type:`QuantumControl.ControlProblem`",
+    "QuantumControl.ControlProblem" => "@extref QuantumControl :jl:type:`QuantumControl.ControlProblem`",
+    "make_chi" => "@extref QuantumControl.make_chi",
+    "QuantumControl.QuantumPropagators.Controls.get_controls" => "@extref QuantumPropagators.Controls.get_controls",
+    "Trajectory" => "@extref QuantumControl.Trajectory",
     "propagate" => "@extref QuantumPropagators.propagate",
-    "init_prop_trajectory" => "@extref QuantumControlBase.init_prop_trajectory"
+    "init_prop_trajectory" => "@extref QuantumControl.init_prop_trajectory"
 )
 
 println("Starting makedocs")

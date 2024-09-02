@@ -1,4 +1,4 @@
-using QuantumControlBase.QuantumPropagators.Controls: get_controls, discretize
+using QuantumControl.QuantumPropagators.Controls: get_controls, discretize
 using Printf
 using Dates
 
@@ -24,7 +24,7 @@ The attributes of a `GrapeResult` object include
   set by a `check_convergence` function.
 
 All of the above attributes may be referenced in a `check_convergence` function
-passed to [`optimize(problem; method=GRAPE)`](@ref QuantumControlBase.optimize(::ControlProblem, ::Val{:GRAPE}))
+passed to [`optimize(problem; method=GRAPE)`](@ref QuantumControl.optimize(::ControlProblem, ::Val{:GRAPE}))
 """
 mutable struct GrapeResult{STST}
     tlist::Vector{Float64}
