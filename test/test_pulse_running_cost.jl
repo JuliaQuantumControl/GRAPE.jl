@@ -22,9 +22,10 @@ using GRAPE
         return 0.5 * J_a
     end
 
-    function _TEST_grad_J_a_smoothness!(∇J_a, pulsevals, tlist)
+    function _TEST_grad_J_a_smoothness(pulsevals, tlist)
         N = length(tlist) - 1  # number of intervals
         L = length(pulsevals) ÷ N
+        ∇J_a = zeros(length(pulsevals))
         for l = 1:L
             for n = 1:N
                 ∇J_a[(l-1)*N+n] = 0.0
@@ -48,7 +49,7 @@ using GRAPE
         problem;
         method=GRAPE,
         J_a=_TEST_J_a_smoothness,
-        grad_J_a=_TEST_grad_J_a_smoothness!,
+        grad_J_a=_TEST_grad_J_a_smoothness,
         lambda_a=0.1,
         J_T=J_T_re,
         iter_stop=2

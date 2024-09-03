@@ -82,7 +82,8 @@ with explicit keyword arguments to `optimize`.
   `taylor_grad_max_order` terms.
 * `lambda_a=1`: A weight for the running cost `J_a`.
 * `grad_J_a`: A function to calculate the gradient of `J_a`. If not given, it
-  will be automatically determined.
+  will be automatically determined. See [`make_grad_J_a`](@ref) for the
+  required interface.
 * `upper_bound`: An upper bound for the value of any optimized control.
   Time-dependent upper bounds can be specified via `pulse_options`.
 * `lower_bound`: A lower bound for the value of any optimized control.
@@ -196,17 +197,16 @@ function optimize_grape(problem)
     J_T = wrk.kwargs[:J_T]
     J_a_func = get(wrk.kwargs, :J_a, nothing)
     ∇J_T = wrk.grad_J_T
-    ∇J_a = wrk.grad_J_a
     λₐ = get(wrk.kwargs, :lambda_a, 1.0)
     chi = wrk.kwargs[:chi]  # guaranteed to exist in `GrapeWrk` constructor
-    grad_J_a! = nothing
+    grad_J_a = nothing
     if !isnothing(J_a_func)
         if haskey(wrk.kwargs, :grad_J_a)
-            grad_J_a! = wrk.kwargs[:grad_J_a]
+            grad_J_a = wrk.kwargs[:grad_J_a]
         else
             # With a manually given `grad_J_a`, the `make_grad_J_a` function
             # should never be called. So we can't use `get` to set this.
-            grad_J_a! = make_grad_J_a(J_a_func, tlist)
+            grad_J_a = make_grad_J_a(J_a_func, tlist)
         end
     end
 
@@ -299,9 +299,9 @@ function optimize_grape(problem)
 
         _grad_J_T_via_chi!(∇J_T, τ, ∇τ)
         copyto!(G, ∇J_T)
-        if !isnothing(grad_J_a!)
-            grad_J_a!(∇J_a, pulsevals, tlist)
-            axpy!(λₐ, ∇J_a, G)
+        if !isnothing(grad_J_a)
+            wrk.grad_J_a = grad_J_a(pulsevals, tlist)
+            axpy!(λₐ, wrk.grad_J_a, G)
         end
         return J_val
 
@@ -381,9 +381,9 @@ function optimize_grape(problem)
 
         _grad_J_T_via_chi!(∇J_T, τ, ∇τ)
         copyto!(G, ∇J_T)
-        if !isnothing(grad_J_a!)
-            grad_J_a!(∇J_a, pulsevals, tlist)
-            axpy!(λₐ, ∇J_a, G)
+        if !isnothing(grad_J_a)
+            wrk.grad_J_a = grad_J_a(pulsevals, tlist)
+            axpy!(λₐ, wrk.grad_J_a, G)
         end
         return J_val
 
