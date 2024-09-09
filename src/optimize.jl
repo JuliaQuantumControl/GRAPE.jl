@@ -355,7 +355,11 @@ function optimize_grape(problem)
                             control => val for (control, val) ∈ zip(wrk.controls, ϵₙ⁽ⁱ⁾)
                         )
                         local μₗₖₙ = evaluate(μₖₗ, tlist, n; vals_dict)
-                        evaluate!(Hₖₙ⁺, Hₖ⁺, tlist, n; vals_dict)
+                        if supports_inplace(Hₖₙ⁺)
+                            evaluate!(Hₖₙ⁺, Hₖ⁺, tlist, n; vals_dict)
+                        else
+                            Hₖₙ⁺ = evaluate(Hₖ⁺, tlist, n; vals_dict)
+                        end
                         local χ̃ₗₖ = wrk.taylor_grad_states[l, k][1]
                         local ϕ_temp = wrk.taylor_grad_states[l, k][2:5]
                         local dt = tlist[n] - tlist[n+1]
@@ -627,6 +631,7 @@ end
 #   |ϕ_n⟩ &= μ̂ Ĥⁿ⁻¹ |Ψ⟩ + Ĥ |Φₙ₋₁⟩
 # \end{align}
 # ```
+# TODO: this should probably be adapted to static states (avoiding in-place)
 function taylor_grad_step!(
     Ψ̃,
     Ψ,

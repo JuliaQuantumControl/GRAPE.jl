@@ -2,6 +2,7 @@ using Test
 using QuantumControl
 using QuantumPropagators: ExpProp
 using QuantumControl.Functionals: J_T_sm
+using QuantumControl.Interfaces: check_generator
 using GRAPE
 import Krotov
 using LinearAlgebra
@@ -43,8 +44,59 @@ function tls_hamiltonian_static(Ω=1.0, ϵ=ϵ)
     ]
     Ĥ₀ = -0.5 * Ω * σ̂_z
     Ĥ₁ = σ̂_x
-    return hamiltonian(Ĥ₀, (Ĥ₁, ϵ))
+    OT = typeof(Ĥ₀)
+    PT = typeof(ϵ)
+    return TLSHamiltonianStatic{OT,PT}(Ĥ₀, Ĥ₁, ϵ)
 end;
+
+
+struct TLSHamiltonianStatic{OT,PT<:Function}
+    H₀::OT
+    H₁::OT
+    ϵ::PT
+end
+
+import QuantumControl.Controls: get_controls, evaluate, get_control_deriv
+import QuantumControl.Interfaces: supports_inplace
+
+
+Base.adjoint(H::TLSHamiltonianStatic) = H
+
+
+function Base.copy(H::TLSHamiltonianStatic{OT,PT}) where {OT,PT}
+    return TLSHamiltonianStatic{OT,PT}(H.H₀, H.H₁, H.ϵ)
+end
+
+
+function get_controls(H::TLSHamiltonianStatic)
+    return (H.ϵ,)
+end
+
+
+function evaluate(H::TLSHamiltonianStatic, args...; kwargs...)
+    ϵ_val = evaluate(H.ϵ, args...; kwargs...)
+    return H.H₀ + ϵ_val * H.H₁
+end
+
+function get_control_deriv(H::TLSHamiltonianStatic, control)
+    if control ≡ H.ϵ
+        return H.H₁
+    else
+        return nothing
+    end
+end
+
+supports_inplace(::TLSHamiltonianStatic) = false
+
+
+@testset "TLS Static Hamiltonian" begin
+
+    H = tls_hamiltonian_static()
+    tlist = collect(range(0, 5, length=501))
+    Ψ₀ = @SVector ComplexF64[1, 0]
+    @test check_generator(H; state=Ψ₀, tlist)
+
+end
 
 
 function ls_info_hook(wrk, iter)
@@ -255,6 +307,34 @@ end
         prop_method=ExpProp,
         J_T=J_T_sm,
         rethrow_exceptions=true,
+        check_convergence=res -> begin
+            ((res.J_T < 1e-10) && (res.converged = true) && (res.message = "J_T < 10⁻¹⁰"))
+        end,
+    )
+    res = optimize(problem; method=GRAPE)
+    display(res)
+    @test res.J_T < 1e-3
+    @test 0.75 < maximum(abs.(res.optimized_controls[1])) < 0.85
+    println("===================================================\n")
+
+end
+
+
+@testset "TLS (static Taylor)" begin
+
+    println("\n============= TLS (static Taylor) ===================\n")
+    H = tls_hamiltonian_static()
+    tlist = collect(range(0, 5, length=501))
+    Ψ₀ = @SVector ComplexF64[1, 0]
+    Ψtgt = @SVector ComplexF64[0, 1]
+    problem = ControlProblem(
+        [Trajectory(Ψ₀, H, target_state=Ψtgt)],
+        tlist;
+        iter_stop=5,
+        prop_method=ExpProp,
+        J_T=J_T_sm,
+        rethrow_exceptions=true,
+        gradient_method=:taylor,
         check_convergence=res -> begin
             ((res.J_T < 1e-10) && (res.converged = true) && (res.message = "J_T < 10⁻¹⁰"))
         end,
