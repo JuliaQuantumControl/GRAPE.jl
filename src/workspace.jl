@@ -189,7 +189,7 @@ function GrapeWrk(problem::QuantumControl.ControlProblem; verbose=false)
             begin
                 χ̃ₖ = GradVector(chi_states[k], length(controls))
                 G̃ₖ = GradGenerator(traj.generator)
-                Trajectory(χ̃ₖ, G̃ₖ, getfield(traj, :kwargs)...)
+                Trajectory(χ̃ₖ, G̃ₖ; getfield(traj, :kwargs)...)
             end for (k, traj) in enumerate(adjoint_trajectories)
         ]
         _prefixes = ["prop_", "bw_prop_", "grad_prop_"]
