@@ -38,7 +38,11 @@ attributes:
 * `tau_grads`: The gradients ∂τₖ/ϵₗ(tₙ)
 * `fw_storage`: The storage of states for the forward propagation
 * `fw_propagators`: The propagators used for the forward propagation
+* `bw_grad_propagators`: The propagators used for the backward propagation of
+  [`QuantumGradientGenerators.GradVector`](@ref) states
+  (`gradient_method=:gradgen` only)
 * `bw_propagators`: The propagators used for the backward propagation
+  (`gradient_method=:taylor` only)
 * `use_threads`: Flag indicating whether the propagations are performed in
   parallel.
 
@@ -74,27 +78,41 @@ mutable struct GrapeWrk{O}
     result
 
     #################################
-    # scratch objects, per trajectory:
+    # Per trajectory:
+
+    # χ(T), for easier debugging in a callback
+    chi_states
 
     tau_grads::Vector{Matrix{ComplexF64}}
     fw_storage
+    fw_prop_kwargs::Vector{Dict{Symbol,Any}}
+    bw_grad_prop_kwargs::Vector{Dict{Symbol,Any}}
+    bw_prop_kwargs::Vector{Dict{Symbol,Any}}
+
+    # for normal forward propagation
     fw_propagators
+
     # for gradient backward propagation
     # gradient_method=:gradgen only
     bw_grad_propagators
+
     # for normal backward propagation
     # gradient_method=:taylor only
     bw_propagators
+
     # evaluated Hₖ for a particular point in time
     # gradient_method=:taylor only
     taylor_genops
+
     # derivatives ∂Hₖ/∂ϵₗ(t)
     # gradient_method=:taylor only
     control_derivs
+
     # 5 temporary states for each trajectory and each control, for evaluating
     # gradients via Taylor expansions
     # gradient_method=:taylor only
     taylor_grad_states
+
     use_threads::Bool
 
 end
@@ -104,6 +122,7 @@ function GrapeWrk(problem::QuantumControl.ControlProblem; verbose=false)
     use_threads = get(problem.kwargs, :use_threads, false)
     gradient_method = get(problem.kwargs, :gradient_method, :gradgen)
     trajectories = [traj for traj in problem.trajectories]
+    N = length(trajectories)
     adjoint_trajectories = [adjoint(traj) for traj in problem.trajectories]
     controls = get_controls(trajectories)
     if length(controls) == 0
@@ -169,6 +188,9 @@ function GrapeWrk(problem::QuantumControl.ControlProblem; verbose=false)
     fw_storage = [init_storage(traj.initial_state, tlist) for traj in trajectories]
     kwargs[:piecewise] = true  # only accept piecewise propagators
     _prefixes = ["prop_", "fw_prop_"]
+    fw_prop_kwargs = [Dict{Symbol,Any}() for _ = 1:N]
+    bw_grad_prop_kwargs = [Dict{Symbol,Any}() for _ = 1:N]
+    bw_prop_kwargs = [Dict{Symbol,Any}() for _ = 1:N]
     fw_propagators = [
         init_prop_trajectory(
             traj,
@@ -177,13 +199,14 @@ function GrapeWrk(problem::QuantumControl.ControlProblem; verbose=false)
             _msg="Initializing fw-prop of trajectory $k",
             _prefixes,
             _filter_kwargs=true,
+            _kwargs_dict=fw_prop_kwargs[k],
             fw_prop_parameters=parameters,  # will filter to `parameters`
             kwargs...
         ) for (k, traj) in enumerate(trajectories)
     ]
     chi_states = [zero(traj.initial_state) for traj in trajectories]
     tau_grads::Vector{Matrix{ComplexF64}} =
-        [zeros(ComplexF64, length(tlist) - 1, length(controls)) for _ in trajectories]
+        [zeros(ComplexF64, length(tlist) - 1, length(controls)) for _ = 1:N]
     if gradient_method == :gradgen
         grad_trajectories = [
             begin
@@ -201,6 +224,7 @@ function GrapeWrk(problem::QuantumControl.ControlProblem; verbose=false)
                 _msg="Initializing bw-gradient-prop of trajectory $k",
                 _prefixes,
                 _filter_kwargs=true,
+                _kwargs_dict=bw_grad_prop_kwargs[k],
                 grad_prop_backward=true,  # will filter to `backward=true`
                 grad_prop_parameters=parameters,  # will filter to `parameters`
                 kwargs...
@@ -222,6 +246,7 @@ function GrapeWrk(problem::QuantumControl.ControlProblem; verbose=false)
                 _msg="Initializing bw-prop of trajectory $k",
                 _prefixes,
                 _filter_kwargs=true,
+                _kwargs_dict=bw_prop_kwargs[k],
                 bw_prop_backward=true,  # will filter to `backward=true`
                 bw_prop_parameters=parameters,  # will filter to `parameters`
                 kwargs...
@@ -276,8 +301,12 @@ function GrapeWrk(problem::QuantumControl.ControlProblem; verbose=false)
         J_T_takes_tau,
         chi_takes_tau,
         result,
+        chi_states,
         tau_grads,
         fw_storage,
+        fw_prop_kwargs,
+        bw_grad_prop_kwargs,
+        bw_prop_kwargs,
         fw_propagators,
         bw_grad_propagators,
         bw_propagators,

@@ -6,6 +6,7 @@ using QuantumControl.QuantumPropagators.Interfaces: supports_inplace
 using QuantumGradientGenerators: resetgradvec!
 using QuantumControl: set_atexit_save_optimization, @threadsif
 using QuantumControl.Functionals: make_chi, make_grad_J_a
+using QuantumControl.QuantumPropagators: _StoreState
 using LinearAlgebra
 using Printf
 
@@ -239,6 +240,11 @@ function optimize_grape(problem)
             (Φₖ !== nothing) && write_to_storage!(Φₖ, 1, Ψ₀[k])
             for n = 1:N_T  # `n` is the index for the time interval
                 local Ψₖ = prop_step!(wrk.fw_propagators[k])
+                if haskey(wrk.fw_prop_kwargs[k], :callback)
+                    local cb = wrk.fw_prop_kwargs[k][:callback]
+                    observables = get(wrk.fw_prop_kwargs[k], :observable, _StoreState())
+                    cb(wrk.fw_propagators[k], observables)
+                end
                 (Φₖ !== nothing) && write_to_storage!(Φₖ, n + 1, Ψₖ)
             end
             local Ψₖ = wrk.fw_propagators[k].state
@@ -278,12 +284,18 @@ function optimize_grape(problem)
         else
             χ = chi(Ψ, wrk.trajectories)
         end
+        wrk.chi_states = χ  # for easier debugging in a callback
         @threadsif wrk.use_threads for k = 1:N
             local Ψₖ = wrk.fw_propagators[k].state  # memory reuse
             local χ̃ₖ = GradVector(χ[k], length(wrk.controls))
             reinit_prop!(wrk.bw_grad_propagators[k], χ̃ₖ; transform_control_ranges)
             for n = N_T:-1:1  # N_T is the number of time slices
                 χ̃ₖ = prop_step!(wrk.bw_grad_propagators[k])
+                if haskey(wrk.bw_grad_prop_kwargs[k], :callback)
+                    local cb = wrk.bw_grad_prop_kwargs[k][:callback]
+                    observables = get(wrk.fw_prop_kwargs[k], :observable, _StoreState())
+                    cb(wrk.bw_grad_propagators[k], observables)
+                end
                 if supports_inplace(Ψₖ)
                     get_from_storage!(Ψₖ, Φ[k], n)
                 else
@@ -329,10 +341,10 @@ function optimize_grape(problem)
         else
             χ = chi(Ψ, wrk.trajectories)
         end
+        wrk.chi_states = χ  # for easier debugging in a callback
         @threadsif wrk.use_threads for k = 1:N
             local Ψₖ = wrk.fw_propagators[k].state  # memory reuse
             reinit_prop!(wrk.bw_propagators[k], χ[k]; transform_control_ranges)
-            local χₖ = wrk.bw_propagators[k].state
             local Hₖ⁺ = wrk.adjoint_trajectories[k].generator
             local Hₖₙ⁺ = wrk.taylor_genops[k]
             for n = N_T:-1:1  # N_T is the number of time slices
@@ -360,6 +372,7 @@ function optimize_grape(problem)
                         else
                             Hₖₙ⁺ = evaluate(Hₖ⁺, tlist, n; vals_dict)
                         end
+                        local χₖ = wrk.bw_propagators[k].state
                         local χ̃ₗₖ = wrk.taylor_grad_states[l, k][1]
                         local ϕ_temp = wrk.taylor_grad_states[l, k][2:5]
                         local dt = tlist[n] - tlist[n+1]
@@ -379,7 +392,11 @@ function optimize_grape(problem)
                         ∇τ[k][n, l] = dot(χ̃ₗₖ, Ψₖ)
                     end
                 end
-                χₖ = prop_step!(wrk.bw_propagators[k])
+                prop_step!(wrk.bw_propagators[k])
+                if haskey(wrk.bw_prop_kwargs[k], :callback)
+                    local cb = wrk.bw_prop_kwargs[k][:callback]
+                    cb(wrk.bw_propagators[k], nothing)
+                end
             end
         end
 
