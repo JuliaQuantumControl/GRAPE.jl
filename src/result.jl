@@ -1,4 +1,5 @@
 using QuantumControl.QuantumPropagators.Controls: get_controls, discretize
+using QuantumControl: AbstractOptimizationResult
 using Printf
 using Dates
 
@@ -26,7 +27,7 @@ The attributes of a `GrapeResult` object include
 All of the above attributes may be referenced in a `check_convergence` function
 passed to [`optimize(problem; method=GRAPE)`](@ref QuantumControl.optimize(::ControlProblem, ::Val{:GRAPE}))
 """
-mutable struct GrapeResult{STST}
+mutable struct GrapeResult{STST} <: AbstractOptimizationResult
     tlist::Vector{Float64}
     iter_start::Int64  # the starting iteration number
     iter_stop::Int64 # the maximum iteration number
@@ -107,3 +108,9 @@ GRAPE Optimization Result
 - Ended at $(r.end_local_time) ($(Dates.canonicalize(Dates.CompoundPeriod(r.end_local_time - r.start_local_time))))
 """
 )
+
+
+function Base.convert(::Type{GrapeResult}, result::AbstractOptimizationResult)
+    defaults = Dict{Symbol,Any}(:f_calls => 0, :fg_calls => 0,)
+    return convert(GrapeResult, result, defaults)
+end

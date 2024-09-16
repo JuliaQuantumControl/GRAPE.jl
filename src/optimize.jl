@@ -242,7 +242,8 @@ function optimize_grape(problem)
                 local Ψₖ = prop_step!(wrk.fw_propagators[k])
                 if haskey(wrk.fw_prop_kwargs[k], :callback)
                     local cb = wrk.fw_prop_kwargs[k][:callback]
-                    local observables = get(wrk.fw_prop_kwargs[k], :observables, _StoreState())
+                    local observables =
+                        get(wrk.fw_prop_kwargs[k], :observables, _StoreState())
                     cb(wrk.fw_propagators[k], observables)
                 end
                 (Φₖ !== nothing) && write_to_storage!(Φₖ, n + 1, Ψₖ)
@@ -293,7 +294,8 @@ function optimize_grape(problem)
                 χ̃ₖ = prop_step!(wrk.bw_grad_propagators[k])
                 if haskey(wrk.bw_grad_prop_kwargs[k], :callback)
                     local cb = wrk.bw_grad_prop_kwargs[k][:callback]
-                    local observables = get(wrk.fw_prop_kwargs[k], :observables, _StoreState())
+                    local observables =
+                        get(wrk.fw_prop_kwargs[k], :observables, _StoreState())
                     cb(wrk.bw_grad_propagators[k], observables)
                 end
                 if supports_inplace(Ψₖ)
@@ -395,7 +397,8 @@ function optimize_grape(problem)
                 prop_step!(wrk.bw_propagators[k])
                 if haskey(wrk.bw_prop_kwargs[k], :callback)
                     local cb = wrk.bw_prop_kwargs[k][:callback]
-                    local observables = get(wrk.bw_prop_kwargs[k], :observables, _StoreState())
+                    local observables =
+                        get(wrk.bw_prop_kwargs[k], :observables, _StoreState())
                     cb(wrk.bw_propagators[k], observables)
                 end
             end
