@@ -10,6 +10,44 @@ using QuantumControl.QuantumPropagators: _StoreState
 using LinearAlgebra
 using Printf
 
+# BEGIN DEBUG
+
+DEBUG_FH = nothing
+
+function open_debug_file(filename)
+    global DEBUG_FH
+    DEBUG_FH = open(filename, "w")
+end
+
+function close_debug_file()
+    global DEBUG_FH
+    close(DEBUG_FH)
+    DEBUG_FH = nothing
+end
+
+function _c(c; fmt=:float)
+    a = real(c)
+    b = imag(c)
+    if abs(a) < 1e-10
+        a = 0.0
+    end
+    if abs(b) < 1e-10
+        b = 0.0
+    end
+    if fmt == :float
+        return @sprintf("%+.4f%+.4f𝕚", a, b)
+    elseif fmt == :exp
+        return @sprintf("%+.2e%+.2e𝕚", a, b)
+    else
+        throw(ArgumentError("Invalid fmt=$(repr(fmt))"))
+    end
+end
+
+function _state(Ψ; fmt=:float)
+    return "(" * join([_c(c; fmt) for c::ComplexF64 in Ψ], ",") * ")"
+end
+# END DEBUG
+
 import QuantumControl: optimize, make_print_iters
 
 @doc raw"""
@@ -268,6 +306,9 @@ function optimize_grape(problem)
     # as in f(...); wrk.grad_J_T, wrk.grad_J_a
     function fg_gradgen!(F, G, pulsevals)
 
+        if !isnothing(DEBUG_FH)  # DEBUG
+            println(DEBUG_FH, "# fg_gradgen! in iter $(wrk.result.iter)")
+        end
         if isnothing(G)  # functional only
             return f(F, G, pulsevals)
         end
@@ -305,6 +346,10 @@ function optimize_grape(problem)
                 end
                 for l = 1:L
                     ∇τ[k][n, l] = χ̃ₖ.grad_states[l] ⋅ Ψₖ
+                    if !isnothing(DEBUG_FH) && (k == 1) && (l == 1) # DEBUG
+                        msg = "n = $(@sprintf("%04d", n)), Ψₖ=$(_state(Ψₖ)), χₖ=$(_state(χ̃ₖ.state)), χ̃ₗₖ=$(_state(χ̃ₖ.grad_states[l]; fmt=:exp)) ⇒ ∇τₙ = $(_c(∇τ[k][n, l]; fmt=:exp))"
+                        println(DEBUG_FH, msg)
+                    end
                 end
                 resetgradvec!(χ̃ₖ)
                 set_state!(wrk.bw_grad_propagators[k], χ̃ₖ)
@@ -326,6 +371,9 @@ function optimize_grape(problem)
     # as in f(...); wrk.grad_J_T, wrk.grad_J_a
     function fg_taylor!(F, G, pulsevals)
 
+        if !isnothing(DEBUG_FH)  # DEBUG
+            println(DEBUG_FH, "# fg_taylor! in iter $(wrk.result.iter)")
+        end
         if isnothing(G)  # functional only
             return f(F, G, pulsevals)
         end
@@ -392,6 +440,10 @@ function optimize_grape(problem)
                         )
                         # TODO: taylor_grad_step for immutable states
                         ∇τ[k][n, l] = dot(χ̃ₗₖ, Ψₖ)
+                        if !isnothing(DEBUG_FH) && (k == 1) && (l == 1) # DEBUG
+                            msg = "n = $(@sprintf("%04d", n)), Ψₖ=$(_state(Ψₖ)), χₖ=$(_state(χₖ)), χ̃ₗₖ=$(_state(χ̃ₗₖ; fmt=:exp)) ⇒ ∇τₙ = $(_c(∇τ[k][n, l]; fmt=:exp))"
+                            println(DEBUG_FH, msg)
+                        end
                     end
                 end
                 prop_step!(wrk.bw_propagators[k])
