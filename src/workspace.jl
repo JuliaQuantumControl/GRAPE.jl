@@ -23,8 +23,11 @@ attributes:
 * `pulsevals`: The combined vector of updated pulse values in the current
   iteration.
 * `gradient`: The total gradient for the guess in the current iteration
-* `grad_J_T`: The current gradient for the final-time part of the functional.
-* `grad_J_a`: The current gradient for the running cost part of the functional.
+* `grad_J_T`: The *current*  gradient for the final-time part of the
+  functional. This is from the last evaluation of the gradient, which may be
+  for the optimized pulse (depending on the internal of the optimizer)
+* `grad_J_a`: The *current*  gradient for the running cost part of the
+  functional.
 * `J_parts`: The two-component vector ``[J_T, J_a]``
 * `result`: The current result object
 * `upper_bounds`: Upper bound for every `pulsevals`; `+Inf` indicates no bound.
@@ -51,6 +54,7 @@ information in the workspace
 
 * [`step_width`](@ref)
 * [`search_direction`](@ref)
+* [`norm_search`](@ref)
 * [`gradient`](@ref)
 * [`pulse_update`](@ref)
 """
@@ -359,6 +363,24 @@ iteration. This should be proportional to [`pulse_update`](@ref) with the
 proportionality factor [`step_width`](@ref).
 """
 search_direction(wrk) = -gradient(wrk; which=:initial)  # assumed fallback
+
+
+"""The norm of the search direction vector in the current iteration.
+
+```julia
+norm_search(wrk)
+```
+
+returns `norm(search_direction(wrk))`.
+"""
+function norm_search(wrk)
+    s = search_direction(wrk)
+    r = 0.0
+    for sᵢ in s
+        r += sᵢ^2
+    end
+    return sqrt(r)
+end
 
 
 """The gradient in the current iteration.

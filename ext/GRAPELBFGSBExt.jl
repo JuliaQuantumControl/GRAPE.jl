@@ -2,7 +2,7 @@ module GRAPELBFGSBExt
 
 import LBFGSB
 using GRAPE: GrapeWrk, update_result!
-import GRAPE: run_optimizer, gradient, step_width, search_direction
+import GRAPE: run_optimizer, gradient, step_width, search_direction, norm_search
 
 
 function run_optimizer(optimizer::LBFGSB.L_BFGS_B, wrk, fg!, callback, check_convergence!)
@@ -195,6 +195,17 @@ function search_direction(wrk::GrapeWrk{O}) where {O<:LBFGSB.L_BFGS_B}
     n = length(wrk.pulsevals)
     n0 = wrk.optimizer.isave[13]
     return wrk.optimizer.wa[n0:n0+n-1]
+end
+
+
+function norm_search(wrk::GrapeWrk{O}) where {O<:LBFGSB.L_BFGS_B}
+    n = length(wrk.pulsevals)
+    n0 = wrk.optimizer.isave[13]
+    r = 0.0
+    for i = n0:n0+n-1
+        r += wrk.optimizer.wa[i]^2
+    end
+    return sqrt(r)
 end
 
 end

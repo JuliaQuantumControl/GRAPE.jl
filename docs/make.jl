@@ -42,7 +42,8 @@ fallbacks = ExternalFallbacks(
     "QuantumControl.QuantumPropagators.Controls.get_controls" => "@extref QuantumPropagators.Controls.get_controls",
     "Trajectory" => "@extref QuantumControl.Trajectory",
     "propagate" => "@extref QuantumPropagators.propagate",
-    "init_prop_trajectory" => "@extref QuantumControl.init_prop_trajectory"
+    "init_prop_trajectory" => "@extref QuantumControl.init_prop_trajectory",
+    "Functional" => "@extref QuantumControl :std:label:`Functional`",
 )
 
 println("Starting makedocs")

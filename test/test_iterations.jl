@@ -4,6 +4,7 @@ using StableRNGs
 using LinearAlgebra: norm
 using LinearAlgebra.BLAS: scal!
 using GRAPE
+using QuantumPropagators: ExpProp
 using QuantumControlTestUtils.DummyOptimization: dummy_control_problem
 using QuantumControl.Functionals: J_T_ss
 using IOCapture
@@ -138,5 +139,59 @@ end
             @test nrm_guess ≈ nrm_upd_scaled_prev
         end
     end
+
+end
+
+
+@testset "print_iter_info" begin
+
+    rng = StableRNG(1244568944)
+
+    problem = dummy_control_problem(;
+        N=2,
+        density=1.0,
+        complex_operators=false,
+        rng,
+        J_T=J_T_ss,
+        prop_method=ExpProp,
+        print_iter_info=[
+            "iter.",
+            "J_T",
+            "J_a",
+            "λ_a⋅J_a",
+            "J",
+            "ǁ∇J_Tǁ",
+            "ǁ∇J_aǁ",
+            "λ_aǁ∇J_aǁ",
+            "λ_a⋅ΔJ_a",
+            "ǁ∇Jǁ",
+            "ǁΔϵǁ",
+            "ǁϵǁ",
+            "max|Δϵ|",
+            "max|ϵ|",
+            "ǁΔϵǁ/ǁϵǁ",
+            "∫Δϵ²dt",
+            "ǁsǁ",
+            "∠°",
+            "α",
+            "ΔJ_T",
+            "ΔJ_a",
+            "λ_a⋅ΔJ_a",
+            "ΔJ",
+            "FG(F)",
+        ]
+    )
+
+    captured = IOCapture.capture(passthrough=PASSTHROUGH) do
+        optimize(problem; method=GRAPE, iter_stop=3,)
+    end
+    @test contains(
+        captured.output,
+        "iter.        J_T        J_a    λ_a⋅J_a          J     ǁ∇J_Tǁ     ǁ∇J_aǁ  λ_aǁ∇J_aǁ   λ_a⋅ΔJ_a       ǁ∇Jǁ       ǁΔϵǁ        ǁϵǁ    max|Δϵ|     max|ϵ|   ǁΔϵǁ/ǁϵǁ     ∫Δϵ²dt        ǁsǁ     ∠°          α       ΔJ_T       ΔJ_a   λ_a⋅ΔJ_a         ΔJ   FG(F)"
+    )
+    @test contains(
+        captured.output,
+        "        n/a        n/a        n/a    n/a        n/a        n/a        n/a        n/a        n/a    1(0)"
+    )
 
 end

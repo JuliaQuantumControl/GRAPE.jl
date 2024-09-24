@@ -12,6 +12,9 @@ The attributes of a `GrapeResult` object include
 * `iter`:  The number of the current iteration
 * `J_T`: The value of the final-time functional in the current iteration
 * `J_T_prev`: The value of the final-time functional in the previous iteration
+* `J_a`: The value of the running cost ``J_a`` in the current iteration
+  (excluding ``λ_a``)
+* `J_a_prev`: The value of ``J_a`` in the previous iteration
 * `tlist`: The time grid on which the control are discetized.
 * `guess_controls`: A vector of the original control fields (each field
   discretized to the points of `tlist`)
@@ -36,6 +39,8 @@ mutable struct GrapeResult{STST} <: AbstractOptimizationResult
     tau_vals::Vector{ComplexF64}
     J_T::Float64  # the current value of the final-time functional J_T
     J_T_prev::Float64  # previous value of J_T
+    J_a::Float64  # the current value of the functional J_a (excluding λ_a)
+    J_a_prev::Float64  # previous value of J_a
     guess_controls::Vector{Vector{Float64}}
     optimized_controls::Vector{Vector{Float64}}
     states::Vector{STST}
@@ -60,6 +65,8 @@ function GrapeResult(problem)
     guess_controls = [discretize(control, tlist) for control in controls]
     J_T = 0.0
     J_T_prev = 0.0
+    J_a = 0.0
+    J_a_prev = 0.0
     optimized_controls = [copy(guess) for guess in guess_controls]
     states = [similar(traj.initial_state) for traj in problem.trajectories]
     start_local_time = now()
@@ -78,6 +85,8 @@ function GrapeResult(problem)
         tau_vals,
         J_T,
         J_T_prev,
+        J_a,
+        J_a_prev,
         guess_controls,
         optimized_controls,
         states,
@@ -111,6 +120,7 @@ GRAPE Optimization Result
 
 
 function Base.convert(::Type{GrapeResult}, result::AbstractOptimizationResult)
-    defaults = Dict{Symbol,Any}(:f_calls => 0, :fg_calls => 0,)
+    defaults =
+        Dict{Symbol,Any}(:f_calls => 0, :fg_calls => 0, :J_a => 0.0, :J_a_prev => 0.0)
     return convert(GrapeResult, result, defaults)
 end
