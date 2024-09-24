@@ -52,7 +52,8 @@ function run_optimizer(
         if hasproperty(objective, :DF)
             # DF is the *current* gradient, i.e., the gradient of the updated
             # pulsevals, which (after the call to `callback`) is the gradient
-            # for the the guess of the next iteration.
+            # for the the guess of the next iteration. It's important that
+            # we're setting this after the GRAPE.jl `callback`
             wrk.gradient .= objective.DF
         elseif (optimization_state.iteration == 1)
             @error "Cannot determine guess gradient"
