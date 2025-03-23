@@ -51,9 +51,12 @@ with explicit keyword arguments to `optimize`.
 * `chi`: A function `chi(Ψ, trajectories)` that receives a list `Ψ`
   of the forward propagated states and returns a vector of states
   ``|χₖ⟩ = -∂J_T/∂⟨Ψₖ|``. If not given, it will be automatically determined
-  from `J_T` via [`make_chi`](@ref) with the default parameters. Similarly to
-  `J_T`, if `chi` accepts a keyword argument `tau`, it will be passed a vector
-  of complex overlaps.
+  from `J_T` via [`QuantumControl.Functionals.make_chi`](@extref) with the
+  default parameters. Similarly to `J_T`, if `chi` accepts a keyword argument
+  `tau`, it will be passed a vector of complex overlaps.
+* `chi_min_norm=1e-100`: The minimum allowable norm for any ``|χₖ(T)⟩``.
+  Smaller norms would mean that the gradient is zero, and will abort the
+  optimization with an error.
 * `J_a`: A function `J_a(pulsevals, tlist)` that evaluates running costs over
   the pulse values, where `pulsevals` are the vectorized values ``ϵ_{nl}``,
   where `n` are in indices of the time intervals and `l` are the indices over
@@ -62,8 +65,7 @@ with explicit keyword arguments to `optimize`.
   running cost.
 * `gradient_method=:gradgen`: One of `:gradgen` (default) or `:taylor`.
   With `gradient_method=:gradgen`, the gradient is calculated using
-  [QuantumGradientGenerators]
-  (https://github.com/JuliaQuantumControl/QuantumGradientGenerators.jl).
+  [QuantumGradientGenerators](https://github.com/JuliaQuantumControl/QuantumGradientGenerators.jl).
   With `gradient_method=:taylor`, it is evaluated via a Taylor series, see
   Eq. (20) in Kuprov and Rogers,  J. Chem. Phys. 131, 234108
   (2009) [KuprovJCP09](@cite).
@@ -223,239 +225,35 @@ function optimize_grape(problem)
     end
     check_convergence! = get(problem.kwargs, :check_convergence, res -> res)
     verbose = get(problem.kwargs, :verbose, false)
-    gradient_method = get(problem.kwargs, :gradient_method, :gradgen)
-    taylor_grad_max_order = get(problem.kwargs, :taylor_grad_max_order, 100)
-    taylor_grad_tolerance = get(problem.kwargs, :taylor_grad_tolerance, 1e-16)
-    taylor_grad_check_convergence =
-        get(problem.kwargs, :taylor_grad_check_convergence, true)
 
     wrk = GrapeWrk(problem; verbose)
 
-    Ψ₀ = [traj.initial_state for traj ∈ wrk.trajectories]
-    Ψtgt = Union{eltype(Ψ₀),Nothing}[
-        (hasproperty(traj, :target_state) ? traj.target_state : nothing) for
-        traj ∈ wrk.trajectories
-    ]
-
-    J = wrk.J_parts
     tlist = wrk.result.tlist
-    J_T = wrk.kwargs[:J_T]
     J_a_func = get(wrk.kwargs, :J_a, nothing)
-    ∇J_T = wrk.grad_J_T
-    λₐ = get(wrk.kwargs, :lambda_a, 1.0)
-    chi = wrk.kwargs[:chi]  # guaranteed to exist in `GrapeWrk` constructor
-    grad_J_a = nothing
-    if !isnothing(J_a_func)
+    if isnothing(J_a_func)
         if haskey(wrk.kwargs, :grad_J_a)
-            grad_J_a = wrk.kwargs[:grad_J_a]
-        else
-            # With a manually given `grad_J_a`, the `make_grad_J_a` function
-            # should never be called. So we can't use `get` to set this.
-            grad_J_a = make_grad_J_a(J_a_func, tlist)
+            @warn "Argument `grad_J_A` was given without `grad_J_a`. Ignoring"
+            delete!(wrk.kwargs, :grad_J_a)
+        end
+    else
+        if !haskey(wrk.kwargs, :grad_J_a)
+            wrk.kwargs[:grad_J_a] = make_grad_J_a(J_a_func, tlist)
         end
     end
 
-    τ = wrk.result.tau_vals
-    ∇τ = wrk.tau_grads
-    N_T = length(tlist) - 1
-    N = length(wrk.trajectories)
-    L = length(wrk.controls)
-    Φ = wrk.fw_storage
-
-    # Calculate the functional only; optionally store.
-    # Side-effects:
-    # set Ψ, τ, wrk.result.f_calls, wrk.fg_count wrk.J_parts
-    function f(F, G, pulsevals; storage=nothing, count_call=true)
-        if pulsevals ≢ wrk.pulsevals
-            # Ideally, the optimizer uses the original `pulsevals`. LBFGSB
-            # does, but Optim.jl does not. Thus, for Optim.jl, we need to copy
-            # back the values.
-            wrk.pulsevals .= pulsevals
-        end
+    function f(F, G, pulsevals)
+        # Closure around `problem` (read-only) and `wrk` (read-write)`
         @assert !isnothing(F)
         @assert isnothing(G)
-        if count_call
-            wrk.result.f_calls += 1
-            wrk.fg_count[2] += 1
-        end
-        @threadsif wrk.use_threads for k = 1:N
-            local Φₖ = isnothing(storage) ? nothing : storage[k]
-            reinit_prop!(wrk.fw_propagators[k], Ψ₀[k]; transform_control_ranges)
-            (Φₖ !== nothing) && write_to_storage!(Φₖ, 1, Ψ₀[k])
-            for n = 1:N_T  # `n` is the index for the time interval
-                local Ψₖ = prop_step!(wrk.fw_propagators[k])
-                if haskey(wrk.fw_prop_kwargs[k], :callback)
-                    local cb = wrk.fw_prop_kwargs[k][:callback]
-                    local observables =
-                        get(wrk.fw_prop_kwargs[k], :observables, _StoreState())
-                    cb(wrk.fw_propagators[k], observables)
-                end
-                (Φₖ !== nothing) && write_to_storage!(Φₖ, n + 1, Ψₖ)
-            end
-            local Ψₖ = wrk.fw_propagators[k].state
-            τ[k] = isnothing(Ψtgt[k]) ? NaN : (Ψtgt[k] ⋅ Ψₖ)
-        end
-        Ψ = [p.state for p ∈ wrk.fw_propagators]
-        if wrk.J_T_takes_tau
-            J[1] = J_T(Ψ, wrk.trajectories; tau=τ)
-        else
-            J[1] = J_T(Ψ, wrk.trajectories)
-        end
-        if !isnothing(J_a_func)
-            J[2] = λₐ * J_a_func(pulsevals, tlist)
-        end
-        return sum(J)
+        return evaluate_functional(pulsevals, problem, wrk)
     end
 
-    # Calculate the functional and the gradient G ≡ ∇J_T
-    # Side-effects:
-    # as in f(...); wrk.grad_J_T, wrk.grad_J_a
-    function fg_gradgen!(F, G, pulsevals)
-
+    function fg!(F, G, pulsevals)
+        # Closure around `problem` (read-only) and `wrk` (read-write)`
         if isnothing(G)  # functional only
-            return f(F, G, pulsevals)
+            return evaluate_functional(pulsevals, problem, wrk)
         end
-        wrk.result.fg_calls += 1
-        wrk.fg_count[1] += 1
-
-        # forward propagation and storage of states
-        J_val_guess = sum(wrk.J_parts)
-        J_val = f(J_val_guess, nothing, pulsevals; storage=Φ, count_call=false)
-
-        # backward propagation of combined χ-state and gradient
-        Ψ = [p.state for p ∈ wrk.fw_propagators]
-        if wrk.chi_takes_tau
-            χ = chi(Ψ, wrk.trajectories; tau=τ)  # τ is set in f()
-        else
-            χ = chi(Ψ, wrk.trajectories)
-        end
-        wrk.chi_states = χ  # for easier debugging in a callback
-        @threadsif wrk.use_threads for k = 1:N
-            local Ψₖ = wrk.fw_propagators[k].state  # memory reuse
-            local χ̃ₖ = GradVector(χ[k], length(wrk.controls))
-            reinit_prop!(wrk.bw_grad_propagators[k], χ̃ₖ; transform_control_ranges)
-            for n = N_T:-1:1  # N_T is the number of time slices
-                χ̃ₖ = prop_step!(wrk.bw_grad_propagators[k])
-                if haskey(wrk.bw_grad_prop_kwargs[k], :callback)
-                    local cb = wrk.bw_grad_prop_kwargs[k][:callback]
-                    local observables =
-                        get(wrk.fw_prop_kwargs[k], :observables, _StoreState())
-                    cb(wrk.bw_grad_propagators[k], observables)
-                end
-                if supports_inplace(Ψₖ)
-                    get_from_storage!(Ψₖ, Φ[k], n)
-                else
-                    Ψₖ = get_from_storage(Φ[k], n)
-                end
-                for l = 1:L
-                    ∇τ[k][n, l] = χ̃ₖ.grad_states[l] ⋅ Ψₖ
-                end
-                resetgradvec!(χ̃ₖ)
-                set_state!(wrk.bw_grad_propagators[k], χ̃ₖ)
-            end
-        end
-
-        _grad_J_T_via_chi!(∇J_T, τ, ∇τ)
-        copyto!(G, ∇J_T)
-        if !isnothing(grad_J_a)
-            wrk.grad_J_a = grad_J_a(pulsevals, tlist)
-            axpy!(λₐ, wrk.grad_J_a, G)
-        end
-        return J_val
-
-    end
-
-    # Calculate the functional and the gradient G ≡ ∇J_T
-    # Side-effects:
-    # as in f(...); wrk.grad_J_T, wrk.grad_J_a
-    function fg_taylor!(F, G, pulsevals)
-
-        if isnothing(G)  # functional only
-            return f(F, G, pulsevals)
-        end
-        wrk.result.fg_calls += 1
-        wrk.fg_count[1] += 1
-
-        # forward propagation and storage of states
-        J_val_guess = sum(wrk.J_parts)
-        J_val = f(J_val_guess, nothing, pulsevals; storage=Φ, count_call=false)
-
-        # backward propagation of χ-state
-        Ψ = [p.state for p ∈ wrk.fw_propagators]
-        if wrk.chi_takes_tau
-            χ = chi(Ψ, wrk.trajectories; tau=τ)  # τ is set in f()
-        else
-            χ = chi(Ψ, wrk.trajectories)
-        end
-        wrk.chi_states = χ  # for easier debugging in a callback
-        @threadsif wrk.use_threads for k = 1:N
-            local Ψₖ = wrk.fw_propagators[k].state  # memory reuse
-            reinit_prop!(wrk.bw_propagators[k], χ[k]; transform_control_ranges)
-            local Hₖ⁺ = wrk.adjoint_trajectories[k].generator
-            local Hₖₙ⁺ = wrk.taylor_genops[k]
-            for n = N_T:-1:1  # N_T is the number of time slices
-                # TODO: It would be cleaner to encapsulate this in a
-                # propagator-like interface that can reuse the gradgen
-                # structure instead of the taylor_genops, control_derivs, and
-                # taylor_grad_states in wrk
-                if ismutable(Ψₖ)
-                    get_from_storage!(Ψₖ, Φ[k], n)
-                else
-                    Ψₖ = get_from_storage(Φ[k], n)
-                end
-                for l = 1:L
-                    local μₖₗ = wrk.control_derivs[k][l]
-                    if isnothing(μₖₗ)
-                        ∇τ[k][n, l] = 0.0
-                    else
-                        local ϵₙ⁽ⁱ⁾ = @view pulsevals[(n-1)*L+1:n*L]
-                        local vals_dict = IdDict(
-                            control => val for (control, val) ∈ zip(wrk.controls, ϵₙ⁽ⁱ⁾)
-                        )
-                        local μₗₖₙ = evaluate(μₖₗ, tlist, n; vals_dict)
-                        if supports_inplace(Hₖₙ⁺)
-                            evaluate!(Hₖₙ⁺, Hₖ⁺, tlist, n; vals_dict)
-                        else
-                            Hₖₙ⁺ = evaluate(Hₖ⁺, tlist, n; vals_dict)
-                        end
-                        local χₖ = wrk.bw_propagators[k].state
-                        local χ̃ₗₖ = wrk.taylor_grad_states[l, k][1]
-                        local ϕ_temp = wrk.taylor_grad_states[l, k][2:5]
-                        local dt = tlist[n] - tlist[n+1]
-                        @assert dt < 0.0
-                        taylor_grad_step!(
-                            χ̃ₗₖ,
-                            χₖ,
-                            Hₖₙ⁺,
-                            μₗₖₙ,
-                            dt,
-                            ϕ_temp;
-                            check_convergence=taylor_grad_check_convergence,
-                            max_order=taylor_grad_max_order,
-                            tolerance=taylor_grad_tolerance
-                        )
-                        # TODO: taylor_grad_step for immutable states
-                        ∇τ[k][n, l] = dot(χ̃ₗₖ, Ψₖ)
-                    end
-                end
-                prop_step!(wrk.bw_propagators[k])
-                if haskey(wrk.bw_prop_kwargs[k], :callback)
-                    local cb = wrk.bw_prop_kwargs[k][:callback]
-                    local observables =
-                        get(wrk.bw_prop_kwargs[k], :observables, _StoreState())
-                    cb(wrk.bw_propagators[k], observables)
-                end
-            end
-        end
-
-        _grad_J_T_via_chi!(∇J_T, τ, ∇τ)
-        copyto!(G, ∇J_T)
-        if !isnothing(grad_J_a)
-            wrk.grad_J_a = grad_J_a(pulsevals, tlist)
-            axpy!(λₐ, wrk.grad_J_a, G)
-        end
-        return J_val
-
+        return evaluate_gradient!(G, pulsevals, problem, wrk)
     end
 
     optimizer = wrk.optimizer
@@ -471,13 +269,7 @@ function optimize_grape(problem)
         end
     end
     try
-        if gradient_method == :gradgen
-            run_optimizer(optimizer, wrk, fg_gradgen!, callback, check_convergence!)
-        elseif gradient_method == :taylor
-            run_optimizer(optimizer, wrk, fg_taylor!, callback, check_convergence!)
-        else
-            error("Invalid gradient_method=$(repr(gradient_method)) ∉ (:gradgen, :taylor)")
-        end
+        run_optimizer(optimizer, wrk, fg!, callback, check_convergence!)
     catch exc
         if get(problem.kwargs, :rethrow_exceptions, false)
             rethrow()
@@ -498,7 +290,11 @@ function optimize_grape(problem)
 end
 
 
-function run_optimizer end
+function run_optimizer(optimizer, args...)
+    error("Unknown optimizer: $optimizer")
+    # The methods for different optimizers are implemented as module extensions
+    # for LBFGS and Optim.
+end
 
 
 function update_result!(wrk::GrapeWrk, i::Int64)
@@ -866,4 +662,313 @@ function transform_control_ranges(c, ϵ_min, ϵ_max, check)
     else
         return (min(ϵ_min, 5 * ϵ_min), max(ϵ_max, 5 * ϵ_max))
     end
+end
+
+
+"""
+Evaluate the optimization functional in `problem` for the given `pulsevals`.
+
+```julia
+J = evaluate_functional(pulsevals, problem, wrk; storage=nothing, count_call=true)
+```
+
+evaluates the functional defined in `problem`, for the given pulse values,
+using `wrk.fw_propagators`, where `wrk` is the GRAPE workspace initialized from
+`problem`. The `pulsevals` is a vector of `Float64` values corresponding to a
+concatenation of all the controls in `problem`, discretized to the midpoints of
+the time grid, cf. [`GrapeWrk`](@ref).
+
+As a side effect, the evaluation sets the following information in `wrk`:
+
+* `wrk.pulsevals`: On output, the values of the given `pulsevals`. Note that
+  `pulsevals` may alias `wrk.pulsevals`, so there is no assumption made on
+  `wrk.pulsevals` other than that mutating `wrk.pulsevals` directly affects the
+  propagators in `wrk`.
+* `wrk.result.f_calls`: Will be incremented by one (only if `count_call=true`)
+* `wrk.fg_count[2]`: Will be incremented by one (only if `count_call=true`)
+* `wrk.result.tau_vals`: For any trajectory that defines a `target_state`, the
+  overlap of the propagated state with that target state.
+* `wrk.J_parts`: The parts (`J_T`, `λₐJ_a`) of the functional
+
+If `storage` is given, as a vector of storage containers suitable for
+[`propagate`](@ref) (one for each trajectory), the forward-propagated states
+    will be stored there.
+
+Returns `J` as `sum(wrk.J_parts)`.
+"""
+function evaluate_functional(pulsevals, problem, wrk; storage=nothing, count_call=true)
+    J_T = problem.kwargs[:J_T]
+    J_a = get(problem.kwargs, :J_a, nothing)
+    λₐ = get(problem.kwargs, :lambda_a, 1.0)
+    trajectories = problem.trajectories
+    N = length(trajectories)
+    tlist = problem.tlist
+    N_T = length(tlist) - 1  # number of time steps
+    if pulsevals ≢ wrk.pulsevals
+        # Ideally, the optimizer uses the original `pulsevals`. LBFGSB
+        # does, but Optim.jl does not. Thus, for Optim.jl, we need to copy
+        # back the values. In any case, setting `wrk.pulsevals` is how we
+        # inject the pulse values into the propagation: all the propagators in
+        # `wrk` are set up to alias `wrk.pulsevals`.
+        wrk.pulsevals .= pulsevals
+    end
+    if count_call
+        wrk.result.f_calls += 1
+        wrk.fg_count[2] += 1
+    end
+    Ψ₀(k) = trajectories[k].initial_state
+    Ψtgt(k) = trajectories[k].target_state
+    @threadsif wrk.use_threads for k = 1:N
+        local Φₖ = isnothing(storage) ? nothing : storage[k]
+        reinit_prop!(wrk.fw_propagators[k], Ψ₀(k); transform_control_ranges)
+        (Φₖ !== nothing) && write_to_storage!(Φₖ, 1, Ψ₀(k))
+        # The optional storage exists so that `evaluate_functional` can be used
+        # as part of `evaluate_gradient!`.
+        for n = 1:N_T  # `n` is the index for the time interval
+            local Ψₖ = prop_step!(wrk.fw_propagators[k])
+            if haskey(wrk.fw_prop_kwargs[k], :callback)
+                local cb = wrk.fw_prop_kwargs[k][:callback]
+                local observables = get(wrk.fw_prop_kwargs[k], :observables, _StoreState())
+                cb(wrk.fw_propagators[k], observables)
+            end
+            (Φₖ !== nothing) && write_to_storage!(Φₖ, n + 1, Ψₖ)
+        end
+        local Ψₖ = wrk.fw_propagators[k].state
+        wrk.result.tau_vals[k] = isnothing(Ψtgt(k)) ? NaN : (Ψtgt(k) ⋅ Ψₖ)
+    end
+    Ψ = [p.state for p ∈ wrk.fw_propagators]
+    if wrk.J_T_takes_tau
+        wrk.J_parts[1] = J_T(Ψ, trajectories; tau=wrk.result.tau_vals)
+    else
+        wrk.J_parts[1] = J_T(Ψ, trajectories)
+    end
+    if !isnothing(J_a)
+        wrk.J_parts[2] = λₐ * J_a(pulsevals, tlist)
+    end
+    return sum(wrk.J_parts)
+end
+
+
+"""
+Evaluate the gradient ``∂J/∂ϵₙₗ`` into `G`, together with the functional `J`.
+
+```julia
+J = evaluate_gradient!(G, pulsevals, problem, wrk)
+```
+
+evaluates and returns the optimization functional defined in `problem` for the
+given pulse values, cf. [`evaluate_functional`](@ref), and write the derivative
+of the optimization functional with respect to the pulse values into the
+existing array `G`.
+
+The evaluation of the functional uses uses `wrk.fw_propagators`. The evaluation
+of the gradient happens either via a backward propagation of an extented
+["gradient vector"](@extref `QuantumGradientGenerators.GradVector`)
+using `wrk.bw_grad_propagators` if `problem` was initialized with
+`gradient_method=:gradgen`. Alternatively, if `problem` was initialized with
+`gradient_method=:taylor`, the backward propagation if for a regular state,
+using `wrk.bw_propagators`, and a Taylor expansion is used for the gradient of
+the time evolution operator in a single time step.
+
+As a side, effect, evaluating the gradient and functional sets the following
+information in `wrk`:
+
+
+* `wrk.pulsevals`: On output, the values of the given `pulsevals`, see
+  [`evaluate_functional`](@ref).
+* `wrk.result.fg_calls`: Will be incremented by one
+* `wrk.fg_count[1]`: Will be incremented by one
+* `wrk.result.tau_vals`: For any trajectory that defines a `target_state`, the
+  overlap of the propagated state with that target state.
+* `wrk.J_parts`: The parts (`J_T`, `λₐJ_a`) of the functional
+* `wrk.fw_storage`: For each trajectory, the forward-propagated states at each
+  point on the time grid.
+* `wrk.chi_states`: The normalized states ``|χ(T)⟩`` that we used as the boundary
+  condition for the backward propagation.
+* `wrk.chi_states_norm`: The original norm of the states ``|χ(T)⟩``, as
+  calculated by ``-∂J/∂⟨Ψₖ|``
+* `wrk.grad_J_T`: The vector ``∂J_T/∂ϵ_{nl}, i.e., the gradient only for the
+  final-time part of the functional
+* `wrk.grad_J_a`: The vector ``∂J_a/∂ϵ_{nl}``, i.e., the gradient only for the
+  pulse-dependent running cost.
+
+The gradients are `wrk.grad_J_T` and `wrk.grad_J_a` (weighted by ``λ_a``) into
+are combined into the output `G`.
+
+Returns the value of the functional.
+"""
+function evaluate_gradient!(G, pulsevals, problem, wrk)
+
+    trajectories = problem.trajectories
+    N = length(trajectories)
+    tlist = problem.tlist
+    N_T = length(tlist) - 1  # number of time steps
+    L = length(wrk.controls)
+
+    wrk.result.fg_calls += 1
+    wrk.fg_count[1] += 1
+
+    # forward propagation and storage of states
+    J_val = evaluate_functional(
+        pulsevals,
+        problem,
+        wrk;
+        storage=wrk.fw_storage,
+        count_call=false
+    )
+
+    chi = wrk.kwargs[:chi]  # guaranteed to exist in `GrapeWrk` constructor
+    chi_min_norm = get(problem.kwargs, :chi_min_norm, 1e-100)
+
+    Ψ = [p.state for p ∈ wrk.fw_propagators]
+    if wrk.chi_takes_tau
+        # we rely on `evaluate_functional` setting the `tau_vals` as a side
+        # effect
+        χ = chi(Ψ, trajectories; tau=wrk.result.tau_vals)
+    else
+        χ = chi(Ψ, trajectories)
+    end
+    ρ = norm.(χ)
+    χ = normalize_chis!(χ, ρ; chi_min_norm)
+    wrk.chi_states = χ  # for easier debugging in a callback
+
+    gradient_method = get(problem.kwargs, :gradient_method, :gradgen)
+
+    if gradient_method == :gradgen
+
+        # backward propagation of combined χ-state and gradient
+        @threadsif wrk.use_threads for k = 1:N
+            local Ψₖ = wrk.fw_propagators[k].state  # memory reuse
+            local χ̃ₖ = GradVector(χ[k], length(wrk.controls))
+            reinit_prop!(wrk.bw_grad_propagators[k], χ̃ₖ; transform_control_ranges)
+            for n = N_T:-1:1  # N_T is the number of time slices
+                χ̃ₖ = prop_step!(wrk.bw_grad_propagators[k])
+                if haskey(wrk.bw_grad_prop_kwargs[k], :callback)
+                    local cb = wrk.bw_grad_prop_kwargs[k][:callback]
+                    local observables =
+                        get(wrk.fw_prop_kwargs[k], :observables, _StoreState())
+                    cb(wrk.bw_grad_propagators[k], observables)
+                end
+                if supports_inplace(Ψₖ)
+                    get_from_storage!(Ψₖ, wrk.fw_storage[k], n)
+                else
+                    Ψₖ = get_from_storage(wrk.fw_storage[k], n)
+                end
+                for l = 1:L
+                    wrk.tau_grads[k][n, l] = ρ[k] * (χ̃ₖ.grad_states[l] ⋅ Ψₖ)
+                end
+                resetgradvec!(χ̃ₖ)
+                set_state!(wrk.bw_grad_propagators[k], χ̃ₖ)
+            end
+        end
+
+    elseif gradient_method == :taylor
+
+        taylor_grad_max_order = get(problem.kwargs, :taylor_grad_max_order, 100)
+        taylor_grad_tolerance = get(problem.kwargs, :taylor_grad_tolerance, 1e-16)
+        taylor_grad_check_convergence =
+            get(problem.kwargs, :taylor_grad_check_convergence, true)
+
+        @threadsif wrk.use_threads for k = 1:N
+            local Ψₖ = wrk.fw_propagators[k].state  # memory reuse
+            reinit_prop!(wrk.bw_propagators[k], χ[k]; transform_control_ranges)
+            local Hₖ⁺ = wrk.adjoint_trajectories[k].generator
+            local Hₖₙ⁺ = wrk.taylor_genops[k]
+            for n = N_T:-1:1  # N_T is the number of time slices
+                # TODO: It would be cleaner to encapsulate this in a
+                # propagator-like interface that can reuse the gradgen
+                # structure instead of the taylor_genops, control_derivs, and
+                # taylor_grad_states in wrk
+                if supports_inplace(Ψₖ)
+                    get_from_storage!(Ψₖ, wrk.fw_storage[k], n)
+                else
+                    Ψₖ = get_from_storage(wrk.fw_storage[k], n)
+                end
+                for l = 1:L
+                    local μₖₗ = wrk.control_derivs[k][l]
+                    if isnothing(μₖₗ)
+                        wrk.tau_grads[k][n, l] = 0.0
+                    else
+                        local ϵₙ⁽ⁱ⁾ = @view pulsevals[(n-1)*L+1:n*L]
+                        local vals_dict = IdDict(
+                            control => val for (control, val) ∈ zip(wrk.controls, ϵₙ⁽ⁱ⁾)
+                        )
+                        local μₗₖₙ = evaluate(μₖₗ, tlist, n; vals_dict)
+                        if supports_inplace(Hₖₙ⁺)
+                            evaluate!(Hₖₙ⁺, Hₖ⁺, tlist, n; vals_dict)
+                        else
+                            Hₖₙ⁺ = evaluate(Hₖ⁺, tlist, n; vals_dict)
+                        end
+                        local χₖ = wrk.bw_propagators[k].state
+                        local χ̃ₗₖ = wrk.taylor_grad_states[l, k][1]
+                        local ϕ_temp = wrk.taylor_grad_states[l, k][2:5]
+                        local dt = tlist[n] - tlist[n+1]
+                        @assert dt < 0.0
+                        taylor_grad_step!(
+                            χ̃ₗₖ,
+                            χₖ,
+                            Hₖₙ⁺,
+                            μₗₖₙ,
+                            dt,
+                            ϕ_temp;
+                            check_convergence=taylor_grad_check_convergence,
+                            max_order=taylor_grad_max_order,
+                            tolerance=taylor_grad_tolerance
+                        )
+                        # TODO: taylor_grad_step for immutable states
+                        wrk.tau_grads[k][n, l] = ρ[k] * dot(χ̃ₗₖ, Ψₖ)
+                    end
+                end
+                prop_step!(wrk.bw_propagators[k])
+                if haskey(wrk.bw_prop_kwargs[k], :callback)
+                    local cb = wrk.bw_prop_kwargs[k][:callback]
+                    local observables =
+                        get(wrk.bw_prop_kwargs[k], :observables, _StoreState())
+                    cb(wrk.bw_propagators[k], observables)
+                end
+            end
+        end
+
+    else
+
+        error("Invalid gradient_method=$(repr(gradient_method)) ∉ (:gradgen, :taylor)")
+
+    end
+
+    _grad_J_T_via_chi!(wrk.grad_J_T, wrk.result.tau_vals, wrk.tau_grads)
+    copyto!(G, wrk.grad_J_T)
+    if haskey(wrk.kwargs, :grad_J_a)
+        grad_J_a = get(wrk.kwargs, :grad_J_a, nothing)
+        if !isnothing(grad_J_a)
+            wrk.grad_J_a = grad_J_a(pulsevals, tlist)
+            λₐ = get(wrk.kwargs, :lambda_a, 1.0)
+            axpy!(λₐ, wrk.grad_J_a, G)
+        end
+    end
+    return J_val
+
+end
+
+
+function normalize_chis!(χ::Vector{ST}, ρ::Vector{Float64}; chi_min_norm) where {ST}
+    normalized_chis = Vector{ST}(undef, length(10))
+    all_in_place = true
+    for k in eachindex(χ)
+        if ρ[k] < chi_min_norm
+            error(
+                "The χ state with index $k has norm $(ρ[k]) < $chi_min_norm (chi_min_norm)"
+            )
+        end
+        if supports_inplace(χ[k])
+            normalized_chis = χ
+            LinearAlgebra.lmul!(1.0 / ρ[k], χ[k])
+        else
+            all_in_place = false
+            normalized_chis[k] = χ[k] / ρ[k]
+        end
+    end
+    if (normalized_chis ≡ χ) && (!all_in_place)
+        error("Either all or none of the elements of χ must support in-place operators")
+    end
+    return normalized_chis
 end

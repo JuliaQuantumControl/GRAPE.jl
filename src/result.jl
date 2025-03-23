@@ -18,17 +18,18 @@ The attributes of a `GrapeResult` object include
 * `tlist`: The time grid on which the control are discetized.
 * `guess_controls`: A vector of the original control fields (each field
   discretized to the points of `tlist`)
-* optimized_controls: A vector of the optimized control fields in the current
+* `optimized_controls`: A vector of the optimized control fields in the current
   iterations
-* records: A vector of tuples with values returned by a `callback` routine
+* `records`: A vector of tuples with values returned by a `callback` routine
   passed to [`optimize`](@ref)
-* converged: A boolean flag on whether the optimization is converged. This
+* `converged`: A boolean flag on whether the optimization is converged. This
   may be set to `true` by a `check_convergence` function.
-* message: A message string to explain the reason for convergence. This may be
+* `message`: A message string to explain the reason for convergence. This may be
   set by a `check_convergence` function.
 
 All of the above attributes may be referenced in a `check_convergence` function
-passed to [`optimize(problem; method=GRAPE)`](@ref QuantumControl.optimize(::ControlProblem, ::Val{:GRAPE}))
+passed to
+[`optimize(problem; method=GRAPE)`](@ref optimize(::Any, ::Val{:GRAPE}))
 """
 mutable struct GrapeResult{STST} <: AbstractOptimizationResult
     tlist::Vector{Float64}
