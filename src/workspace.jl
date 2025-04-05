@@ -21,7 +21,9 @@ attributes:
   the current iteration. Initially, the vector is the concatenation of
   discretizing `controls` to the midpoints of the time grid.
 * `pulsevals`: The combined vector of updated pulse values in the current
-  iteration.
+  iteration. All the initialized propagators inside the workspace alias
+  `pulsevals` such that mutating `pulsevals` is directly reflected in the next
+  propagation step.
 * `gradient`: The total gradient for the guess in the current iteration
 * `grad_J_T`: The *current*  gradient for the final-time part of the
   functional. This is from the last evaluation of the gradient, which may be
@@ -32,14 +34,16 @@ attributes:
 * `result`: The current result object
 * `upper_bounds`: Upper bound for every `pulsevals`; `+Inf` indicates no bound.
 * `lower_bounds`: Lower bound for every `pulsevals`; `-Inf` indicates no bound.
-* `fg_count`: The total number of evaluations of the functional and evaluations
-  of the gradient, as a two-element vector.
+* `fg_count`: A two-element vector containing the number of evaluations of the
+  combined gradient and functional first, and the evaluations of only the
+  functional second.
 * `optimizer`: The backend optimizer object
 * `optimizer_state`: The internal state object of the `optimizer` (`nothing` if
   the `optimizer` has no internal state)
 * `result`: The current result object
 * `tau_grads`: The gradients ∂τₖ/ϵₗ(tₙ)
-* `fw_storage`: The storage of states for the forward propagation
+* `fw_storage`: The storage of states for the forward propagation, as a vector
+  of storage contains (one for each trajectory)
 * `fw_propagators`: The propagators used for the forward propagation
 * `bw_grad_propagators`: The propagators used for the backward propagation of
   [`QuantumGradientGenerators.GradVector`](@ref) states
@@ -84,8 +88,11 @@ mutable struct GrapeWrk{O}
     #################################
     # Per trajectory:
 
-    # χ(T), for easier debugging in a callback
+    # χ(T), for easier debugging in a callback, normalize
     chi_states
+
+    # original norm of `χ(T)`
+    chi_states_norm::Vector{Float64}
 
     tau_grads::Vector{Matrix{ComplexF64}}
     fw_storage
@@ -209,6 +216,7 @@ function GrapeWrk(problem::QuantumControl.ControlProblem; verbose=false)
         ) for (k, traj) in enumerate(trajectories)
     ]
     chi_states = [zero(traj.initial_state) for traj in trajectories]
+    chi_states_norm = zeros(N)
     tau_grads::Vector{Matrix{ComplexF64}} =
         [zeros(ComplexF64, length(tlist) - 1, length(controls)) for _ = 1:N]
     if gradient_method == :gradgen
@@ -306,6 +314,7 @@ function GrapeWrk(problem::QuantumControl.ControlProblem; verbose=false)
         chi_takes_tau,
         result,
         chi_states,
+        chi_states_norm,
         tau_grads,
         fw_storage,
         fw_prop_kwargs,
