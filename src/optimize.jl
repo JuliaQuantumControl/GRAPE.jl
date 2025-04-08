@@ -51,7 +51,7 @@ with explicit keyword arguments to `optimize`.
 * `chi`: A function `chi(Ψ, trajectories)` that receives a list `Ψ`
   of the forward propagated states and returns a vector of states
   ``|χₖ⟩ = -∂J_T/∂⟨Ψₖ|``. If not given, it will be automatically determined
-  from `J_T` via [`QuantumControl.Functionals.make_chi`](@extref) with the
+  from `J_T` via [`QuantumControl.Functionals.make_chi`](@ref) with the
   default parameters. Similarly to `J_T`, if `chi` accepts a keyword argument
   `tau`, it will be passed a vector of complex overlaps.
 * `chi_min_norm=1e-100`: The minimum allowable norm for any ``|χₖ(T)⟩``.
