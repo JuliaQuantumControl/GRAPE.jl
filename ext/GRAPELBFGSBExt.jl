@@ -200,7 +200,7 @@ end
 function search_direction(wrk::GrapeWrk{O}) where {O<:LBFGSB.L_BFGS_B}
     n = length(wrk.pulsevals)
     n0 = wrk.optimizer.isave[13]
-    return wrk.optimizer.wa[n0:n0+n-1]
+    return wrk.optimizer.wa[n0:(n0+n-1)]
 end
 
 
@@ -208,7 +208,7 @@ function norm_search(wrk::GrapeWrk{O}) where {O<:LBFGSB.L_BFGS_B}
     n = length(wrk.pulsevals)
     n0 = wrk.optimizer.isave[13]
     r = 0.0
-    for i = n0:n0+n-1
+    for i = n0:(n0+n-1)
         r += wrk.optimizer.wa[i]^2
     end
     return sqrt(r)

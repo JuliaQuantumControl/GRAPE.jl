@@ -175,7 +175,7 @@ function GrapeWrk(problem::QuantumControl.ControlProblem; verbose=false)
     parameters = IdDict(
         # The view-aliasing below ensures that we can mutate `pulsevals` and
         # the updated values are immediately accessible in the propagation
-        control => @view pulsevals[(l-1)*N_T+1:l*N_T] for
+        control => @view pulsevals[((l-1)*N_T+1):(l*N_T)] for
         (l, control) in enumerate(controls)
     )
     gradient = zeros(length(pulsevals))

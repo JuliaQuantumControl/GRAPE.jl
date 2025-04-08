@@ -329,7 +329,7 @@ function finalize_result!(wrk::GrapeWrk)
     res.end_local_time = now()
     N_T = length(res.tlist) - 1
     for l = 1:L
-        ϵ_opt = wrk.pulsevals[(l-1)*N_T+1:l*N_T]
+        ϵ_opt = wrk.pulsevals[((l-1)*N_T+1):(l*N_T)]
         res.optimized_controls[l] = discretize(ϵ_opt, res.tlist)
     end
 end
@@ -889,7 +889,7 @@ function evaluate_gradient!(G, pulsevals, problem, wrk)
                     if isnothing(μₖₗ)
                         wrk.tau_grads[k][n, l] = 0.0
                     else
-                        local ϵₙ⁽ⁱ⁾ = @view pulsevals[(n-1)*L+1:n*L]
+                        local ϵₙ⁽ⁱ⁾ = @view pulsevals[((n-1)*L+1):(n*L)]
                         local vals_dict = IdDict(
                             control => val for (control, val) ∈ zip(wrk.controls, ϵₙ⁽ⁱ⁾)
                         )

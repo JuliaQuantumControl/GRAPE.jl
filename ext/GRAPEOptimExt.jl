@@ -69,7 +69,7 @@ function run_optimizer(
 
     options = Optim.Options(
         callback=optim_callback,
-        iterations=wrk.result.iter_stop - wrk.result.iter_start, # TODO
+        iterations=(wrk.result.iter_stop - wrk.result.iter_start), # TODO
         x_tol=get(wrk.kwargs, :x_tol, 0.0),
         f_tol=get(wrk.kwargs, :f_tol, 0.0),
         g_tol=get(wrk.kwargs, :g_tol, 1e-8),
