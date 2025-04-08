@@ -32,6 +32,11 @@ unicodeplots()
         include("test_taylor_grad.jl")
     end
 
+    println("\n* LBFGSB Saddle point (test_lbfgsb_saddle_point.jl):")
+    @time @safetestset "LBFGSB Saddle point" begin
+        include("test_lbfgsb_saddle_point.jl")
+    end
+
     println("\n* Iterations (test_iterations.jl)")
     @time @safetestset "Iterations" begin
         include("test_iterations.jl")

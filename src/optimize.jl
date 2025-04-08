@@ -329,7 +329,7 @@ function finalize_result!(wrk::GrapeWrk)
     res.end_local_time = now()
     N_T = length(res.tlist) - 1
     for l = 1:L
-        ϵ_opt = wrk.pulsevals[(l-1)*N_T+1:l*N_T]
+        ϵ_opt = wrk.pulsevals[((l-1)*N_T+1):(l*N_T)]
         res.optimized_controls[l] = discretize(ϵ_opt, res.tlist)
     end
 end
@@ -762,7 +762,7 @@ of the optimization functional with respect to the pulse values into the
 existing array `G`.
 
 The evaluation of the functional uses uses `wrk.fw_propagators`. The evaluation
-of the gradient happens either via a backward propagation of an extented
+of the gradient happens either via a backward propagation of an extended
 ["gradient vector"](@extref `QuantumGradientGenerators.GradVector`)
 using `wrk.bw_grad_propagators` if `problem` was initialized with
 `gradient_method=:gradgen`. Alternatively, if `problem` was initialized with
@@ -889,7 +889,7 @@ function evaluate_gradient!(G, pulsevals, problem, wrk)
                     if isnothing(μₖₗ)
                         wrk.tau_grads[k][n, l] = 0.0
                     else
-                        local ϵₙ⁽ⁱ⁾ = @view pulsevals[(n-1)*L+1:n*L]
+                        local ϵₙ⁽ⁱ⁾ = @view pulsevals[((n-1)*L+1):(n*L)]
                         local vals_dict = IdDict(
                             control => val for (control, val) ∈ zip(wrk.controls, ϵₙ⁽ⁱ⁾)
                         )

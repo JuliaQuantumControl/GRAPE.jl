@@ -8,8 +8,14 @@ import GRAPE: run_optimizer, gradient, step_width, search_direction, norm_search
 function run_optimizer(optimizer::LBFGSB.L_BFGS_B, wrk, fg!, callback, check_convergence!)
 
     m = get(wrk.kwargs, :lbfgsb_m, 10)
-    factr = get(wrk.kwargs, :lbfgsb_factr, 1e7)
-    pgtol = get(wrk.kwargs, :lbfgsb_pgtol, 1e-5)
+    factr = get(wrk.kwargs, :lbfgsb_factr, 1e1)
+    # LBFGSB stops when the relative reduction in the functional f is
+    #     (f^k - f^{k+1})/max{|f^k|,|f^{k+1}|,1} <= factr*epsmch
+    pgtol = get(wrk.kwargs, :lbfgsb_pgtol, 1e-15)
+    # LBFGSB will stop when the i'th component of the projected gradient g_i is
+    #     max{|proj g_i | i = 1, ..., n} <= pgtol
+    # We set both `factr` and `pgtol` to "extreme" high accuracy. We really
+    # want GRAPE to control the convergence check, not LBFGSB.
     iprint = get(wrk.kwargs, :lbfgsb_iprint, -1)
     trace_debugging = (iprint == 100)
     x = wrk.pulsevals
@@ -194,7 +200,7 @@ end
 function search_direction(wrk::GrapeWrk{O}) where {O<:LBFGSB.L_BFGS_B}
     n = length(wrk.pulsevals)
     n0 = wrk.optimizer.isave[13]
-    return wrk.optimizer.wa[n0:n0+n-1]
+    return wrk.optimizer.wa[n0:(n0+n-1)]
 end
 
 
@@ -202,7 +208,7 @@ function norm_search(wrk::GrapeWrk{O}) where {O<:LBFGSB.L_BFGS_B}
     n = length(wrk.pulsevals)
     n0 = wrk.optimizer.isave[13]
     r = 0.0
-    for i = n0:n0+n-1
+    for i = n0:(n0+n-1)
         r += wrk.optimizer.wa[i]^2
     end
     return sqrt(r)
