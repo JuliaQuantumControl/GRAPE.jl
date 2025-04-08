@@ -762,7 +762,7 @@ of the optimization functional with respect to the pulse values into the
 existing array `G`.
 
 The evaluation of the functional uses uses `wrk.fw_propagators`. The evaluation
-of the gradient happens either via a backward propagation of an extented
+of the gradient happens either via a backward propagation of an extended
 ["gradient vector"](@extref `QuantumGradientGenerators.GradVector`)
 using `wrk.bw_grad_propagators` if `problem` was initialized with
 `gradient_method=:gradgen`. Alternatively, if `problem` was initialized with
