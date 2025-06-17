@@ -1,4 +1,4 @@
-.PHONY: help clean paper
+.PHONY: help clean paper pandoc
 
 DOCKER ?= docker
 FOLDER ?= $(PWD)
@@ -31,6 +31,9 @@ clean: ## Clean up generated files
 	rm -rf jats
 
 paper: paper.pdf ## Compile the JOSS manuscript paper.md
+
+pandoc:  ## Compile the manuscript directly with `pandoc` (light-weight preview)
+	pandoc --citeproc --csl=apa.csl -o paper.pdf --pdf-engine=lualatex paper.md
 
 paper.pdf: paper.md paper.bib
 	$(DOCKER) run --rm --volume $(FOLDER):/data --user $(id -u):$(id -g) --env JOURNAL=joss openjournals/inara -o pdf -p paper.md

@@ -11,6 +11,21 @@ The paper can be compiled locally via `make`. Run `make help` for an overview. B
 See also the [JOSS's "Checking that your paper compiles" instructions](https://joss.readthedocs.io/en/latest/paper.html#checking-that-your-paper-compiles), and the [`openjournals/inara` README](https://github.com/openjournals/inara).
 
 
+## Quick Preview with `pandoc`
+
+If you cannot set up Docker or a compatible containerization system, or want a quick preview of the manuscript, you can do so directly with [Pandoc](https://pandoc.org) (which JOSS / the Docker image uses under the hood, with heavily customized filters and templates). 
+
+Inside the folder containing `paper.md`, run
+
+```
+pandoc --citeproc --csl=apa.csl -o paper.pdf --pdf-engine=lualatex paper.md
+```
+
+or `make pandoc`.
+
+The resulting file will not have the same formatting as the proper JOSS manuscript, but it will compile much faster to provide a quick preview of the text.
+
+
 ## Automatic Compilation on GitHub Actions
 
 When pushing any change to the files in this folder, the workflow in [`/.github/workflows/JOSS.yml`](https://github.com/JuliaQuantumControl/GRAPE.jl/blob/joss/.github/workflows/JOSS.yml) will automatically build the PDF version of the manuscript. The resulting file can be downloaded from the "Artifacts" section of the summary for the run [on GitHub](https://github.com/JuliaQuantumControl/GRAPE.jl/actions/workflows/JOSS.yml).

@@ -1,4 +1,112 @@
+@string{aamop = {Adv. At. Mol. Opt. Phys.}}
+@string{atms = {ACM Trans. Math. Softw.}}
+@string{cpc = {Comput. Phys. Commun.}}
+@string{jcp = {J. Chem. Phys.}}
+@string{jmr = {J. Magnet. Res.}}
+@string{njp = {New J. Phys.}}
+@string{npjqi = {npj Quantum Inf}}
+@string{pra = {Phys. Rev. A}}
+@string{prapl = {Phys. Rev. Applied}}
+@string{prr = {Phys. Rev. Research}}
+@string{ptrsa = {Phil. Trans. R. Soc. A}}
 @string{quant = {Quantum}}
+@string{rmp = {Rev. Mod. Phys.}}
+@string{siamrev = {SIAM Rev.}}
+
+@book{BrumerShapiro2003,
+    author = {Brumer, P and Shapiro, M.},
+    Title = {Principles and Applications of the Quantum Control of Molecular Processes},
+    Publisher = {Wiley Interscience},
+    Year = {2003},
+}
+
+
+@book{NielsenChuang2000,
+    author = {Nielsen, Michael and Chuang, Isaac L.},
+    publisher = {Cambridge University Press},
+    title = {Quantum Computation and Quantum Information},
+    year = {2000}
+}
+
+
+@article{DegenRMP2017,
+    Author = {Degen, Christian L. and Reinhard, Friedemann and Cappellaro, Paola},
+    Title = {Quantum sensing},
+    Journal = rmp,
+    Year = {2017},
+    Doi = {10.1103/RevModPhys.89.035002},
+    Pages = {035002},
+    Volume = {89},
+}
+
+
+
+
+@article{BrifNJP2010,
+	author = {Brif, Constantin and Chakrabarti, Raj and Rabitz, Herschel},
+	journal = njp,
+	number = {7},
+	pages = {075008},
+	title = {Control of quantum phenomena: past, present and future},
+	volume = {12},
+	year = {2010}
+}
+
+@article{SolaAAMOP2018,
+    Author = {Sola, Ignacio R. and Chang, Bo Y. and Malinovskaya, Svetlana A. and Malinovsky, Vladimir S.},
+    Title = {Quantum Control in Multilevel Systems},
+    Journal = aamop,
+    Year = {2018},
+    Doi = {10.1016/bs.aamop.2018.02.003},
+    Pages = {151},
+    Volume = {67},
+}
+
+@article{DowlingPTRSA2003,
+    Author = {Dowling, Jonathan P. and Milburn, Gerard J.},
+    Title = {Quantum technology: the second quantum revolution},
+    Journal = ptrsa,
+    Year = {2003},
+    Doi = {10.1098/rsta.2003.1227},
+    Pages = {1655},
+    Volume = {361},
+}
+
+@article{KochPRA2007,
+    Author = {Koch, Jens and Yu, Terri M. and Gambetta, Jay and Houck, Andrew A. and Schuster, David I. and Majer, Johannes and Blais, Alexandre and Devoret, Michel H. and Girvin, Steven M. and Schoelkopf, Robert J.},
+    Title = {Charge-insensitive qubit design derived from the {Cooper} pair box},
+    Journal = pra,
+    Year = {2007},
+    Doi = {10.1103/PhysRevA.76.042319},
+    Pages = {042319},
+    Volume = {76},
+}
+
+
+
+@article{GoerzNPJQI2017,
+    Author = {Goerz, Michael H. and Motzoi, Felix and Whaley, K. Birgitta and Koch, Christiane P.},
+    Title = {Charting the circuit {QED} design landscape using optimal control theory},
+    Journal = npjqi,
+    Year = {2017},
+    Doi = {10.1038/s41534-017-0036-0},
+    Pages = {37},
+    Volume = {3},
+}
+
+
+
+
+@article{GoerzNJP2014,
+    Author = {Goerz, Michael H and Reich, Daniel M and Koch, Christiane P},
+    Title = {Optimal control theory for a unitary operation under dissipative evolution},
+    Journal = njp,
+    Year = {2014},
+    Doi = {10.1088/1367-2630/16/5/055012},
+    Pages = {055012},
+    Volume = {16},
+}
+
 
 @article{GoerzQ2022,
     Author = {Goerz, Michael H. and Carrasco, Sebastián C. and Malinovsky, Vladimir S.},
@@ -16,4 +124,221 @@
   year = {2025},
   publisher = {GitHub},
   url = {https://github.com/JuliaQuantumControl/QuantumControl.jl}
+}
+
+@misc{QDYN,
+  title = {{QDYN}: Fortran 95 library and utilities for quantum dynamics and optimal control},
+  year = {2025},
+  url = {https://www.qdyn-library.net}
+}
+
+
+@article{ZhuATMS1997,
+    Author = {Zhu, Ciyou and Byrd, Richard H. and Lu, Peihuang and Nocedal, Jorge},
+    Title = {Algorithm 778: {L-BFGS-B}: {Fortran} subroutines for large-scale bound-constrained optimization},
+    Journal = atms,
+    Year = {1997},
+    Doi = {10.1145/279232.279236},
+    Pages = {550},
+    Volume = {23},
+}
+
+@misc{LBFGSB.jl,
+  author = {Qi, Yupei and {contributors}},
+  title = {{LBFGSB}: {Julia} wrapper for {L-BFGS-B} Nonlinear Optimization Code},
+  year = {2022},
+  publisher = {GitHub},
+  url = {https://github.com/Gnimuc/LBFGSB.jl}
+}
+
+
+@article{BezansonSIREV2017,
+    Author = {Bezanson, Jeff and Edelman, Alan and Karpinski, Stefan and Shah, Viral B.},
+    Title = {Julia: A Fresh Approach to Numerical Computing},
+    Journal = siamrev,
+    Year = {2017},
+    Doi = {10.1137/141000671},
+    Pages = {65},
+    Volume = {59},
+}
+
+@article{FouquieresJMR2011,
+    Author = {de Fouquières, Pierre and Schirmer, Sophie G. and Glaser, Steffen J. and Kuprov, Ilya},
+    Title = {Second order gradient ascent pulse engineering},
+    Journal = jmr,
+    Year = {2011},
+    Doi = {10.1016/j.jmr.2011.07.023},
+    Pages = {412},
+    Volume = {212},
+}
+@article{KhanejaJMR2005,
+    Author = {Khaneja, Navin and Reiss, Timo and Kehlet, Cindie and Schulte-Herbrüggen, Thomas and Glaser, Steffen J.},
+    Title = {Optimal control of coupled spin dynamics: design of {NMR} pulse sequences by gradient ascent algorithms},
+    Journal = jmr,
+    Year = {2005},
+    Doi = {10.1016/j.jmr.2004.11.004},
+    Pages = {296},
+    Volume = {172},
+}
+
+@article{GoodwinJCP2015,
+    Author = {Goodwin, David L. and Kuprov, Ilya},
+    Title = {Auxiliary matrix formalism for interaction representation transformations, optimal control, and spin relaxation theories},
+    Journal = jcp,
+    Year = {2015},
+    Doi = {10.1063/1.4928978},
+    Pages = {084113},
+    Volume = {143},
+}
+
+@article{GoodwinJCP2016,
+    Author = {Goodwin, David L. and Kuprov, Ilya},
+    Title = {Modified {Newton}-{Raphson} {GRAPE} methods for optimal control of spin systems},
+    Journal = jcp,
+    Year = {2016},
+    Doi = {10.1063/1.4949534},
+    Pages = {204107},
+    Volume = {144},
+}
+
+@article{TosnerJMR2009,
+    Author = {Tošner, Zdeněk and Vosegaard, Thomas and Kehlet, Cindie and Khaneja, Navin and Glaser, Steffen J. and Nielsen, Niels Chr.},
+    Title = {Optimal control in {NMR} spectroscopy: Numerical implementation in {SIMPSON}},
+    Journal = jmr,
+    Year = {2009},
+    Doi = {http://dx.doi.org/10.1016/j.jmr.2008.11.020},
+    Pages = {120},
+    Volume = {197},
+}
+
+@article{JohanssonCPC2013,
+    Author = {Johansson, J. Robert and Nation, Paul D. and Nori, Franco},
+    Title = {{QuTiP 2}: A {Python} framework for the dynamics of open quantum systems},
+    Journal = cpc,
+    Year = {2013},
+    Doi = {10.1016/j.cpc.2012.11.019},
+    Pages = {1234},
+    Volume = {184},
+}
+
+@article{HogbenJMR2011,
+    Author = {Hogben, Hannah J. and Krzystyniak, Matthew and Charnock, Gareth T. P. and Hore, Peter J. and Kuprov, Ilya},
+    Title = {Spinach -- A software library for simulation of spin dynamics in large spin systems},
+    Journal = jmr,
+    Year = {2011},
+    Doi = {10.1016/j.jmr.2010.11.008},
+    Pages = {179},
+    Volume = {208},
+}
+
+@article{WittlerPRA2021,
+    Author = {Wittler, Nicolas and Roy, Federico and Pack, Kevin and Werninghaus, Max and Roy, Anurag Saha and Egger, Daniel J. and Filipp, Stefan and Wilhelm, Frank K. and Machnes, Shai},
+    Title = {Integrated Tool Set for Control, Calibration, and Characterization of Quantum Devices Applied to Superconducting Qubits},
+    Journal = prapl,
+    Year = {2021},
+    Doi = {10.1103/physrevapplied.15.034080},
+    Pages = {034080},
+    Volume = {15},
+}
+
+@article{ZhangPRR2022,
+    Author = {Zhang, Mao and Yu, Huai-Ming and Yuan, Haidong and Wang, Xiaoguang and Demkowicz-Dobrzański, Rafał and Liu, Jing},
+    Title = {QuanEstimation: An open-source toolkit for quantum parameter estimation},
+    Journal = prr,
+    Year = {2022},
+    Doi = {10.1103/physrevresearch.4.043057},
+    Pages = {043057},
+    Volume = {4},
+}
+
+@article{RossignoloCPC2023,
+    Author = {Rossignolo, Marco and Reisser, Thomas and Marshall, Alastair and Rembold, Phila and Pagano, Alice and Vetter, Philipp J. and Said, Ressa S. and Müller, Matthias M. and Motzoi, Felix and Calarco, Tommaso and Jelezko, Fedor and Montangero, Simone},
+    Title = {QuOCS: The quantum optimal control suite},
+    Journal = cpc,
+    Year = {2023},
+    Doi = {10.1016/j.cpc.2023.108782},
+    Pages = {108782},
+    Volume = {291},
+}
+
+
+
+@article{RyanPRA2008,
+	author = {Ryan, C. A. and Negrevergne, C. and Laforest, M. and Knill, E. and Laflamme, R.},
+	doi = {10.1103/physreva.78.012328},
+	journal = pra,
+	number = {1},
+	pages = {012328},
+	title = {Liquid-state nuclear magnetic resonance as a testbed for developing quantum control methods},
+	volume = {78},
+	year = {2008},
+    note = {Implementation on GitHub at \url{https://github.com/caryan/pulse-finder}}
+}
+
+@misc{pulse-finder,
+  author = {Ryan, C. A. and {contributors}},
+  title = {{pulse-finder}: Matlab code for GRAPE optimal control in NMR},
+  year = {2013},
+  publisher = {GitHub},
+  url = {https://github.com/caryan/pulse-finder/}
+}
+
+@article{LeungPRA2017,
+    Author = {Leung, Nelson and Abdelhafez, Mohamed and Koch, Jens and Schuster, David},
+    Title = {Speedup for quantum optimal control from automatic differentiation based on graphics processing units},
+    Journal = pra,
+    Year = {2017},
+    Doi = {10.1103/PhysRevA.95.042318},
+    Pages = {042318},
+    Volume = {95},
+    note = {Implementation on GitHub at \url{https://github.com/SchusterLab/quantum-optimal-control}}
+}
+
+@misc{quantum-optimal-control,
+  author = {Leung, Nelson and Abdelhafez, Mohamed and Schuster, David},
+  title = {quantum-optimal-control},
+  year = {2021},
+  publisher = {GitHub},
+  url = {https://github.com/SchusterLab/quantum-optimal-control}
+}
+
+@article{AbdelhafezPRA2019,
+    Author = {Abdelhafez, Mohamed and Schuster, David I. and Koch, Jens},
+    Title = {Gradient-based optimal control of open quantum systems using quantum trajectories and automatic differentiation},
+    Journal = pra,
+    Year = {2019},
+    Doi = {10.1103/PhysRevA.99.052327},
+    Pages = {052327},
+    Volume = {99},
+}
+
+@article{AbdelhafezPRA2020,
+    Author = {Abdelhafez, Mohamed and Baker, Brian and Gyenis, András and Mundada, Pranav and Houck, Andrew A. and Schuster, David and Koch, Jens},
+    Title = {Universal gates for protected superconducting qubits using optimal control},
+    Journal = pra,
+    Year = {2020},
+    Doi = {10.1103/physreva.101.022321},
+    Pages = {022321},
+    Volume = {101},
+}
+
+
+@article{PropsonPRA2022,
+    Author = {Propson, Thomas and Jackson, Brian E. and Koch, Jens and Manchester, Zachary and Schuster, David I.},
+    Title = {Robust Quantum Optimal Control with Trajectory Optimization},
+    Journal = prapl,
+    Year = {2022},
+    Doi = {10.1103/physrevapplied.17.014036},
+    Pages = {014036},
+    Volume = {17},
+    note = {Implementation on GitHub at \url{https://github.com/SchusterLab/rbqoc}}
+}
+
+
+@misc{rbqoc,
+  author = {Propson, Thomas and Schuster, David},
+  title = {{rbqoc}: Robust Quantum Optimal Control with Trajectory Optimization},
+  year = {2022},
+  publisher = {GitHub},
+  url = {https://github.com/SchusterLab/rbqoc}
 }
