@@ -66,7 +66,7 @@ Full-AD [@LeungPRA2017; @quantum-optimal-control; @AbdelhafezPRA2019; @Abdelhafe
 
 # Acknowledgements
 
-Research was sponsored by the Army Research Laboratory and was accomplished under Cooperative Agreement Number
-W911NF-23-2-0128. The views and conclusions contained in this document are those of the authors and should not be interpreted as representing the official policies, either expressed or implied, of the Army Research Laboratory or the U.S. Government. The U.S. Government is authorized to reproduce and distribute reprints for Government purposes notwithstanding any copyright notation herein.
+Research was sponsored by the Army Research Laboratory and was accomplished under Cooperative Agreement Numbers
+W911NF-23-2-0128 (MG) and W911NF-24-2-0044 (SC). The views and conclusions contained in this document are those of the authors and should not be interpreted as representing the official policies, either expressed or implied, of the Army Research Laboratory or the U.S. Government. The U.S. Government is authorized to reproduce and distribute reprints for Government purposes notwithstanding any copyright notation herein.
 
 # References
