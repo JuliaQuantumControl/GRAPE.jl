@@ -24,7 +24,7 @@ bibliography: paper.bib
 
 # Summary
 
-The `GRAPE.jl` package implements Gradient Ascent Pulse Engineering [@KhanejaJMR2005], a widely use method of quantum optimal control [@BrumerShapiro2003;@BrifNJP2010;@SolaAAMOP2018]. It's purpose is to find "controls" that steer a quantum system in a particular way. This is a prerequisite of next-generation quantum technology [@DowlingPTRSA2003] such as quantum computing [@NielsenChuang2000] or quantum sensing [@DegenRMP2017]. For example, in a quantum computing superconducting circuits [@KochPRA2007], the controls are microwave pulses injected into the circuit in order to realize logical operations on the quantum states of the system [e.g., @GoerzNPJQI2017].
+The `GRAPE.jl` package implements Gradient Ascent Pulse Engineering [@KhanejaJMR2005], a widely use method of quantum optimal control [@BrumerShapiro2003;@BrifNJP2010;@SolaAAMOP2018]. Its purpose is to find "controls" that steer a quantum system in a particular way. This is a prerequisite of next-generation quantum technology [@DowlingPTRSA2003] such as quantum computing [@NielsenChuang2000] or quantum sensing [@DegenRMP2017]. For example, in a quantum computing superconducting circuits [@KochPRA2007], the controls are microwave pulses injected into the circuit in order to realize logical operations on the quantum states of the system [e.g., @GoerzNPJQI2017].
 
 The quantum state of a system can be described by a complex vector $\vert \Psi(t) \rangle$ that evolves under a differential equation of the form
 
