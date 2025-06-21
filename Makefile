@@ -1,7 +1,8 @@
-.PHONY: help test docs clean distclean devrepl codestyle servedocs
+.PHONY: help test docs clean distclean devrepl codestyle servedocs paper
 .DEFAULT_GOAL := help
 
 JULIA ?= julia
+DOCKER ?= docker
 PORT ?= 8000
 
 define PRINT_HELP_JLSCRIPT
@@ -43,6 +44,7 @@ servedocs: test/Manifest.toml  ## Build (auto-rebuild) and serve documentation a
 	$(JULIA) --project=test -e 'include("devrepl.jl"); servedocs(port=$(PORT), verbose=true)'
 
 clean: ## Clean up build/doc/testing artifacts
+	make -C paper clean
 	$(JULIA) -e 'include("test/clean.jl"); clean()'
 
 codestyle: test/Manifest.toml ../.JuliaFormatter.toml ## Apply the codestyle to the entire project
@@ -52,3 +54,6 @@ codestyle: test/Manifest.toml ../.JuliaFormatter.toml ## Apply the codestyle to 
 
 distclean: clean ## Restore to a clean checkout state
 	$(JULIA) -e 'include("test/clean.jl"); clean(distclean=true)'
+
+paper: ## Compile the JOSS manuscript in ./paper. See `./paper/README.md`.
+	make -C paper DOCKER=$(DOCKER) FOLDER=$(PWD)/paper paper
