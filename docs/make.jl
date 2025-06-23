@@ -1,3 +1,4 @@
+using QuantumControl
 using QuantumPropagators
 using GRAPE
 using Documenter
@@ -48,12 +49,12 @@ fallbacks = ExternalFallbacks(
 
 println("Starting makedocs")
 
-bib = CitationBibliography(joinpath(@__DIR__, "src", "refs.bib"); style=:numeric)
+bib = CitationBibliography(joinpath(@__DIR__, "..", "paper", "paper.bib"); style=:numeric)
 
 PAGES = [
     "Home" => "index.md",
-    "Overview" => "overview.md",
-    "Examples" => "examples.md",
+    "Usage" => "usage.md",
+    "Background" => "background.md",
     "API" => "api.md",
     "References" => "references.md",
 ]
@@ -76,7 +77,17 @@ makedocs(;
                 "https://juliaquantumcontrol.github.io/QuantumControl.jl/dev/assets/topbar/topbar.js"
             ),
         ],
-        mathengine=KaTeX(),
+        # mathengine=KaTeX(),
+        mathengine=MathJax3(
+            Dict(
+                :loader => Dict("load" => ["[tex]/physics"]),
+                :tex => Dict(
+                    "inlineMath" => [["\$", "\$"], ["\\(", "\\)"]],
+                    "tags" => "ams",
+                    "packages" => ["base", "ams", "autoload", "physics"],
+                ),
+            )
+        ),
         footer="[$NAME.jl]($GITHUB) v$VERSION docs powered by [Documenter.jl](https://github.com/JuliaDocs/Documenter.jl).",
     ),
     pages=PAGES,
