@@ -5,12 +5,8 @@ using Documenter
 using DocumenterCitations
 using DocumenterInterLinks
 using Pkg
-using Plots
 import Optim
 import LBFGSB
-
-gr()
-ENV["GKSwstype"] = "100"
 
 
 PROJECT_TOML = Pkg.TOML.parsefile(joinpath(@__DIR__, "..", "Project.toml"))
@@ -96,4 +92,8 @@ makedocs(;
 
 println("Finished makedocs")
 
-deploydocs(; repo="github.com/JuliaQuantumControl/GRAPE.jl", devbranch="master")
+deploydocs(;
+    repo="github.com/JuliaQuantumControl/GRAPE.jl",
+    devbranch="master",
+    push_preview=true
+)
