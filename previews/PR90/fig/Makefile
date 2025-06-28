@@ -1,7 +1,7 @@
 PDFLATEXOPTS = -file-line-error -interaction=nonstopmode -halt-on-error
 ALL = grape_scheme.pdf grape_scheme.png
 
-all: $(ALL)
+all: grape_scheme.png
 
 %.pdf: %.tex
 	@echo "\n** generate figure: $< -> $@"
@@ -30,6 +30,7 @@ clean:
 	@rm -f *.fdb_latexmk
 	@rm -f *.synctex.gz*
 	@rm -f ./latexrun
+	@rm -f grape_scheme.pdf
 
 distclean: clean
 	rm -f $(ALL)

@@ -52,7 +52,7 @@
     \node[color=DarkRed] at (0.5,0.35) {$\Psi_k(t_1)$};
   \end{tikzpicture}
 };
-\draw[->] (psifw1) edge[bend right=50] node[below]{$\epsilon^{(i-1)}_{l1}$} (psifw2);
+\draw[->] (psifw1) edge[bend right=50] node[below]{$\epsilon_{1}$} (psifw2);
 
 \node (psifw3) at (9,4.2) {%
   \begin{tikzpicture}
@@ -61,7 +61,7 @@
     \node at (0.5,0.35) {\dots};
   \end{tikzpicture}
 };
-\draw[->] (psifw2) edge[bend right=50] node[below]{$\epsilon^{(i-1)}_{l2}$} (psifw3);
+\draw[->] (psifw2) edge[bend right=50] node[below]{$\epsilon_{2}$} (psifw3);
 
 \node (psifw4) at (12,4.2) {%
   \begin{tikzpicture}
@@ -69,48 +69,48 @@
     \node[color=DarkRed] at (0.5,0.35) {$\Psi_k(t_{\shortminus\!1})$};
   \end{tikzpicture}
 };
-\draw[->] (psifw3) edge[bend right=50] node[below]{$\epsilon^{(i-1)}_{l\shortminus\!1}$} (psifw4);
+\draw[->] (psifw3) edge[bend right=50] node[below]{$\epsilon_{\shortminus\!2}$} (psifw4);
 
 \node (psifw5) at (15,4.2) {%
   \begin{tikzpicture}
     \node[color=DarkRed] at (0.5,0.35) {$\Psi_k(T)$};
   \end{tikzpicture}
 };
-\draw[->] (psifw4)  edge[bend right=50] node[below]{$\epsilon^{(i-1)}_{lN_T}$} (psifw5);
+\draw[->] (psifw4)  edge[bend right=50] node[below]{$\epsilon_{\shortminus\!1}$} (psifw5);
 
 %%% backward propagation
 
 \node (chi1) at (3,6.8) {%
   \begin{tikzpicture}
     \draw (-0.3,0)--(0.5,0.25)--(1.3,0);
-    \node at (0.5,-0.35) {$\tilde\chi_k(0)$};
+    \node at (0.5,-0.35) {$\chi^{\prime}_k(0)$};
   \end{tikzpicture}
 };
 
 \node (chi2) at (6,6.8) {%
   \begin{tikzpicture}
     \draw (-0.3,0)--(0.5,0.25)--(1.3,0);
-    \node at (0.5,-0.35) {$\tilde\chi_k(t_1)$};
+    \node at (0.5,-0.35) {$\chi^{\prime}_k(t_1)$};
   \end{tikzpicture}
 };
-\draw[<-] (chi1) edge[bend left=50] node[above]{$\epsilon^{(i-1)}_{l1}$} node(gradn1)[below,color=DarkBlue]{$\nabla\!\tau^{(k)}_{l1}$} (chi2);
+\draw[<-] (chi1) edge[bend left=50] node[above]{$\epsilon_{1}$} node(gradn1)[below,color=DarkBlue]{$\nabla\!J_{1}$} (chi2);
 
 \node (chi3) at (9,6.8) {%
   \begin{tikzpicture}
     \draw[color=gray!20] (-0.3,0)--(0.5,0.25)--(1.3,0);
-    \node[color=gray!20] at (0.5,-0.25) {$\tilde\chi_k(t)$};
+    \node[color=gray!20] at (0.5,-0.25) {$\chi^{\prime}_k(t)$};
     \node at (0.5,-0.35) {\dots};
   \end{tikzpicture}
 };
-\draw[<-] (chi2)  edge[bend left=50] node[above]{$\epsilon^{(i-1)}_{l2}$} node(gradn2)[below,color=DarkBlue]{$\nabla\!\tau^{(k)}_{l2}$} (chi3);
+\draw[<-] (chi2)  edge[bend left=50] node[above]{$\epsilon_{2}$} node(gradn2)[below,color=DarkBlue]{$\nabla\!J_{2}$} (chi3);
 
 \node (chi4) at (12,6.8) {%
   \begin{tikzpicture}
     \draw (-0.3,0)--(0.5,0.25)--(1.3,0);
-    \node at (0.5,-0.35) {$\tilde\chi_k(t_{\shortminus\!1})$};
+    \node at (0.5,-0.35) {$\chi^{\prime}_k(t_{\shortminus\!1})$};
   \end{tikzpicture}
 };
-\draw[<-] (chi3) edge[bend left=50] node[above]{$\epsilon^{(i-1)}_{l\shortminus\!1}$} node(gradn3)[below,color=DarkBlue]{$\nabla\!\tau^{(k)}_{l\shortminus\!1}$}(chi4);
+\draw[<-] (chi3) edge[bend left=50] node[above]{$\epsilon_{\shortminus\!2}$} node(gradn3)[below,color=DarkBlue]{$\nabla\!J_{\shortminus\!2}$}(chi4);
 
 \node (chi5) at (15,6.8) {%
   \begin{tikzpicture}
@@ -118,7 +118,7 @@
     \node[] at (0.5,-0.35) {$\tilde\chi_k(T)$};
   \end{tikzpicture}
 };
-\draw[<-] (chi4) edge[bend left=50] node[above]{$\epsilon^{(i-1)}_{lN_T}$} node(gradn4)[below,color=DarkBlue]{$\nabla\!\tau^{(k)}_{lN_{T}}$} (chi5);
+\draw[<-] (chi4) edge[bend left=50] node[above]{$\epsilon_{\shortminus\!1}$} node(gradn4)[below,color=DarkBlue]{$\nabla\!J_{\shortminus\!1}$} (chi5);
 
 %%% mu
 \node (mu1) at (3,5.5) {%
@@ -126,14 +126,14 @@
     \draw (-0.8,0.0)--(0.8,0.0);
   \end{tikzpicture}
 };
-\draw[->,color=DarkBlue] (mu1) -| (gradn1);
+\draw[->,color=DarkBlue] (mu1) -| node[right=-2pt,pos=0.65] {+} (gradn1);
 
 \node (mu2) at (6,5.5) {%
   \begin{tikzpicture}
     \draw (-0.8,0.0)--(0.8,0.0);
   \end{tikzpicture}
 };
-\draw[->,color=DarkBlue] (mu2) -| (gradn2);
+\draw[->,color=DarkBlue] (mu2) -| node[right=-2pt,pos=0.65] {+} (gradn2);
 
 \node (mu3) at (9,5.5) {%
   \begin{tikzpicture}
@@ -142,14 +142,14 @@
     \draw[color=white] (-0.8,-0.6)--(0.8,-0.6);
   \end{tikzpicture}
 };
-\draw[->,color=DarkBlue] (mu3) -| (gradn3);
+\draw[->,color=DarkBlue] (mu3) -| node[right=-2pt,pos=0.65] {+} (gradn3);
 
 \node (mu4) at (12,5.5) {%
   \begin{tikzpicture}
     \draw (-0.8,0.0)--(0.8,0.0);
   \end{tikzpicture}
 };
-\draw[->,color=DarkBlue] (mu4) -| (gradn4);
+\draw[->,color=DarkBlue] (mu4) -| node[right=-2pt,pos=0.65] {+} (gradn4);
 
 
 \end{tikzpicture}
