@@ -17,12 +17,31 @@ version_badge = "![v$VERSION](https://img.shields.io/badge/version-v$VERSION-gre
 Markdown.parse("$github_badge $version_badge")
 ```
 
-Implementation of ([second-order](https://arxiv.org/abs/1102.4096)) GRadient Ascent Pulse Engineering (GRAPE) [KhanejaJMR2005, FouquieresJMR2011](@cite) extended with semi-automatic differentiation [GoerzQ2022](@cite).
+Gradient Ascent Pulse Engineering in Julia
 
-Part of [`QuantumControl.jl`](https://github.com/JuliaQuantumControl/QuantumControl.jl#readme) and the [JuliaQuantumControl](https://github.com/JuliaQuantumControl) organization.
+## Summary
+
+The `GRAPE.jl` package implements Gradient Ascent Pulse Engineering [KhanejaJMR2005](@cite), a widely used method of [quantum optimal control](@extref QuantumControl :doc:`index`). The quantum state of a system can be described by a complex vector ``\ket{\Psi(t)}`` that evolves under a differential equation of the form
+
+```math
+\def\ii{\mathrm{i}}
+\begin{equation}\label{eq:tdse}
+\ii \hbar \frac{\partial \ket{\Psi(t)}}{\partial t} = \hat{H}(\epsilon(t)) \ket{\Psi(t)}\,,
+\end{equation}
+```
+
+where ``\hbar`` is the [reduced Planck constant](https://en.wikipedia.org/wiki/Planck_constant) and ``\hat{H}`` is a matrix whose elements depend in some way on the control function ``\epsilon(t)``. We generally know the initial state of the system ``\ket{\Psi(t=0)}`` and want to find an ``\epsilon(t)`` that minimizes some functional ``J`` that depends on the states at some final time ``T``, as well as running costs on ``\ket{\Psi(t)}`` and values of ``\epsilon(t)`` at intermediate times.
+
+The defining feature of the GRAPE method is that it considers ``\epsilon(t)`` as piecewise constant, i.e., as a vector of pulse values ``\epsilon_n``, for the ``n``'th interval of the time grid. This allows solving Eq. \eqref{eq:tdse} analytically for each time interval, and deriving an expression for the gradient ``\partial J / \partial \epsilon_n`` of the optimization functional with respect to the values of the control field. The pulse values are then updated based on the gradient, in an efficient scheme detailed in [Background](@ref).
+
+
+## Statement of Need
+
+
+## Related Software
+
 
 ## Contents
-
 
 ```@contents
 Depth = 2

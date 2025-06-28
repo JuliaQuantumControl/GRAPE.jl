@@ -68,7 +68,7 @@ with explicit keyword arguments to `optimize`.
   [QuantumGradientGenerators](https://github.com/JuliaQuantumControl/QuantumGradientGenerators.jl).
   With `gradient_method=:taylor`, it is evaluated via a Taylor series, see
   Eq. (20) in Kuprov and Rogers,  J. Chem. Phys. 131, 234108
-  (2009) [KuprovJCP09](@cite).
+  (2009) [KuprovJCP2009](@cite).
 * `taylor_grad_max_order=100`: If given with `gradient_method=:taylor`, the
   maximum number of terms in the Taylor series. If
   `taylor_grad_check_convergence=true` (default), if the Taylor series does not
@@ -165,6 +165,19 @@ with explicit keyword arguments to `optimize`.
   `result.converged` to `true` and `result.message` to an appropriate string in
   case of convergence. Multiple convergence checks can be performed by chaining
   functions with `∘`. The convergence check is performed after any `callback`.
+* `prop_method`: The propagation method to use for each trajectory, see below.
+* `verbose=false`: If `true`, print information during initialization
+* `rethrow_exceptions`: By default, any exception ends the optimization, but
+  still returns a [`GrapeResult`](@ref) that captures the message associated
+  with the exception. This is to avoid losing results from a long-running
+  optimization when an exception occurs in a later iteration. If
+  `rethrow_exceptions=true`, instead of capturing the exception, it will be
+  thrown normally.
+
+# Experimental keyword arguments
+
+The following keyword arguments may change in non-breaking releases:
+
 * `x_tol`: Parameter for Optim.jl
 * `f_tol`: Parameter for Optim.jl
 * `g_tol`: Parameter for Optim.jl
@@ -175,14 +188,6 @@ with explicit keyword arguments to `optimize`.
 * `optimizer`: An optional Optim.jl optimizer (`Optim.AbstractOptimizer`
   instance). If not given, an [L-BFGS-B](https://github.com/Gnimuc/LBFGSB.jl)
   optimizer will be used.
-* `prop_method`: The propagation method to use for each trajectory, see below.
-* `verbose=false`: If `true`, print information during initialization
-* `rethrow_exceptions`: By default, any exception ends the optimization, but
-  still returns a [`GrapeResult`](@ref) that captures the message associated
-  with the exception. This is to avoid losing results from a long-running
-  optimization when an exception occurs in a later iteration. If
-  `rethrow_exceptions=true`, instead of capturing the exception, it will be
-  thrown normally.
 
 # Trajectory propagation
 

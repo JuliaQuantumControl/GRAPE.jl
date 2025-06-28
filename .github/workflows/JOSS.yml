@@ -1,0 +1,26 @@
+name: JOSS Manuscript
+on:
+  push:
+    paths:
+      - paper/**
+      - .github/workflows/JOSS.yml
+jobs:
+  paper:
+    runs-on: ubuntu-latest
+    name: Compile Manuscript
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Build PDF with Inara (Docker)
+        run: |
+          docker run --rm \
+            -e GIT_SHA="${GITHUB_SHA}" \
+            -e JOURNAL="joss" \
+            -v "$PWD"/paper:/data \
+            openjournals/inara:latest \
+            -o pdf -p paper.md
+      - name: Upload
+        uses: actions/upload-artifact@v4
+        with:
+          name: paper
+          path: paper/paper.pdf
