@@ -1,5 +1,12 @@
 # Background
 
+```@contents
+Pages=["background.md"]
+Depth=2:3
+```
+
+## Introduction
+
 The GRAPE methods minimizes an optimization functional of the form
 
 ```math
@@ -79,7 +86,7 @@ These two assumptions allow to analytically derive the gradient ``(\nabla J)_{nl
     \end{equation}
     ```
 
-    The gradient-state ``|\chi^\prime(t_{n-1})⟩`` is obtained either via an expansion of ``\hat{U}_n`` [into a Taylor series](@ref Overview-Taylor), or (by default), by backward-propagating an [extended state ``|\tilde\chi(t)⟩`` with gradient information](@ref Overview-Schermer-Gradient) [GoodwinJCP2015](@cite). The resulting scheme is illustrated in [Fig. 1](#fig-grape-scheme).
+    The gradient-state ``|\chi^\prime(t_{n-1})⟩`` is obtained either via an expansion of ``\hat{U}_n`` [into a Taylor series](@ref Overview-Taylor), or (by default), by backward-propagating an [extended state ``|\tilde\chi(t)⟩`` with gradient information](@ref Overview-Gradgen) [GoodwinJCP2015](@cite). The resulting scheme is illustrated in [Fig. 1](#fig-grape-scheme).
 
 
 ## Prerequisite: Wirtinger derivatives and matrix calculus
@@ -292,7 +299,7 @@ Thus, Eq. \eqref{eq:grad-at-T-U} turns into
 Or, equivalently, if we had let ``\frac{\partial \hat{U}_n^{(k)}}{\partial \epsilon_{nl}}`` act to the right,
 
 ```math
-\begin{equation}
+\begin{equation}\label{eq:grad-via-psi-prime}
 \frac{\partial J_T}{\partial \epsilon_{nl}}
 = -2 \Re \sum_k \bigg \langle \chi_{kl}(t_{n}) \bigg\vert \Psi^{\prime}_k(t_{n}) \bigg \rangle\,.
 \end{equation}
@@ -381,33 +388,95 @@ This approximation of the gradient has been used historically, including in GRAP
 
 After GRAPE's original formulation [KhanejaJMR2005](@cite), it was quickly realized that high-precision gradients are essential for numerical stability and convergence, in particular if the gradient is then used in a quasi-Newton method [KuprovJCP2009, FouquieresJMR2011](@cite). Thus, low-order Taylor expansions should be avoided in most contexts.
 
-### [Shermer gradient](@id Overview-Schermer-Gradient)
+### [Gradient Generators](@id Overview-Gradgen)
 
-With the need for gradients that are exact to machine precision…
+In order to evaluate Eq. \eqref{eq:U-deriv} to high precision, one can use a trick from computational linear algebra [VanLoanITAC1978](@cite) that was reformulated in the context of quantum control by [GoodwinJCP2015](@citet). It allows to calculate ``|\chi^\prime_{kl}(t_{n-1})⟩ \equiv  \frac{\partial \hat{U}^{\dagger(k)}_n}{\partial \epsilon_{nl}} |\chi_k(t_n)⟩`` and ``|\chi_{kl}(t_{n-1})⟩ = \hat{U}^{\dagger(k)}_n |\chi_k(t_n)⟩`` at the same time, as
+
+```math
+\begin{equation}\label{eq:gradprop-bw}
+  \begin{pmatrix} \ket{\chi^{\prime}_{k1}(t_{n-1})} \\ \vdots \\ \ket{\chi^{\prime}_{kL}(t_{n-1})} \\ \ket{\chi_k(t_{n-1})} \end{pmatrix}
+  = \exp \left[-\ii\,G[\hat{H}_{kn}^{\dagger}]\,dt_n\right] \ket{\tilde\chi_k(t_n)}
+  \,,\\
+\end{equation}
+```
+
+by backward-propagating an extended state
+
+```math
+\begin{equation}\label{eq:gradgen-state}
+    \ket{\tilde\chi_k(t_n)}
+    \equiv \begin{pmatrix} 0 \\ \vdots \\ 0 \\ \ket{\chi_k(t_n)} \end{pmatrix}
+\end{equation}
+```
+
+of dimension ``N(L+1)``, where ``L`` is the number of controls and ``N`` is the dimension of ``|\chi_k⟩``, under a "gradient generator"
+
+
+```math
+\begin{equation}\label{eq:gradgen}
+    G[\hat{H}_{kn}^{\dagger}]
+    = \begin{pmatrix}
+        \hat{H}^\dagger_{kn} & 0 & \dots & 0 &\hat{\mu}_{1kn}^{\dagger} \\
+        0 & \hat{H}^\dagger_{kn} & \dots & 0 & \hat{\mu}_{2kn}^{\dagger} \\
+        \vdots & & \ddots & & \vdots \\
+        0 & 0 & \dots & \hat{H}^\dagger_{kn} & \hat{\mu}_{Lkn}^{\dagger} \\
+        0 & 0 & \dots & 0 & \hat{H}^\dagger_{kn}
+    \end{pmatrix}\,.
+\end{equation}
+```
+
+This is a purely formal way of writing the gradient generator; in practice, the extended state ``\ket{\tilde\chi_k(t_n)}`` is represented by a data structure with slots for the states ``|\chi^{\prime}_{1}⟩`` … ``|\chi^{\prime}_{L}⟩``, in addition o the original state ``|\chi⟩``, and ``G[\hat{H}_{kn}^{\dagger}]`` is a container around all the operators ``\hat{\mu}^{\dagger}_{lkn} \equiv \frac{\partial \hat{H}^{\dagger}_{kn}}{\partial \epsilon_{nl}}`` in addition to the original (adjoint) Hamiltonian or Liouvillian ``\hat{H}^{\dagger}_{kn}`` itself. The gradient generator ``G`` is then implicitly defined by how it acts on the extended state,
+
+```math
+\begin{equation}
+    G[\hat{H}] \begin{pmatrix}
+        \ket{\chi^{\prime}_{1}} \\ \vdots \\ \ket{\chi^{\prime}_{L}} \\ \ket{\chi}
+    \end{pmatrix}
+    = \begin{pmatrix}
+        \hat{H} \ket{\chi^{\prime}_{1}} + \hat{\mu}_1 \ket{\chi} \\
+        \vdots \\
+        \hat{H} \ket{\chi^{\prime}_{L}} + \hat{\mu}_L \ket{\chi} \\
+        \hat{H} \ket{\chi}
+    \end{pmatrix}\,.
+\end{equation}
+```
+
+This way, ``G[\hat{H}^{\dagger}_{kn}]`` replaces ``\hat{H}^{\dagger}_{kn}`` in the backwards propagation, using any of the methods in [`QuantumPropagators`](@extref QuantumPropagators :doc:`index`), e.g., the polynomial Chebychev propagator. The appropriate data structures for ``G`` and the extended states are implemented in [the `QuantumGradientGenerators` package](https://github.com/JuliaQuantumControl/QuantumGradientGenerators.jl). As it provides an "exact" gradient independently of the time step, the use of the gradient generator is the default in `GRAPE.jl`, or it can be explicitly requested with `gradient_method=:gradgen`.
 
 
 ## GRAPE scheme
 
-This results in an efficient numerical scheme for evaluating the full gradient shown in [Fig. 1](#fig-grape-scheme). The scheme extends to situations where the functional is evaluated on top of *multiple* propagated states ``\{\vert \Psi_k(t) \rangle\}`` with an index ``k``, and multiple controls ``\epsilon_l(t)``, resulting in a vector of values ``\epsilon_{nl}`` with a double-index ``nl``.
+With Eq. \eqref{eq:grad-at-T-U} and the [use of gradient generators](@ref Overview-Gradgen) explained above, we end up wht an efficient numerical scheme for evaluating the full gradient shown in [Fig. 1](#fig-grape-scheme).
+
 ```@raw html
 <p id="fig-grape-scheme" style="text-align: center">
 <a href="../fig/grape_scheme.png">
 <img src="../fig/grape_scheme.png" width="100%"/>
 </a>
-<a href="#fig-grape-scheme">Figure 1</a>: Numerical scheme for the evaluation of the gradient in GRAPE, with semi-automatic differentiation
+<a href="#fig-grape-scheme">Figure 1</a>: Numerical scheme for the evaluation of the gradient in `GRAPE.jl`.
 </p>
 ```
 
-Explain why the gradient generator is more efficient in the backward propagation: No need to store extended states.
+In each iteration, we start in the bottom left with the initial state ``|\Psi_k(t=t_0=0)⟩`` for the ``k'th`` trajectory. This state is forward-propagated under the guess pulse (in parallel for the different trajectories) over the entire time grid until final time ``T`` with ``N_T`` time steps. In the diagram, ``t_{-n}`` is a shorthand for ``t_{N_T - n}``. The propagation over the ``n``'th time interval uses the pulse values ``\epsilon_{nl}``. In the diagram, we have omitted the index ``l`` for the different control functions ``\epsilon_l(t)`` ([TMIDR](#tmidr)). All of the forward-propagated states (red in the diagram) must be stored in memory.
 
-## Semi-automatic differentiation
+Having determined ``|\Psi_k(T)⟩``, the state ``\ket{\chi_k(T)}`` is calculated according to Eq. \eqref{eq:chi} for each trajectory ``k``. With the default `gradient_method=:gradgen` that is depicted here, ``\ket{\chi_k(T)}`` is then converted into a zero-padded extended state ``|\tilde\chi_k(T)⟩``, see Eq. \eqref{eq:gradgen-state}, which is then backward propagated under a gradient-generator ``G[\hat{H}_{kn}^{\dagger}]`` defined according to Eq. \eqref{eq:gradgen}.
+
+After each step in the backward propagation, the extended state ``|\tilde\chi_k(t_n)\rangle⟩`` contains the gradient-states ``|\chi^{\prime}_{kl}(t_n)⟩``, cf. Eq. \eqref{eq:gradprop-bw}. The corresponding forward-propagated states ``\Psi_k(t_n)`` are read from storage; the overlap
+``⟨\chi^{\prime}_{kl}(t_n)|\Psi_k(t_n)⟩`` then contributes to the element ``(\nabla J)_{nl}`` of the gradient, cf. Eq. \eqref{eq:grad-via-chi-prime}.
+
+In the original formulation of GRAPE [KhanejaJMR2005](@cite), ``|\chi_k(T)⟩`` is always the target state associated with the ``k``'th trajectory. This makes it arbitrary whether to forward-propagated (and store) ``|\Psi_k(t)⟩`` first, or backward-propagate (and store) ``|\chi_k(t)⟩`` first. However, with the generalization to arbitrary functionals [GoerzQ2022](@cite) via the definition in Eq. \eqref{eq:chi}, ``|\chi_k(T)⟩`` can now depend on the forward-propagates states ``\{|\Psi_k(T)⟩\}``. Thus, the forward propagation and storage must always precede the backward propagation. The requirement for storing the forward-propagated states also explains the choice to let ``\frac{\partial \hat{U}_n^{(k)}}{\partial \epsilon_{nl}}`` act to the left in Eq. \eqref{eq:grad-at-T-U} to get Eq. \eqref{eq:grad-via-chi-prime}. If we had instead chose to let the derivative act to the right to get Eq. \eqref{eq:grad-via-psi-prime}, we would have to store all of the states ``|\Psi^{\prime}_k(t_{n})⟩`` in addition to just ``|\Psi_k(t_{n})⟩`` for every time step, which would increase the required memory ``L``-fold for ``L`` controls.
+
+The above scheme may be further augmented for [running costs](@ref Overview-Running-Costs). Also, if the alternative `gradient_method=:taylor` is used, the backward propagation is of the normal states ``|\chi_k(T)⟩`` instead of the extended ``|\chi_k(T)⟩``, but the ``|\chi^{\prime}_{kl}(t_n)⟩`` still have to be evaluated in each time step. In any case, once the full gradient vector has been collected, it is passed to an [optimizer such as L-BFGS-B](@ref Optimizers).
+
+
+## [Semi-automatic differentiation](@id Overview-SemiAD)
 
 Same as GRAPE, up to definition of chi. Special cases for overlap functionals and gate functionals.
 
 How "gradients" are implemented in Zygote.
 
 
-## Running costs
+## [Running costs](@id Overview-Running-Costs)
 
 ## Optimizers
 
