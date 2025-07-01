@@ -28,22 +28,22 @@ The defining assumptions of the GRAPE method are
 
 1.  The control fields ``\epsilon_l(t)`` are piecewise-constant on the ``N_T`` intervals of a time grid ``t_0 = 0, t_1, \dots t_{N_T} = T``. That is, we have a vector of pulse values with elements ``\epsilon_{nl}``. We use the double-index `nl`, for the value of the ``l``'th control field on the ``n``'th interval of the time grid.
 
-2. The states ``\ket{\Psi_k(t)}`` evolve under an equation of motion of the form
+2. The states ``|\Psi_k(t)⟩`` evolve under an equation of motion of the form
 
    ```math
    \begin{equation}\label{eq:tdse}
-       i \hbar \frac{\partial \ket{\Psi_k(t)}}{\partial t} = \hat{H}_k(\{\epsilon_l(t)\}) \ket{\Psi_k(t)}\,,
+       i \hbar \frac{\partial |\Psi_k(t)⟩}{\partial t} = \hat{H}_k(\{\epsilon_l(t)\}) |\Psi_k(t)⟩\,,
    \end{equation}
    ```
 
    with ``\hbar = 1`` (we will omit ``\hbar`` in all subsequent equations).
 
-   This includes the Schrödinger equation, but also the Liouville equation for open quantum systems. In the latter case ``\ket{\Psi_k}`` is replaced by a vectorized density matrix, and ``\hat{H}_k`` is replaced by a Liouvillian (super-) operator describing the dynamics of the ``k``'th trajectory. The crucial point is that Eq. \eqref{eq:tdse} can be solved analytically within each time interval as
+   This includes the Schrödinger equation, but also the Liouville equation for open quantum systems. In the latter case ``|\Psi_k⟩`` is replaced by a vectorized density matrix, and ``\hat{H}_k`` is replaced by a Liouvillian (super-) operator describing the dynamics of the ``k``'th trajectory. The crucial point is that Eq. \eqref{eq:tdse} can be solved analytically within each time interval as
 
    ```math
    \begin{equation}\label{eq:time-evolution-op}
        \def\ii{\mathrm{i}}
-       \ket{\Psi_k(t_{n+1})} = \underbrace{\exp\left[-\ii \hat{H}_{kn} dt_n \right]}_{=\hat{U}^{(k)}_{n}} \ket{\Psi_k(t_n)}\,,
+       |\Psi_k(t_{n+1})⟩ = \underbrace{\exp\left[-\ii \hat{H}_{kn} dt_n \right]}_{=\hat{U}^{(k)}_{n}} |\Psi_k(t_n)⟩\,,
    \end{equation}
    ```
 
@@ -65,7 +65,7 @@ These two assumptions allow to analytically derive the gradient ``(\nabla J)_{nl
 
     Most equations can be simplified by not worrying about ``k`` or ``l``: If there multiple controls, they are concatenated into a single vector of control values with a double-index ``nl``. We really only need to keep track of ``n``; the gradient values related to a ``\epsilon_{nl}`` with a particular ``l`` are somewhat obvioulsly obtained by using a particular ``\epsilon_l(t_n)``. Likewise, all trajectories contribute equally to the gradients, so we just have a sum over the ``k`` index.
 
-    We can further simplify by considering only final-time functionals ``J_T(\{|\Psi_k(T)⟩\})``. Running costs ``J_a(\{ϵ_l(t)\})`` are quite straightforward to add (just take the deriverive w.r.t. the values ``ϵ_{nl}``), and running costs ``J_b(\{|Ψ_k(t)⟩\})`` are too complicated to consider in any kind of "simplified" scheme.
+    We can further simplify by considering only final-time functionals ``J_T(\{|\Psi_k(T)⟩\})``. Running costs ``J_a(\{ϵ_l(t)\})`` are quite straightforward to add (just take the deriverive w.r.t. the values ``ϵ_{nl}``), and running costs ``J_b(\{|Ψ_k(t)⟩\})`` are [too complicated](@ref State-Dependent-Running-Costs) to consider in any kind of "simplified" scheme.
 
     In essence, then, the GRAPE scheme that is implemented here can then be concisely summarized, cf. Eq. \eqref{eq:grad-at-T-U}, as
 
@@ -77,7 +77,7 @@ These two assumptions allow to analytically derive the gradient ``(\nabla J)_{nl
            \underbrace{\bigg\langle \chi(T) \bigg\vert \hat{U}_{N_T} \dots \hat{U}_{n+1} \bigg \vert}_{\equiv \bra{\chi(t_n)}\;\text{(bw. prop.)}}
            \frac{\partial \hat{U}_n}{\partial \epsilon_{n}}
        }_{\equiv \bra{\chi^\prime(t_{n-1})}}
-       \underbrace{\bigg \vert \hat{U}_{n-1} \dots \hat{U}_1 \bigg\vert \Psi(t=0) \bigg\rangle}_{\equiv \ket{\Psi(t_{n-1})}\;\text{(fw. prop.)}}\,,
+       \underbrace{\bigg \vert \hat{U}_{n-1} \dots \hat{U}_1 \bigg\vert \Psi(t=0) \bigg\rangle}_{\equiv |\Psi(t_{n-1})⟩\;\text{(fw. prop.)}}\,,
     \end{equation}
     ```
 
@@ -284,7 +284,7 @@ The minus sign in this definition is arbitrary, and is intended solely to match 
 \end{equation}
 ```
 
-We end up with the gradient of $J_T$ being the derivative of the overlap of two states ``|\chi_k(T)⟩`` and ``|\Psi_k(T)⟩`` at final time ``T``.
+We end up with the gradient of ``J_T`` being the derivative of the overlap of two states ``|\chi_k(T)⟩`` and ``|\Psi_k(T)⟩`` at final time ``T``.
 
 Next, we make use the assumption that the time evolution is piecewise constant, so that we can use the time evolution operator defined in Eq. \eqref{eq:time-evolution-op} to write ``|\Psi_k(T)⟩`` as the time evolution of an initial state ``\Psi_k(t=0)``, the `initial_state` of the ``k``'th [`trajectory`](@extref `QuantumControl.Trajectory`) in the [`QuantumControl.ControlProblem`](@extref). That is, ``|\Psi_k(T)⟩ = \hat{U}^{(k)}_{N_T} \dots \hat{U}^{(k)}_1 |\Psi_k(t=0)⟩`` with the time evolution operator ``\hat{U}^{(k)}_n`` for the ``n``'th time interval of the time grid with ``N_T + 1`` time grid points, cf. Eq. \eqref{eq:time-evolution-op}. Plugging this into Eq. \eqref{eq:grad-at-T} immediately gives us
 
@@ -300,7 +300,23 @@ Next, we make use the assumption that the time evolution is piecewise constant, 
 \end{equation}
 ```
 
-with $|\chi_k(t_{n})⟩ = U^{\dagger (k)}_{n+1} \dots U^{\dagger(k)}_{N_T} |\chi_k(T)⟩$, i.e., a backward-propagation of the state given by Eq. \eqref{eq:chi} with the adjoint Hamiltonian or Liouvillian and $|\Psi_k(t_{n-1})⟩ = \hat{U}^{(k)}_{n-1}\dots \hat{U}^{(k)}_1 |\Psi_k(0)⟩$, i.e., a forward-propagation of the initial state of the ``k``'th trajectory.
+with
+
+```math
+\begin{equation}
+|\chi_k(t_{n})⟩ = U^{\dagger (k)}_{n+1} \dots U^{\dagger(k)}_{N_T} |\chi_k(T)⟩\,,
+\end{equation}
+```
+
+i.e., a backward-propagation of the state given by Eq. \eqref{eq:chi} with the adjoint Hamiltonian or Liouvillian and
+
+```math
+\begin{equation}\label{eq:psi-time-evolution}
+|\Psi_k(t_{n-1})⟩ = \hat{U}^{(k)}_{n-1}\dots \hat{U}^{(k)}_1 |\Psi_k(0)⟩\,,
+\end{equation}
+```
+
+i.e., a forward-propagation of the initial state of the ``k``'th trajectory.
 
 
 
@@ -359,7 +375,7 @@ In practice, Eq. \eqref{eq:taylor-op} is best evaluated recursively, while  bei
 
 ```math
 \begin{equation}
-\ket{\chi^\prime_{kl}(t_{n-1})} = \sum_{m=1}^{\infty} \frac{\left(-\ii \, dt_n^{(-)}\right)^m}{m!} \ket{\Phi^{(lkn)}_m}\,,
+|\chi^\prime_{kl}(t_{n-1})⟩ = \sum_{m=1}^{\infty} \frac{\left(-\ii \, dt_n^{(-)}\right)^m}{m!} |\Phi^{(lkn)}_m⟩\,,
 \end{equation}
 ```
 
@@ -368,8 +384,8 @@ with
 ```math
 \begin{equation}
 \begin{split}
-  \ket{\Phi^{(lkn)}_1} &= \hat{\mu}_{lkn}^{\dagger} \ket{\chi_k(t_n)}\,,              \\
-  \ket{\Phi^{(lkn)}_m} &= \hat{\mu}_{lkn}^{\dagger} {\hat{H}^{\dagger}_{kn}}^{\!\!m-1}  \ket{\chi_k(t_n)} + {\hat{H}^{\dagger}_{kn}} \ket{\Phi^{(lkn)}_{m-1}}\,.
+  |\Phi^{(lkn)}_1⟩ &= \hat{\mu}_{lkn}^{\dagger} |\chi_k(t_n)⟩\,,              \\
+  |\Phi^{(lkn)}_m⟩ &= \hat{\mu}_{lkn}^{\dagger} {\hat{H}^{\dagger}_{kn}}^{\!\!m-1}  |\chi_k(t_n)⟩ + {\hat{H}^{\dagger}_{kn}} |\Phi^{(lkn)}_{m-1}⟩\,.
 \end{split}
 \end{equation}
 ```
@@ -396,9 +412,9 @@ In `GRAPE.jl`, Eq. \eqref{eq:U-deriv} can be evaluated via a Taylor expansion a
     ```math
     \begin{equation}
     \begin{split}
-    \ket{\chi^\prime(t_{n-1})} &= \sum_{m=1}^{\infty} \frac{\left(-\ii \, dt^{(-)}\right)^m}{m!} \ket{\Phi_m}\,,\\
-    \ket{\Phi_1} &= \hat{\mu} \ket{\chi_k(t_n)}\,,              \\
-    \ket{\Phi_m} &= \hat{\mu} {\hat{H}_{n}}^{\!\!m-1}  \ket{\chi_k(t_n)} + {\hat{H}_{n}} \ket{\Phi_{m-1}}\,.
+    |\chi^\prime(t_{n-1})⟩ &= \sum_{m=1}^{\infty} \frac{\left(-\ii \, dt^{(-)}\right)^m}{m!} |\Phi_m⟩\,,\\
+    |\Phi_1⟩ &= \hat{\mu} |\chi_k(t_n)⟩\,,              \\
+    |\Phi_m⟩ &= \hat{\mu} {\hat{H}_{n}}^{\!\!m-1}  |\chi_k(t_n)⟩ + {\hat{H}_{n}} |\Phi_{m-1}⟩\,.
     \end{split}
     \end{equation}
     ```
@@ -425,8 +441,8 @@ In order to evaluate Eq. \eqref{eq:U-deriv} to high precision, one can use a tr
 
 ```math
 \begin{equation}\label{eq:gradprop-bw}
-  \begin{pmatrix} \ket{\chi^{\prime}_{k1}(t_{n-1})} \\ \vdots \\ \ket{\chi^{\prime}_{kL}(t_{n-1})} \\ \ket{\chi_k(t_{n-1})} \end{pmatrix}
-  = \exp \left[-\ii\,G[\hat{H}_{kn}^{\dagger}]\,dt_n\right] \ket{\tilde\chi_k(t_n)}
+  \begin{pmatrix} |\chi^{\prime}_{k1}(t_{n-1})⟩ \\ \vdots \\ |\chi^{\prime}_{kL}(t_{n-1})⟩ \\ |\chi_k(t_{n-1})⟩ \end{pmatrix}
+  = \exp \left[-\ii\,G[\hat{H}_{kn}^{\dagger}]\,dt_n\right] |\tilde\chi_k(t_n)⟩
   \,,\\
 \end{equation}
 ```
@@ -435,8 +451,8 @@ by backward-propagating an extended state
 
 ```math
 \begin{equation}\label{eq:gradgen-state}
-    \ket{\tilde\chi_k(t_n)}
-    \equiv \begin{pmatrix} 0 \\ \vdots \\ 0 \\ \ket{\chi_k(t_n)} \end{pmatrix}
+    |\tilde\chi_k(t_n)⟩
+    \equiv \begin{pmatrix} 0 \\ \vdots \\ 0 \\ |\chi_k(t_n)⟩ \end{pmatrix}
 \end{equation}
 ```
 
@@ -456,18 +472,18 @@ of dimension ``N(L+1)``, where ``L`` is the number of controls and ``N`` is the 
 \end{equation}
 ```
 
-This is a purely formal way of writing the gradient generator; in practice, the extended state ``\ket{\tilde\chi_k(t_n)}`` is represented by a data structure with slots for the states ``|\chi^{\prime}_{1}⟩`` … ``|\chi^{\prime}_{L}⟩``, in addition o the original state ``|\chi⟩``, and ``G[\hat{H}_{kn}^{\dagger}]`` is a container around all the operators ``\hat{\mu}^{\dagger}_{lkn} \equiv \frac{\partial \hat{H}^{\dagger}_{kn}}{\partial \epsilon_{nl}}`` in addition to the original (adjoint) Hamiltonian or Liouvillian ``\hat{H}^{\dagger}_{kn}`` itself. The gradient generator ``G`` is then implicitly defined by how it acts on the extended state,
+This is a purely formal way of writing the gradient generator; in practice, the extended state ``|\tilde\chi_k(t_n)⟩`` is represented by a data structure with slots for the states ``|\chi^{\prime}_{1}⟩`` … ``|\chi^{\prime}_{L}⟩``, in addition o the original state ``|\chi⟩``, and ``G[\hat{H}_{kn}^{\dagger}]`` is a container around all the operators ``\hat{\mu}^{\dagger}_{lkn} \equiv \frac{\partial \hat{H}^{\dagger}_{kn}}{\partial \epsilon_{nl}}`` in addition to the original (adjoint) Hamiltonian or Liouvillian ``\hat{H}^{\dagger}_{kn}`` itself. The gradient generator ``G`` is then implicitly defined by how it acts on the extended state,
 
 ```math
 \begin{equation}
     G[\hat{H}] \begin{pmatrix}
-        \ket{\chi^{\prime}_{1}} \\ \vdots \\ \ket{\chi^{\prime}_{L}} \\ \ket{\chi}
+        |\chi^{\prime}_{1}⟩ \\ \vdots \\ |\chi^{\prime}_{L}⟩ \\ |\chi⟩
     \end{pmatrix}
     = \begin{pmatrix}
-        \hat{H} \ket{\chi^{\prime}_{1}} + \hat{\mu}_1 \ket{\chi} \\
+        \hat{H} |\chi^{\prime}_{1}⟩ + \hat{\mu}_1 |\chi⟩ \\
         \vdots \\
-        \hat{H} \ket{\chi^{\prime}_{L}} + \hat{\mu}_L \ket{\chi} \\
-        \hat{H} \ket{\chi}
+        \hat{H} |\chi^{\prime}_{L}⟩ + \hat{\mu}_L |\chi⟩ \\
+        \hat{H} |\chi⟩
     \end{pmatrix}\,.
 \end{equation}
 ```
@@ -490,7 +506,7 @@ With Eq. \eqref{eq:grad-at-T-U} and the [use of gradient generators](@ref Overv
 
 In each iteration, we start in the bottom left with the initial state ``|\Psi_k(t=t_0=0)⟩`` for the ``k'th`` trajectory. This state is forward-propagated under the guess pulse (in parallel for the different trajectories) over the entire time grid until final time ``T`` with ``N_T`` time steps. In the diagram, ``t_{-n}`` is a shorthand for ``t_{N_T - n}``. The propagation over the ``n``'th time interval uses the pulse values ``\epsilon_{nl}``. In the diagram, we have omitted the index ``l`` for the different control functions ``\epsilon_l(t)`` ([TMIDR](#tmidr)). All of the forward-propagated states (red in the diagram) must be stored in memory.
 
-Having determined ``|\Psi_k(T)⟩``, the state ``\ket{\chi_k(T)}`` is calculated according to Eq. \eqref{eq:chi} for each trajectory ``k``. With the default `gradient_method=:gradgen` that is depicted here, ``\ket{\chi_k(T)}`` is then converted into a zero-padded extended state ``|\tilde\chi_k(T)⟩``, see Eq. \eqref{eq:gradgen-state}, which is then backward propagated under a gradient-generator ``G[\hat{H}_{kn}^{\dagger}]`` defined according to Eq. \eqref{eq:gradgen}.
+Having determined ``|\Psi_k(T)⟩``, the state ``|\chi_k(T)⟩`` is calculated according to Eq. \eqref{eq:chi} for each trajectory ``k``. With the default `gradient_method=:gradgen` that is depicted here, ``|\chi_k(T)⟩`` is then converted into a zero-padded extended state ``|\tilde\chi_k(T)⟩``, see Eq. \eqref{eq:gradgen-state}, which is then backward propagated under a gradient-generator ``G[\hat{H}_{kn}^{\dagger}]`` defined according to Eq. \eqref{eq:gradgen}.
 
 After each step in the backward propagation, the extended state ``|\tilde\chi_k(t_n)\rangle⟩`` contains the gradient-states ``|\chi^{\prime}_{kl}(t_n)⟩``, cf. Eq. \eqref{eq:gradprop-bw}. The corresponding forward-propagated states ``\Psi_k(t_n)`` are read from storage; the overlap
 ``⟨\chi^{\prime}_{kl}(t_n)|\Psi_k(t_n)⟩`` then contributes to the element ``(\nabla J)_{nl}`` of the gradient, cf. Eq. \eqref{eq:grad-via-chi-prime}.
@@ -515,13 +531,13 @@ The AD overhead of evaluating `J_T` should be extremely minimal (negligible comp
   ```math
   \begin{equation}
   \label{eq:chi_tau}
-  \ket{\chi_k(T)}
+  |\chi_k(T)⟩
   = -\frac{\partial J_T}{\partial \bra{\Psi_k(T)}}
   = - \left(
       \frac{\partial J_T}{\partial \tau_k^*} \;
       \frac{\partial \tau_k^*}{\partial \bra{\Psi_k(T)}}
   \right)
-  = -\frac{1}{2} \left(\,\nabla_{\tau_k} J_T \right) \ket{\Psi_k^{\text{tgt}}}\,,
+  = -\frac{1}{2} \left(\,\nabla_{\tau_k} J_T \right) |\Psi_k^{\text{tgt}}⟩\,,
   \end{equation}
   ```
 
@@ -547,7 +563,7 @@ The AD overhead of evaluating `J_T` should be extremely minimal (negligible comp
   ```math
   \begin{equation}%
     \label{eq:chi-gate-proto}
-    \ket{\chi_k}
+    |\chi_k(T)⟩
     \equiv - \frac{\partial J_T}{\partial \bra{\Psi_k(T)}}
      = - \sum_{ij}
         \frac{\partial J_T}{\partial\,(U_{L})^{*}_{ij}}
@@ -570,7 +586,7 @@ The AD overhead of evaluating `J_T` should be extremely minimal (negligible comp
   \begin{equation}
     \frac{\partial\,(U_{L})^{*}_{ij}}{\partial \bra{\Psi_k(T)}}
     = \frac{\partial}{\partial \bra{\Psi_k(T)}} \Braket{\Psi_j(T) | \phi_i}
-    = \delta_{jk} \ket{\phi_i}
+    = \delta_{jk} |\phi_i⟩
   \end{equation}
   ```
 
@@ -579,9 +595,9 @@ The AD overhead of evaluating `J_T` should be extremely minimal (negligible comp
   ```math
   \begin{equation}%
     \label{eq:chi_gate}
-    \ket{\chi_k}
+    |\chi_k(T)⟩
     = -\frac{1}{2} \sum_i
-      (\nabla_{U_{L}} J_T)_{ik} \ket{\phi_i}\,,
+      (\nabla_{U_{L}} J_T)_{ik} |\phi_i⟩\,,
   \end{equation}
   ```
 
@@ -591,6 +607,154 @@ The AD overhead of evaluating `J_T` should be extremely minimal (negligible comp
 
 
 ## [Running costs](@id Overview-Running-Costs)
+
+So far, we have only discussed the evaluation of gradients for final time functionals ``J_T``. We now extend the discussion of semi-automatic differentiation to the running costs ``g_{a,b}`` in Eq. \eqref{eq:grape-functional}. Since we are considering piecewise constant pulses, the integral over the running cost turns into a sum over the time steps. That is, we rewrite Eq. \eqref{eq:grape-functional} as
+
+```math
+\begin{equation}%
+  \label{eq:functional-discrete}
+  J(\{\epsilon_{nl}\})
+  =
+  J_T(\{|\Psi_k(T)⟩\}) +
+  \lambda_a \sum_{n=1}^{N_T} \sum_l (g_a)_{nl} +
+  \lambda_b \sum_{n=0}^{N_T} (g_b)_{n}\,,
+\end{equation}
+```
+
+with
+
+```math
+\begin{equation}
+  (g_a)_{nl} = \frac{1}{dt_n} g_a(\epsilon_{nl}, dt_n)\,,\qquad
+  (g_b)_{n} = \frac{1}{\Delta t_n} g_b(\{|\Psi_k(t_n)⟩\}, t_n)\,.
+\end{equation}
+```
+
+As in Eq. \eqref{eq:psi-time-evolution}, we define ``|\Psi_k(t_n)⟩ = \hat{U}^{(k)}_n \dots \hat{U}^{(k)}_1 |\Psi_k(t=0)⟩``, with the time grid points ``t_0 = 0``, ``t_{N_T} = T``, and with ``\hat{U}_n = \exp[-i \hat{H}_{kn} dt_n]`` as the time evolution operator for the ``n``'th time interval, ``dt_n = t_{n} - t_{n-1}``. Similarly, ``\Delta t_n`` is the time step around the time grid point ``t_n``, e.g. ``\Delta t_0 = dt_1``, ``\Delta t_n = \frac{1}{2}(t_{n+1} - t_{n-1})`` for ``1\le n < N_T``, and ``\Delta t_{N_T} = dt_{N_T}``. For uniform time grids, ``dt_n \equiv \Delta t_n \equiv dt``.
+
+### Field-depending running costs
+
+Typically, running costs on the control fields are direct analytic expressions, e.g., ``g_a(\{\epsilon_{nl}\}) = \epsilon_{nl}^2`` to penalize large amplitudes. Thus, they are easily included in the gradient, e.g., ``(\nabla g_a)_{nl} = 2 \epsilon_{nl}``. For convenience, this can also be done with automatic differentiation. This even extends to penalties on the first and second derivatives of the controls [LeungPRA2017,AbdelhafezPRA2019,AbdelhafezPRA2020](@cite).
+
+In `GRAPE.jl`, running costs are enabled by passing a `J_a` function together with `lambda_a` to [`QuantumControl.optimize`](@extref) with `method=GRAPE`. The optimization also needs a function `grad_J_a` which can be obtained automatically, see [`QuantumControl.Functionals.make_grad_J_a`](@ref).
+
+
+### [State-dependent running costs](@id State-Dependent-Running-Costs)
+
+More interesting is the case of state-dependent constraints. Typical examples [SchirmerNJP2011](@cite) include trajectory optimizations,
+
+```math
+\begin{equation}
+  g_{b,\text{trj}}(\{|\Psi_k(t_n)⟩\})
+  = \sum_k \norm{|\Psi_k(t_n)⟩ - |\Psi^{\text{tgt}}_k(t_n)⟩}^2\,,
+\end{equation}
+```
+
+where the time evolution of each state ``|\Psi_k(t_n)⟩`` should be close to some target evolution ``|\Psi^{\text{tgt}}_k(t_n)⟩``, or observable optimizations
+
+```math
+\begin{equation}
+  g_{b,\hat{D}(t)}(\{|\Psi_k(t_n)⟩\})
+  = \sum_k \Braket{\Psi_k(t_n) | \hat{D}(t_n)| \Psi_k(t_n)}\,,
+\end{equation}
+```
+
+where the expectation value of some observable ``\hat{D}(t)`` is to be minimized.
+A special case of this is the minimization of the population in some forbidden subspace [PalaoPRA2008](@cite), where ``\hat{D}(t_n) \equiv \hat{D}`` is a projector into that subspace.
+
+To obtain the full gradient of a functional with a state-dependent running cost, we apply the same procedure as in Section about [Gradients for final-time functionals](@ref) and find
+
+```math
+  \begin{align}
+    \frac{\partial J}{\partial \epsilon_{nl}}
+    &=
+    2 \Re \sum_k \left[
+      \frac{\partial J_T}{\partial |\Psi_k(T)⟩}
+      \frac{\partial |\Psi_k(T)⟩}{\partial \epsilon_{nl}}
+      + \sum_{n'=0}^{N_T}
+      \frac{\partial\,(g_b)_{n'}}{\partial |\Psi_k(t_{n'})⟩}
+      \frac{\partial |\Psi_k(t_{n'})⟩}{\partial \epsilon_{nl}}
+    \right] \\
+    \label{eq:gradJ-rc2}
+    &=
+    -2 \Re \sum_k \frac{\partial}{\partial \epsilon_{nl}} \left[
+      \bigg\langle \chi_{k}^{(0)}(T) \bigg\vert \hat{U}_{N_T} \dots \hat{U}_1 \bigg\vert \Psi_k(0) \bigg\rangle
+     + \sum_{n'=n}^{N_T}
+        \bigg\langle \xi_{k}(t_{n'}) \bigg\vert \hat{U}_{n'} \dots \hat{U}_1 \bigg\vert \Psi_k(0) \bigg\rangle
+    \right]
+  \end{align}
+```
+
+with
+
+```math
+\begin{equation}%
+  \label{eq:chi-boundary-gb1}
+  |\chi_k^{(0)}(T)⟩ \equiv - \frac{\partial J_T}{\partial \bra{\Psi_k(T)}}\,,
+  \qquad
+  |\xi_k(t_{n'})⟩ \equiv - \frac{\partial\,(g_b)_{n'}}{\partial \bra{\Psi_k(t_{n'})}}\,,
+\end{equation}
+```
+
+cf. Eq. \eqref{eq:chi}. In the sum over ``n'`` in Eq. \eqref{eq:gradJ-rc2}, we have used that ``|\Psi_k(t_{n'})⟩`` depends on ``\epsilon_{nl}`` only for ``n' \ge n``. This implies that for the final time interval, ``n = N_T``, there is only a single term,
+
+```math
+\begin{equation}
+    \frac{\partial J}{\partial \epsilon_{N_T l}}
+    = -2 \Re \sum_k \bigg\langle
+      \chi_k(T) \bigg\vert
+      \frac{\partial\hat{U}_{N_T}}{\partial \epsilon_{N_T l}}  \bigg\vert
+      \Psi_k(t_{N_T-1})
+    \bigg\rangle\,,
+\end{equation}
+```
+
+with
+
+```math
+\begin{equation}\label{eq:chi-boundary-gb}
+  |\chi_k(T)⟩
+  \equiv
+  |\chi_k^{(0)}(T)⟩ + |\xi_k(T)⟩
+  =
+  - \left(
+    \frac{\partial J_T}{\partial \bra{\Psi_k(T)}} +
+    \frac{\partial\,(g_b)_{N_T}}{\partial \bra{\Psi_k(T)}}
+  \right)
+  \,.
+\end{equation}
+```
+
+Evaluating the gradient progressively backward in time for ``n = (N_T-1) \dots 1``, we then find a recursive relationship
+
+```math
+\begin{equation}\label{eq:grape-gb-bw-eqm}
+  \frac{\partial J}{\partial \epsilon_{nl}}
+  = -2 \Re \sum_k \bigg\langle
+    \chi_k(t_n) \bigg\vert
+    \frac{\partial\hat{U}_{n}}{\partial \epsilon_{nl}}  \bigg\vert
+    \Psi_k(t_{n-1})
+  \bigg\rangle\,,
+\end{equation}
+```
+
+with
+
+```math
+\begin{equation}\label{eq:chi-bw-gb}
+  |\chi_k(t_n)⟩ =
+    \hat{U}_{n+1}^\dagger |\chi_k(t_{n+1})⟩ -
+    \frac{\partial\,(g_b)_{n}}{\partial \bra{\Psi_k(t_n)}}\,.
+\end{equation}
+```
+
+
+Thus, there are no fundamental changes to the scheme in [Fig. 1](#fig-grape-scheme) in the presence of state-dependent running costs. The states ``\{|\Psi_k(0)⟩\}`` must be forward-propagated and stored, and then the extended states ``|\tilde\chi_k(t_n)⟩`` are propagated backward to produce the gradient. The only difference is that the boundary state ``|\tilde\chi_k(T)⟩`` is now constructed based on
+Eq. \eqref{eq:chi-boundary-gb} instead of Eq. \eqref{eq:chi}. Furthermore, the backward-propagation uses the discrete inhomogeneous Eq. \eqref{eq:chi-bw-gb}. The inhomogeneity is calculated using the forward-propagated states stored previously, with the derivative of ``g_b`` performed analytically or by automatic differentiation.
+
+!!! warning
+
+    Support for state-dependent running costs is planned for a future version of `GRAPE.jl`; currently, there are no parameters to pass for `g_b`, `lambda_a`, etc.
 
 ## Optimizers
 
