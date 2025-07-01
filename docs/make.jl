@@ -1,15 +1,12 @@
+using QuantumControl
 using QuantumPropagators
 using GRAPE
 using Documenter
 using DocumenterCitations
 using DocumenterInterLinks
 using Pkg
-using Plots
 import Optim
 import LBFGSB
-
-gr()
-ENV["GKSwstype"] = "100"
 
 
 PROJECT_TOML = Pkg.TOML.parsefile(joinpath(@__DIR__, "..", "Project.toml"))
@@ -28,10 +25,11 @@ links = InterLinks(
         "https://github.com/KristofferC/TimerOutputs.jl",
         joinpath(@__DIR__, "src", "inventories", "TimerOutputs.toml")
     ),
+    "Zygote" => "https://fluxml.ai/Zygote.jl/dev/",
     "QuantumPropagators" => "https://juliaquantumcontrol.github.io/QuantumPropagators.jl/$DEV_OR_STABLE",
     "QuantumGradientGenerators" => "https://juliaquantumcontrol.github.io/QuantumGradientGenerators.jl/$DEV_OR_STABLE",
     "QuantumControl" => "https://juliaquantumcontrol.github.io/QuantumControl.jl/$DEV_OR_STABLE",
-    "GRAPE" => "https://juliaquantumcontrol.github.io/GRAPE.jl/$DEV_OR_STABLE",
+    "Krotov" => "https://juliaquantumcontrol.github.io/Krotov.jl/$DEV_OR_STABLE",
     "Examples" => "https://juliaquantumcontrol.github.io/QuantumControlExamples.jl/$DEV_OR_STABLE",
 )
 
@@ -48,12 +46,12 @@ fallbacks = ExternalFallbacks(
 
 println("Starting makedocs")
 
-bib = CitationBibliography(joinpath(@__DIR__, "src", "refs.bib"); style=:numeric)
+bib = CitationBibliography(joinpath(@__DIR__, "..", "paper", "paper.bib"); style=:numeric)
 
 PAGES = [
     "Home" => "index.md",
-    "Overview" => "overview.md",
-    "Examples" => "examples.md",
+    "Usage" => "usage.md",
+    "Background" => "background.md",
     "API" => "api.md",
     "References" => "references.md",
 ]
@@ -76,7 +74,17 @@ makedocs(;
                 "https://juliaquantumcontrol.github.io/QuantumControl.jl/dev/assets/topbar/topbar.js"
             ),
         ],
-        mathengine=KaTeX(),
+        # mathengine=KaTeX(),
+        mathengine=MathJax3(
+            Dict(
+                :loader => Dict("load" => ["[tex]/physics"]),
+                :tex => Dict(
+                    "inlineMath" => [["\$", "\$"], ["\\(", "\\)"]],
+                    "tags" => "ams",
+                    "packages" => ["base", "ams", "autoload", "physics"],
+                ),
+            )
+        ),
         footer="[$NAME.jl]($GITHUB) v$VERSION docs powered by [Documenter.jl](https://github.com/JuliaDocs/Documenter.jl).",
     ),
     pages=PAGES,
@@ -85,4 +93,8 @@ makedocs(;
 
 println("Finished makedocs")
 
-deploydocs(; repo="github.com/JuliaQuantumControl/GRAPE.jl", devbranch="master")
+deploydocs(;
+    repo="github.com/JuliaQuantumControl/GRAPE.jl",
+    devbranch="master",
+    push_preview=true
+)

@@ -1,5 +1,3 @@
-name = "GRAPETests"
-
 [deps]
 Dates = "ade2ca70-3891-5945-98fb-dc099432e06a"
 Documenter = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
@@ -33,6 +31,9 @@ Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 TwoQubitWeylChamber = "cad078a0-0012-46f4-b55e-a945d44e115b"
 UnicodePlots = "b8865327-cd53-5732-bb35-84acbb429228"
 Zygote = "e88e6eb3-aa80-5325-afca-941959d7151f"
+
+[sources]
+GRAPE = {path = ".."}
 
 [compat]
 Documenter = "1.1"
