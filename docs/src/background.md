@@ -1,5 +1,9 @@
 # Background
 
+We review here in detail the GRAPE method as it is implemented in `GRAPE.jl`. Much of the material is adapted from [Goerz *et al.*,  Quantum 6, 871 (2022)](@cite GoerzQ2022).
+
+**Contents**
+
 ```@contents
 Pages=["background.md"]
 Depth=2:3
@@ -26,38 +30,37 @@ The defining assumptions of the GRAPE method are
 
 2. The states ``\ket{\Psi_k(t)}`` evolve under an equation of motion of the form
 
-```math
-\begin{equation}\label{eq:tdse}
-    i \hbar \frac{\partial \ket{\Psi_k(t)}}{\partial t} = \hat{H}_k(\{\epsilon_l(t)\}) \ket{\Psi_k(t)}\,,
-\end{equation}
-```
+   ```math
+   \begin{equation}\label{eq:tdse}
+       i \hbar \frac{\partial \ket{\Psi_k(t)}}{\partial t} = \hat{H}_k(\{\epsilon_l(t)\}) \ket{\Psi_k(t)}\,,
+   \end{equation}
+   ```
 
-with ``\hbar = 1``.
+   with ``\hbar = 1`` (we will omit ``\hbar`` in all subsequent equations).
 
-This includes the Schrödinger equation, but also the Liouville equation for open quantum systems. In the latter case ``\ket{\Psi_k}`` is replaced by a vectorized density matrix, and ``\hat{H}_k`` is replaced by a Liouvillian (super-) operator describing the dynamics of the ``k``'th trajectory. The crucial point is that Eq. \eqref{eq:tdse} can be solved analytically within each time interval as
+   This includes the Schrödinger equation, but also the Liouville equation for open quantum systems. In the latter case ``\ket{\Psi_k}`` is replaced by a vectorized density matrix, and ``\hat{H}_k`` is replaced by a Liouvillian (super-) operator describing the dynamics of the ``k``'th trajectory. The crucial point is that Eq. \eqref{eq:tdse} can be solved analytically within each time interval as
 
-```math
-\begin{equation}\label{eq:time-evolution-op}
-    \def\ii{\mathrm{i}}
-    \ket{\Psi_k(t_{n+1})} = \underbrace{\exp\left[-\ii \hat{H}_{kn} dt_n \right]}_{=\hat{U}^{(k)}_{n}} \ket{\Psi_k(t_n)}\,,
-\end{equation}
-```
+   ```math
+   \begin{equation}\label{eq:time-evolution-op}
+       \def\ii{\mathrm{i}}
+       \ket{\Psi_k(t_{n+1})} = \underbrace{\exp\left[-\ii \hat{H}_{kn} dt_n \right]}_{=\hat{U}^{(k)}_{n}} \ket{\Psi_k(t_n)}\,,
+   \end{equation}
+   ```
 
-where ``\hat{H}_{kn} = \hat{H}_k(\{\epsilon_{nl}\})`` is ``\hat{H}_k(\{\epsilon_l(t)\})`` evaluated at the midpoint of the ``n``'th interval (respectively at ``t=0`` and ``t=T`` for ``n=1`` and ``n=N_T``), and with the time step ``dt_n = (t_n - t_{n-1})``.
+   where ``\hat{H}_{kn} = \hat{H}_k(\{\epsilon_{nl}\})`` is ``\hat{H}_k(\{\epsilon_l(t)\})`` evaluated at the midpoint of the ``n``'th interval (respectively at ``t=0`` and ``t=T`` for ``n=1`` and ``n=N_T``), and with the time step ``dt_n = (t_n - t_{n-1})``.
 
 
 These two assumptions allow to analytically derive the gradient ``(\nabla J)_{nl} \equiv \frac{\partial J}{\partial \epsilon_{nl}}``. The initial derivation of GRAPE by [KhanejaJMR2005](@citet) focuses on a final-time functional ``J_T`` that depends of the overlap of each forward-propagated ``|\Psi_k(T)⟩`` with a target state ``|\Psi^{\text{tgt}}_k(T)⟩`` and updates the pulse values ``\epsilon_{nl}`` directly in the direction of the negative gradient. Improving on this, [FouquieresJMR2011](@citet) showed that using a quasi-Newton method to update the pulses based on the gradient information leads to a dramatic improvement in convergence and stability. Furthermore, [GoodwinJCP2015](@citet) improved on the precision of evaluating the gradient of a local time evolution operator, which is a critical step in the GRAPE scheme. Finally, [GoerzQ2022](@citet) generalized GRAPE to arbitrary functionals of the form \eqref{eq:grape-functional}, bridging the gap to automatic differentiation techniques [LeungPRA2017, AbdelhafezPRA2019, AbdelhafezPRA2020](@cite) by introducing the technique of "semi-automatic differentiation". This most general derivation is the basis for the implementation in `GRAPE.jl`.
 
-```@raw html
-<a id="tmidr"/>
-```
 
-!!! tip "Too Many Indices; Didn't Read (TMIDR)"
+## [Too Many Indices; Didn't Read (TMIDR)](@id tmidr)
+
+!!! tip "TMIDR"
 
     Below, we derive the GRAPE scheme here in full generality. This implies keeping track of a lot of indices:
 
     * ``k``: the index over the different [trajectories](@extref QuantumControl.Trajectory), i.e. the states ``|\Psi_k(t)⟩`` whose time evolution contribute to the functional
-    * ``l``: the index over the different [control functions](@extref QuantumControl label:`Control-Function`) ``\epsilon_l(t)`` that the Hamiltonian/Liouvillian may depend on
+    * ``l``: the index over the different [control functions](@extref QuantumControl :label:`Control-Function`) ``\epsilon_l(t)`` that the Hamiltonian/Liouvillian may depend on
     * ``n``: The index over the intervals of the time grid
 
     Most equations can be simplified by not worrying about ``k`` or ``l``: If there multiple controls, they are concatenated into a single vector of control values with a double-index ``nl``. We really only need to keep track of ``n``; the gradient values related to a ``\epsilon_{nl}`` with a particular ``l`` are somewhat obvioulsly obtained by using a particular ``\epsilon_l(t_n)``. Likewise, all trajectories contribute equally to the gradients, so we just have a sum over the ``k`` index.
@@ -93,7 +96,7 @@ These two assumptions allow to analytically derive the gradient ``(\nabla J)_{nl
 
 Even though we are seeking the derivative of the real-valued functional ``J`` with respect to the real-valued parameter ``\epsilon_{nl}``, the functional still involves complex quantities via ``|\Psi_k(t)⟩`` and ``\hat{H}`` in Eq. \eqref{eq:tdse}. In order to apply the chain rule in the derivation of the gradient, we will have to clarify the notion of derivatives in the context of complex numbers, as well as derivatives with respect to vectors ("matrix calculus").
 
-### Derivatives w.r.t. complex scalars
+### [Derivatives w.r.t. complex scalars](@id Wirtinger-Scalars)
 
 To illustrate, let's say we introduce intermediary scalar variables ``z_k \in \mathbb{C}`` in the functional, ``J(\{\epsilon_{nl}\}) \rightarrow J(\{z_k(\{\epsilon_{nl}\})\})``, with ``J, \epsilon_{nl} \in \mathbb{R}``.
 
@@ -137,7 +140,7 @@ which instead treats ``z_k`` and the conjugate value ``z_k^*`` as independent va
 
 ```math
 \begin{equation}%
-  \label{eq:wirtinger_chainrule}
+  \label{eq:wirtinger-chainrule}
   \frac{\partial J}{\partial \epsilon_{nl}}
   = \sum_k \left(
     \frac{\partial J}{\partial z_k}
@@ -164,7 +167,8 @@ The derivative of the complex value ``z_k`` with respect to the real value ``\ep
 \end{equation}
 ```
 
-### Derivatives w.r.t. complex vectors
+
+### [Derivatives w.r.t. complex vectors](@id Wirtinger-Vectors)
 
 We can now go one step further and allow for intermediate variables that are complex _vectors_ instead of scalars, ``J(\{\epsilon_{nl}\}) \rightarrow J(\{|\Psi_k(\{\epsilon_{nl}\})⟩\})``. Taking the derivative w.r.t. a vector puts us in the domain of [matrix calculus](https://en.wikipedia.org/wiki/Matrix_calculus). Fundamentally, the derivative of a scalar with respect to a (column) vector is a (row) vector consisting of the derivatives of the scalar w.r.t. the components of the vector, and the derivative of a vector w.r.t. a scalar is the obvious vector of derivatives.
 
@@ -196,7 +200,7 @@ in the same sense as Eq. \eqref{eq:wirtinger1}. We simply treat ``|\Psi_k⟩`` 
 \end{equation}
 ```
 
-which we can either get explicitly from Eq. \eqref{eq:Jsm}, differentiating w.r.t. ``|\Psi_k⟩`` as an independent parameter and changing the order of the factors, or implicitly by taking the conjugate transpose of Eq. \eqref{eq:dJ_dKet}.
+which we can either get explicitly from Eq. \eqref{eq:Jsm}, differentiating w.r.t. ``|\Psi_k⟩`` as an independent variable (and reordering the terms), or implicitly by taking the conjugate transpose of Eq. \eqref{eq:dJ_dKet}.
 
 For the full chain rule of a functional ``J(\{|\Psi_k(\{\epsilon_{nl}\})⟩\})``, we thus find
 
@@ -226,9 +230,36 @@ With the definition in Eq. \eqref{eq:wirtinger1}, this corresponds directly to 
 \end{equation}
 ```
 
-where the complex scalar ``\Psi_{km}`` is the ``m``'th element of the ``k``'th vector, and corresponds to the ``z_k`` in Eq. \eqref{eq:wirtinger_chainrule}.
+where the complex scalar ``\Psi_{km}`` is the ``m``'th element of the ``k``'th vector, and corresponds to the ``z_k`` in Eq. \eqref{eq:wirtinger-chainrule}.
 
-In open quantum systems, where the state is described by a density matrix ``\hat{\rho}``, it can be helpful to adopt the double-braket notation ``\langle\!\langle \hat{\rho}_1 \vert \hat{\rho}_2 \rangle\!\rangle \equiv \tr[\hat{\rho}_1^\dagger \hat{\rho}_2]``, respectively to keep track of normal states ``\hat{\rho}`` (corresponding to ``|\Psi⟩``) and adjoint states ``\hat{\rho}^\dagger`` (corresponding to ``⟨\Psi|``), even when ``\hat{\rho}`` is Hermitian and thus ``\hat{\rho} = \hat{\rho}^\dagger``. For numerical purposes, density matrices are best vectorized by concatenating the columns of ``\hat{\rho}`` into a single column vector ``\vec{\rho}``. Thus, we do not have be concerned with a separate definition of derivatives w.r.t. density matrices.
+!!! tip "Open Quantum Systems"
+
+    In open quantum systems, where the state is described by a density matrix ``\hat{\rho}``, it can be helpful to adopt the double-braket notation ``\langle\!\langle \hat{\rho}_1 \vert \hat{\rho}_2 \rangle\!\rangle \equiv \tr[\hat{\rho}_1^\dagger \hat{\rho}_2]``, respectively to keep track of normal states ``\hat{\rho}`` (corresponding to ``|\Psi⟩``) and adjoint states ``\hat{\rho}^\dagger`` (corresponding to ``⟨\Psi|``), even when ``\hat{\rho}`` is Hermitian and thus ``\hat{\rho} = \hat{\rho}^\dagger``. For numerical purposes, density matrices are best vectorized by concatenating the columns of ``\hat{\rho}`` into a single column vector ``\vec{\rho}``. Thus, we do not have be concerned with a separate definition of derivatives w.r.t. density matrices.
+
+
+### [Complex `gradient`](@id Complex-Gradient)
+
+!!! warning
+
+    Software frameworks for automatic differentiation such as [Zygote](https://github.com/FluxML/Zygote.jl) [Zygote](@cite) and [Tensorflow](https://www.tensorflow.org) [Tensorflow](@cite) may define a (mathematically questionable [Petersen2008](@cite)) ["gradient"](@extref Zygote :label:`Complex-Differentiation`) of a real-valued function ``J`` with respect to a complex vector with elements ``z_j`` as
+
+    ```math
+    \begin{equation}\label{eq:complex-gradient}
+    (\nabla_{z} J)_j
+    \equiv \frac{\partial J}{\partial \Re[z_j]} + \ii \frac{\partial J}{\partial \Im[z_j]}\,.
+    \end{equation}
+    ```
+
+    This differs from the Wirtinger derivatives by a factor of two (and the complex conjugate). Thus,
+
+    ```math
+    \begin{equation}\label{eq:wirtinger-zygote-grad}
+    \frac{\partial J}{\partial z_j} = \frac{1}{2} (\nabla_{z} J)^*_j
+    \end{equation}
+    ```
+
+    in Eq. \eqref{eq:wirtinger-chainrule}, respectively Eq. \eqref{eq:grad-via-chi1} when using, e.g., the [`Zygote.gradient`](@extref) function.
+
 
 
 ## Gradients for final-time functionals
@@ -384,7 +415,7 @@ For sufficiently small time steps,  one may consider using only the first term i
 \end{equation}
 ```
 
-This approximation of the gradient has been used historically, including in GRAPE's original formulation [KhanejaJMR2005](@cite), also because it matches optimality conditions derived in a Lagrange-multiplier formalism [PeircePRA1988; BorziPRA2002](@cite) that pre-dates GRAPE. The derivation via Lagrange multipliers also extends more easily to equations of motion beyond Eq. \eqref{eq:tdse} such as Gross–Pitaevskii equation [HohenesterPRA2007, JaegerPRA2014](@cite). However, even though it is considered a "gradient-type" optimization, it is not considered to be within the scope of the `GRAPE` package (up to the ability to limit that Taylor expansion to first order). The conceptual difference is that these older methods (as well as other "gradient-type" [Krotov's method](@extref Krotov :doc:`index`)) derive optimality conditions _first_ (via functional derivatives), and the add time discretization to arrive at a numerical scheme. In contrast, `GRAPE` discretizes _first_, and then obtains gradients via simple derivatives w.r.t. the pulse values ``\epsilon_{nl}``. This concept of "discretize first" is _the_ core concept exploited in `GRAPE.jl`.
+This approximation of the gradient has been used historically, including in GRAPE's original formulation [KhanejaJMR2005](@cite), also because it matches optimality conditions derived in a Lagrange-multiplier formalism [PeircePRA1988, BorziPRA2002](@cite) that pre-dates GRAPE. The derivation via Lagrange multipliers also extends more easily to equations of motion beyond Eq. \eqref{eq:tdse} such as the Gross–Pitaevskii equation [HohenesterPRA2007, JaegerPRA2014](@cite). However, even though it is considered a "gradient-type" optimization, it is not considered to be within the scope of the `GRAPE` package (up to the ability to limit that Taylor expansion to first order). The conceptual difference is that these older methods (as well as the other "gradient-type", [Krotov's method](@extref Krotov :doc:`index`)) derive optimality conditions _first_ (via functional derivatives), and the add time discretization to arrive at a numerical scheme. In contrast, `GRAPE` discretizes _first_, and then obtains gradients via simple derivatives w.r.t. the pulse values ``\epsilon_{nl}``. This concept of "discretize first" is _the_ core concept exploited in `GRAPE.jl`.
 
 After GRAPE's original formulation [KhanejaJMR2005](@cite), it was quickly realized that high-precision gradients are essential for numerical stability and convergence, in particular if the gradient is then used in a quasi-Newton method [KuprovJCP2009, FouquieresJMR2011](@cite). Thus, low-order Taylor expansions should be avoided in most contexts.
 
@@ -446,14 +477,14 @@ This way, ``G[\hat{H}^{\dagger}_{kn}]`` replaces ``\hat{H}^{\dagger}_{kn}`` in t
 
 ## GRAPE scheme
 
-With Eq. \eqref{eq:grad-at-T-U} and the [use of gradient generators](@ref Overview-Gradgen) explained above, we end up wht an efficient numerical scheme for evaluating the full gradient shown in [Fig. 1](#fig-grape-scheme).
+With Eq. \eqref{eq:grad-at-T-U} and the [use of gradient generators](@ref Overview-Gradgen) explained above, we end up with an efficient numerical scheme for evaluating the full gradient shown in [Fig. 1](#fig-grape-scheme).
 
 ```@raw html
 <p id="fig-grape-scheme" style="text-align: center">
 <a href="../fig/grape_scheme.png">
 <img src="../fig/grape_scheme.png" width="100%"/>
 </a>
-<a href="#fig-grape-scheme">Figure 1</a>: Numerical scheme for the evaluation of the gradient in `GRAPE.jl`.
+<a href="#fig-grape-scheme">Figure 1</a>: Numerical scheme for the evaluation of the gradient in <code>GRAPE.jl</code>.
 </p>
 ```
 
@@ -471,9 +502,92 @@ The above scheme may be further augmented for [running costs](@ref Overview-Runn
 
 ## [Semi-automatic differentiation](@id Overview-SemiAD)
 
-Same as GRAPE, up to definition of chi. Special cases for overlap functionals and gate functionals.
+For most functionals, the boundary condition for the backward propagations, ``|\chi_k(T)⟩`` as defined in Eq. \eqref{eq:chi} is straightforward to calculate analytically, using basic matrix calculus and Wirtinger derivatives, as in the example in [Derivative w.r.t. complex vectors](@ref Wirtinger-Vectors). In such cases, a function that constructs the states ``|\chi_k(T)⟩`` from the forward-propagated states and information in the `trajectories` should be implemented by hand, and either passed explicitly to [`QuantumControl.optimize`](@ref) as `chi`, or associated with the function passed as `J_T` by implementing a custom method for `QuantumControl.Functionals.make_analytic_chi`, see the Tip in [`QuantumControl.Functionals.make_chi`](@extref) for details.
 
-How "gradients" are implemented in Zygote.
+In other situations, the derivative might overly cumbersome [WattsPRA2015, GoerzPRA2015](@cite), or completely non-analytical [KrausPRA2001](@cite). In such cases, the ``|\chi_k(T)⟩`` may be obtained via [automatic differentiation](https://en.wikipedia.org/wiki/Automatic_differentiation) [GoerzQ2022](@cite) (AD). `GRAPE.jl` supports this via the [`QuantumControl.Functionals.make_chi`](@extref) function with `mode=:automatic`. There is no restriction to a particular AD Framework. Any supported framework (see [`QuantumControl.set_default_ad_framework`](@extref) like [`Zygote`](https://github.com/FluxML/Zygote.jl) can be loaded and passed to `make_chi` via the `automatic` argument.
+
+The AD overhead of evaluating `J_T` should be extremely minimal (negligible compared to the numerical cost of the backward and forward propagations), but it can be further simplified with analytic chain rules [GoerzQ2022](@cite):
+
+* For functionals that depend on overlaps ``\tau_k \equiv ⟨\Psi_k^{\text{tgt}}|\Psi_k(T)⟩``, `GRAPE.jl` supports a keyword argument `tau` in `J_T`. If the function that is passed as `J_T` supports the `tau` keyword argument, and if all elements of `problem.trajectories` have a defined `target_state`, then a value of complex values `tau` is passed as defined above.
+
+  Eq. \eqref{eq:chi} then becomes
+
+  ```math
+  \begin{equation}
+  \label{eq:chi_tau}
+  \ket{\chi_k(T)}
+  = -\frac{\partial J_T}{\partial \bra{\Psi_k(T)}}
+  = - \left(
+      \frac{\partial J_T}{\partial \tau_k^*} \;
+      \frac{\partial \tau_k^*}{\partial \bra{\Psi_k(T)}}
+  \right)
+  = -\frac{1}{2} \left(\,\nabla_{\tau_k} J_T \right) \ket{\Psi_k^{\text{tgt}}}\,,
+  \end{equation}
+  ```
+
+  where we have used that only the complex conjugate ``\tau_k^* = ⟨ \Psi_k(T)|\Psi_k^{\text{tgt}}⟩`` of the overlap depends explicitly on the co-state ``\bra{\Psi_k(T)}``. The gradient ``\nabla_{\tau_k} J_T`` defined as in Eq. \eqref{eq:wirtinger-zygote-grad} — [note the factor ``\frac{1}{2}``](@ref Complex-Gradient) — can be obtained with automatic differentiation.
+
+  When calling [`QuantumControl.Functionals.make_chi`](@extref) with `mode=:automatic` and `via=:tau`, the above chain rules is used automatically to simplify the AD.
+
+* For the optimization of quantum gates, it is common to have a logical subspace embedded in a larger physical subspace. The functional ``J_T`` in this case can often be written as a function of the achieved gate ``\hat{U}_{L}`` in the logical subspace, a complex matrix with elements
+
+  ```math
+  \begin{equation}%
+    \label{eq:gate_definition}
+    (\hat{U}_{L})_{ij} = \Braket{\phi_i | \Psi_j(T)}
+    \quad \Leftrightarrow \quad
+    (\hat{U}_{L})^{*}_{ij} = \Braket{\Psi_j(T) | \phi_i}\,,
+  \end{equation}
+  ```
+
+  where ``|\phi_i⟩`` are the logical basis states, assumed to also be the initial states ``|\Psi_k(t=0)⟩ = |\phi_k⟩`` for the forward propagation (i.e., the optimization is defined with one trajectory per basis state).
+
+  Applying a further chain rule w.r.t. ``(\hat{U}_{L})_{ij}`` in Eq. \eqref{eq:chi}, we find
+
+  ```math
+  \begin{equation}%
+    \label{eq:chi-gate-proto}
+    \ket{\chi_k}
+    \equiv - \frac{\partial J_T}{\partial \bra{\Psi_k(T)}}
+     = - \sum_{ij}
+        \frac{\partial J_T}{\partial\,(U_{L})^{*}_{ij}}
+        \frac{\partial\,(U_{L})^{*}_{ij}}{\partial \bra{\Psi_k(T)}}\,,
+  \end{equation}
+  ```
+
+  again using the notation of the Wirtinger derivative. We have used that only ``(U_{L})^{*}_{ij}`` depends explicitly on the co-states ``\{\bra{\Psi_k(T)}\}``. Furthermore,
+
+  ```math
+  \begin{equation}
+    \frac{\partial J_T}{\partial\,(U_{L})^{*}_{ij}}
+    = \frac{1}{2} (\nabla_{U_{L}} J_T)_{ij}
+  \end{equation}
+  ```
+
+  according to the definitions in Eqs. (\ref{eq:complex-gradient}, \ref{eq:wirtinger2}), and
+
+  ```math
+  \begin{equation}
+    \frac{\partial\,(U_{L})^{*}_{ij}}{\partial \bra{\Psi_k(T)}}
+    = \frac{\partial}{\partial \bra{\Psi_k(T)}} \Braket{\Psi_j(T) | \phi_i}
+    = \delta_{jk} \ket{\phi_i}
+  \end{equation}
+  ```
+
+  with the Kronecker delta ``\delta_{jk}``. Thus, Eq. \eqref{eq:chi-gate-proto} simplifies to
+
+  ```math
+  \begin{equation}%
+    \label{eq:chi_gate}
+    \ket{\chi_k}
+    = -\frac{1}{2} \sum_i
+      (\nabla_{U_{L}} J_T)_{ik} \ket{\phi_i}\,,
+  \end{equation}
+  ```
+
+  where ``\nabla_{U_{L}} J_T`` is evaluated via automatic differentiation, e.g. with the [`Zygote.gradient`](@extref) function.
+
+  The [`QuantumControl.Functionals.gate_functional`](@extref) function can be used to construct functionals defined on top of a gate ``\hat{U}_L``, and [`QuantumControl.Functionals.make_gate_chi`](@extref) constructs the equivalent `chi` function via AD and the above chain rule.
 
 
 ## [Running costs](@id Overview-Running-Costs)
