@@ -26,6 +26,7 @@ links = InterLinks(
         joinpath(@__DIR__, "src", "inventories", "TimerOutputs.toml")
     ),
     "Zygote" => "https://fluxml.ai/Zygote.jl/dev/",
+    "Optim" => "https://julianlsolvers.github.io/Optim.jl/stable/",
     "QuantumPropagators" => "https://juliaquantumcontrol.github.io/QuantumPropagators.jl/$DEV_OR_STABLE",
     "QuantumGradientGenerators" => "https://juliaquantumcontrol.github.io/QuantumGradientGenerators.jl/$DEV_OR_STABLE",
     "QuantumControl" => "https://juliaquantumcontrol.github.io/QuantumControl.jl/$DEV_OR_STABLE",

@@ -22,13 +22,45 @@ optimizes the given control [`problem`](@ref QuantumControl.ControlProblem)
 via the GRAPE method, by minimizing the functional
 
 ```math
-J(\{ϵ_{nl}\}) = J_T(\{|ϕ_k(T)⟩\}) + λ_a J_a(\{ϵ_{nl}\})
+J(\{ϵ_{nl}\}) = J_T(\{|Ψ_k(T)⟩\}) + λ_a J_a(\{ϵ_{nl}\})\,,
 ```
 
 where the final time functional ``J_T`` depends explicitly on the
-forward-propagated states and the running cost ``J_a`` depends explicitly on
+forward-propagated states ``|Ψ_k(T)⟩``, where ``|Ψ_k(t)⟩`` is the time
+evolution of the `initial_state` in the ``k``th' trajectory in
+`problem.trajectories`, and the running cost ``J_a`` depends explicitly on
 pulse values ``ϵ_{nl}`` of the l'th control discretized on the n'th interval of
 the time grid.
+
+It does this by calculating the gradient of the final-time functional
+
+```math
+\nabla J_T \equiv \frac{\partial J_T}{\partial ϵ_{nl}}
+= -2 \Re
+\underbrace{%
+\underbrace{\bigg\langle χ(T) \bigg\vert \hat{U}^{(k)}_{N_T} \dots \hat{U}^{(k)}_{n+1} \bigg \vert}_{\equiv \bra{\chi(t_n)}\;\text{(bw. prop.)}}
+\frac{\partial \hat{U}^{(k)}_n}{\partial ϵ_{nl}}
+}_{\equiv \bra{χ_k^\prime(t_{n-1})}}
+\underbrace{\bigg \vert \hat{U}^{(k)}_{n-1} \dots \hat{U}^{(k)}_1 \bigg\vert Ψ_k(t=0) \bigg\rangle}_{\equiv |\Psi(t_{n-1})⟩\;\text{(fw. prop.)}}\,,
+```
+
+where ``\hat{U}^{(k)}_n`` is the time evolution operator for the ``n`` the
+interval, generally assumed to be ``\hat{U}^{(k)}_n = \exp[-i \hat{H}_{kn}
+dt_n]``, where ``\hat{H}_{kn}`` is the operator obtained by
+evaluating `problem.trajectories[k].generator` on the ``n``'th time interval.
+
+The backward-propagation of ``|\chi_k(t)⟩`` has the boundary condition
+
+```math
+    |\chi_k(T)⟩ \equiv - \frac{\partial J_T}{\partial ⟨\Psi_k(T)|}\,.
+```
+
+The final-time gradient ``\nabla J_T`` is combined with the gradient for the
+running costs, and the total gradient is then fed into an optimizer
+(L-BFGS-B by default) that iteratively changes the values ``\{ϵ_{nl}\}`` to
+minimize ``J``.
+
+See [Background](@ref GRAPE-Background) for details.
 
 Returns a [`GrapeResult`](@ref).
 

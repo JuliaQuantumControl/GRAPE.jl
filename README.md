@@ -6,26 +6,44 @@
 [![Build Status](https://github.com/JuliaQuantumControl/GRAPE.jl/workflows/CI/badge.svg)](https://github.com/JuliaQuantumControl/GRAPE.jl/actions)
 [![Coverage](https://codecov.io/gh/JuliaQuantumControl/GRAPE.jl/branch/master/graph/badge.svg)](https://codecov.io/gh/JuliaQuantumControl/GRAPE.jl)
 
-Implementation of ([second-order](https://arxiv.org/abs/1102.4096)) [GRadient Ascent Pulse Engineering](https://www.department.ch.tum.de/fileadmin/w00bzu/ocnmr/94_GRAPE_JMR_05_.pdf) (GRAPE) extended with automatic differentiation.
+Implementation of GRadient Ascent Pulse Engineering (GRAPE)
 
-Part of [`QuantumControl.jl`][QuantumControl] and the [JuliaQuantumControl][] organization.
+Part of the [JuliaQuantumControl] organization, to be used in conjunction with the [`QuantumControl.jl`] framework.
 
 
 ## Installation
 
-For normal usage, the `GRAPE` package should be installed as part of [`QuantumControl.jl`][QuantumControl]:
+[As usual for a registered Julia package](https://docs.julialang.org/en/v1/stdlib/Pkg/), `GRAPE` can be installed by typing
 
-~~~
-pkg> add QuantumControl
-~~~
+```
+] add GRAPE
+```
 
-For development usage, see the [organization development notes](https://github.com/JuliaQuantumControl#development).
+in the Julia REPL.
+
+## Usage
+
+```julia
+using QuantumControl
+using GRAPE
+
+# Set up a `QuantumControl.ControlProblem`
+
+result = QuantumControl.optimize(problem; method=GRAPE)
+```
+
+See the [Usage section in the Documentation](https://juliaquantumcontrol.github.io/GRAPE.jl/dev/usage/)
 
 ## Documentation
 
-A minimal standalone documentation of `GRAPE.jl` is available at <https://juliaquantumcontrol.github.io/GRAPE.jl>.
+The documentation of `GRAPE.jl` is available at <https://juliaquantumcontrol.github.io/GRAPE.jl>.
 
-For a broader perspective, see the [documentation of the `QuantumControl.jl` package](https://juliaquantumcontrol.github.io/QuantumControl.jl/).
+For a broader perspective, also see the [documentation of the `QuantumControl.jl` framework](https://juliaquantumcontrol.github.io/QuantumControl.jl/).
 
-[QuantumControl]: https://github.com/JuliaQuantumControl/QuantumControl.jl#readme
+## Contributing
+
+See [`CONTRIBUTING.md`](https://github.com/JuliaQuantumControl/.github/blob/master/CONTRIBUTING.md#contributing-to-juliaquantumcontrol-packages) and the [organization development notes](https://github.com/JuliaQuantumControl#development).
+
+
+[`QuantumControl.jl`]: https://github.com/JuliaQuantumControl/QuantumControl.jl#readme
 [JuliaQuantumControl]: https://github.com/JuliaQuantumControl
