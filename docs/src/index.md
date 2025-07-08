@@ -21,7 +21,7 @@ Gradient Ascent Pulse Engineering in Julia
 
 ## Summary
 
-The `GRAPE.jl` package implements Gradient Ascent Pulse Engineering [KhanejaJMR2005, FouquieresJMR2011, GoerzQ2022](@cite), a widely used method of [quantum optimal control](@extref QuantumControl :doc:`index`). The quantum state of a system can be described by a complex vector ``\ket{\Psi(t)}`` that evolves under a differential equation of the form
+The `GRAPE.jl` package implements Gradient Ascent Pulse Engineering [KhanejaJMR2005, FouquieresJMR2011, GoerzQ2022](@cite), a widely used method of [quantum optimal control](@extref QuantumControl :doc:`index`). The quantum state of a system can be described numerically by a complex vector ``\ket{\Psi(t)}`` that evolves under a differential equation of the form
 
 ```math
 \def\ii{\mathrm{i}}
