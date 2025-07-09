@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: © 2025 Michael Goerz <mail@michaelgoerz.net>
+#
+# SPDX-License-Identifier: MIT
+
 using QuantumControl.QuantumPropagators.Controls: evaluate, evaluate!, discretize
 using QuantumControl.QuantumPropagators: prop_step!, set_state!, reinit_prop!, propagate
 using QuantumControl.QuantumPropagators.Storage:

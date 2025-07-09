@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: © 2025 Michael Goerz <mail@michaelgoerz.net>
+#
+# SPDX-License-Identifier: CC0-1.0
+
 # Source this script as e.g.
 #
 #     include("PATH/TO/devrepl.jl")

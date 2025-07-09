@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: © 2025 Michael Goerz <mail@michaelgoerz.net>
+#
+# SPDX-License-Identifier: CC0-1.0
+
 using QuantumControl
 using QuantumPropagators
 using GRAPE
@@ -86,7 +90,7 @@ makedocs(;
                 ),
             )
         ),
-        footer="[$NAME.jl]($GITHUB) v$VERSION docs powered by [Documenter.jl](https://github.com/JuliaDocs/Documenter.jl).",
+        footer="[$NAME.jl]($GITHUB) v$VERSION docs [CC-BY-4.0](https://creativecommons.org/licenses/by/4.0/deed.en). Powered by [Documenter.jl](https://github.com/JuliaDocs/Documenter.jl).",
     ),
     pages=PAGES,
     warnonly=true,

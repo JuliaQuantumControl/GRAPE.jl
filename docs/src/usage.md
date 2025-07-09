@@ -1,3 +1,8 @@
+```@meta
+# SPDX-FileCopyrightText: © 2025 Michael Goerz <mail@michaelgoerz.net>
+# SPDX-License-Identifier: CC-BY-4.0
+```
+
 # Usage
 
 The `GRAPE` package is used in the context of the `QuantumControl` framework. You should be familiar with the [concepts used in the framework](@extref QuantumControl :label:`Glossary`) and its [overview](@extref QuantumControl :label:`Overview`).

@@ -1,3 +1,9 @@
+<!--
+SPDX-FileCopyrightText: © 2025 Michael Goerz <mail@michaelgoerz.net>
+
+SPDX-License-Identifier: CC-BY-4.0
+-->
+
 # JOSS Paper Source
 
 This directory contains the source for the submission to the [Journal of Open Software (JOSS)](https://joss.theoj.org)

@@ -1,3 +1,8 @@
+```@meta
+# SPDX-FileCopyrightText: © 2025 Michael Goerz <mail@michaelgoerz.net>
+# SPDX-License-Identifier: CC-BY-4.0
+```
+
 # [Background](@id GRAPE-Background)
 
 We review here in detail the GRAPE method as it is implemented in `GRAPE.jl`. Much of the material is adapted from [Goerz *et al.*, Quantum 6, 871 (2022)](@cite GoerzQ2022).

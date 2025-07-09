@@ -1,9 +1,16 @@
+<!--
+SPDX-FileCopyrightText: © 2025 Michael Goerz <mail@michaelgoerz.net>
+
+SPDX-License-Identifier: CC-BY-4.0
+-->
+
 # GRAPE.jl
 
 [![Version](https://juliahub.com/docs/General/GRAPE/stable/version.svg)](https://juliahub.com/ui/Packages/General/GRAPE)
 [![Stable](https://img.shields.io/badge/docs-stable-blue.svg)](https://juliaquantumcontrol.github.io/GRAPE.jl/)
 [![Dev](https://img.shields.io/badge/docs-dev-blue.svg)](https://juliaquantumcontrol.github.io/GRAPE.jl/dev)
 [![Build Status](https://github.com/JuliaQuantumControl/GRAPE.jl/workflows/CI/badge.svg)](https://github.com/JuliaQuantumControl/GRAPE.jl/actions)
+[![REUSE](https://github.com/JuliaQuantumControl/GRAPE.jl/actions/workflows/REUSE.yml/badge.svg)](https://github.com/JuliaQuantumControl/GRAPE.jl/actions/workflows/REUSE.yml)
 [![Coverage](https://codecov.io/gh/JuliaQuantumControl/GRAPE.jl/branch/master/graph/badge.svg)](https://codecov.io/gh/JuliaQuantumControl/GRAPE.jl)
 
 Implementation of GRadient Ascent Pulse Engineering (GRAPE)
@@ -47,3 +54,7 @@ See [`CONTRIBUTING.md`](https://github.com/JuliaQuantumControl/.github/blob/mast
 
 [`QuantumControl.jl`]: https://github.com/JuliaQuantumControl/QuantumControl.jl#readme
 [JuliaQuantumControl]: https://github.com/JuliaQuantumControl
+
+## License
+
+The source code of this project is licensed under the [MIT License](LICENSE). The documentation is licensed under [Creative Commons (`CC-BY-4.0`)](https://creativecommons.org/licenses/by/4.0/deed.en). License information for all files is [automatically tracked](https://github.com/JuliaQuantumControl/GRAPE.jl/actions/workflows/REUSE.yml) according to [REUSE](https://reuse.software) and can be verified using the [`reuse` tool](https://github.com/fsfe/reuse-tool?tab=readme-ov-file#reuse), e.g., by running `reuse spdx`.
