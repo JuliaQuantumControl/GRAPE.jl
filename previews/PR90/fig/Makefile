@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: © 2025 Michael Goerz <mail@michaelgoerz.net>
+#
+# SPDX-License-Identifier: CC0-1.0
+
 PDFLATEXOPTS = -file-line-error -interaction=nonstopmode -halt-on-error
 ALL = grape_scheme.pdf grape_scheme.png
 
