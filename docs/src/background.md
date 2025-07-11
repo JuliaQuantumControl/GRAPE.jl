@@ -43,7 +43,7 @@ The defining assumptions of the GRAPE method are
 
    with ``\hbar = 1`` (we will omit ``\hbar`` in all subsequent equations).
 
-   This includes the Schrödinger equation, but also the Liouville equation for open quantum systems. In the latter case, ``|\Psi_k⟩`` is replaced by a vectorized density matrix, and ``\hat{H}_k`` is replaced by a Liouvillian (super-) operator describing the dynamics of the ``k``'th trajectory. The crucial point is that Eq. \eqref{eq:tdse} can be solved analytically within each time interval as
+   This includes the Schrödinger equation, but also the Liouville equation for open quantum systems. In the latter case, ``|\Psi_k⟩`` is replaced by a vectorized density matrix, and ``\hat{H}_k`` is replaced by a Liouvillian (super-) operator describing the dynamics of the ``k``'th trajectory. The crucial point is that Eq. \eqref{eq:tdse} can be solved within each time interval as
 
    ```math
    \begin{equation}\label{eq:time-evolution-op}
