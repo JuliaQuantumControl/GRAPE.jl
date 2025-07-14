@@ -39,7 +39,7 @@ using GRAPE
 result = QuantumControl.optimize(problem; method=GRAPE)
 ```
 
-See the [Usage section in the Documentation](https://juliaquantumcontrol.github.io/GRAPE.jl/dev/usage/)
+See the [Usage section in the Documentation](https://juliaquantumcontrol.github.io/GRAPE.jl/stable/usage/)
 
 ## Documentation
 

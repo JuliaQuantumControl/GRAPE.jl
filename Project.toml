@@ -1,7 +1,7 @@
 name = "GRAPE"
 uuid = "6b52fcaf-80fe-489a-93e9-9f92080510be"
 authors = ["Michael Goerz <mail@michaelgoerz.net>"]
-version = "0.7.5+dev"
+version = "0.7.6+dev"
 
 [deps]
 Dates = "ade2ca70-3891-5945-98fb-dc099432e06a"
