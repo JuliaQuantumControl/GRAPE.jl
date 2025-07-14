@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: © 2025 Michael Goerz <mail@michaelgoerz.net>
+#
+# SPDX-License-Identifier: MIT
+
 """
     clean([distclean=false])
 
@@ -44,9 +48,6 @@ function clean(; distclean=false, _exit=true)
     for folder in ["", "docs", "test"]
         _push!(DISTCLEAN, joinpath(joinpath(ROOT, folder), "Manifest.toml"))
     end
-    _push!(DISTCLEAN, joinpath(ROOT, "docs", "Project.toml"))
-    append!(DISTCLEAN, _glob_star(joinpath(ROOT, "test", "data")))
-    append!(DISTCLEAN, _glob_star(joinpath(ROOT, "docs", "data")))
     _push!(DISTCLEAN, joinpath(ROOT, ".JuliaFormatter.toml"))
     ###########################################################################
 

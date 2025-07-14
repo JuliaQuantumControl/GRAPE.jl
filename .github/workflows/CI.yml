@@ -3,6 +3,7 @@ on:
   push:
     branches:
       - master
+      - dev
       - 'release-*'
     tags:
       - '*'
@@ -34,15 +35,24 @@ jobs:
           wget https://raw.githubusercontent.com/JuliaQuantumControl/JuliaQuantumControl/master/scripts/installorg.jl
           julia --project=test installorg.jl
       - name: "Run tests"
+        shell: julia --color=yes --project=test --code-coverage="@" --depwarn="yes" --check-bounds="yes" {0}
         run: |
-          julia --project=test --color=auto --startup-file=yes --code-coverage="user" --depwarn="yes" --check-bounds="yes" -e 'include("test/runtests.jl")'
+          include(joinpath(pwd(), "test", "runtests.jl"))
       - uses: julia-actions/julia-processcoverage@v1
       - name: "Summarize coverage"
         run: julia --project=test -e 'using QuantumControlTestUtils; show_coverage();'
-      - uses: codecov/codecov-action@v4
+      - uses: codecov/codecov-action@v5
         with:
-          file: lcov.info
+          files: lcov.info
           token: ${{ secrets.CODECOV_TOKEN }}
+      - name: Save Julia depot cache on cancel or failure
+        id: julia-cache-save
+        if: cancelled() || failure()
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            ${{ steps.julia-cache.outputs.cache-paths }}
+          key: ${{ steps.julia-cache.outputs.cache-key }}
   docs:
     name: Documentation
     runs-on: ubuntu-latest
@@ -56,19 +66,19 @@ jobs:
         run: |
           set -x
           /usr/bin/python3 -m pip install zip-files
-      - name: "Instantiate test environment"
+      - name: "Instantiate build environment"
         run: |
           wget https://raw.githubusercontent.com/JuliaQuantumControl/JuliaQuantumControl/master/scripts/installorg.jl
-          julia --project=test installorg.jl
+          julia --project=docs installorg.jl
       - name: "Build documentation"
-        run: julia  --threads auto --project=test docs/make.jl
+        run: julia --project=docs docs/make.jl
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           DOCUMENTER_KEY: ${{ secrets.DOCUMENTER_KEY }}
-      - name: "Zip the HTML documentation"
+      - name: Zip the HTML documentation
         run: zip-folder --debug --auto-root --outfile "docs.zip" docs/build
       - uses: actions/upload-artifact@v4
-        name: "Upload documentation artifacts"
+        name: Upload documentation artifacts
         with:
           name: GRAPE
           # We need at least two files in the artifact to avoid a weird
@@ -76,6 +86,14 @@ jobs:
           path: |
             README.md
             ./docs.zip
+      - name: Save Julia depot cache on cancel or failure
+        id: julia-cache-save
+        if: cancelled() || failure()
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            ${{ steps.julia-cache.outputs.cache-paths }}
+          key: ${{ steps.julia-cache.outputs.cache-key }}
   codestyle:
     name: Codestyle
     runs-on: ubuntu-latest
@@ -84,23 +102,55 @@ jobs:
       - uses: julia-actions/setup-julia@v2
         with:
           version: '1'
+      - name: Get typos settings
+        run: wget https://raw.githubusercontent.com/JuliaQuantumControl/JuliaQuantumControl/master/typos.toml
+      - name: Spell Check
+        uses: crate-ci/typos@master
+      - name: Version Check
+        shell: julia {0}
+        run: |
+          using Pkg
+          VERSION = VersionNumber(Pkg.TOML.parsefile("Project.toml")["version"])
+          BRANCH = ENV["GITHUB_REF_NAME"]
+          if ENV["GITHUB_EVENT_NAME"] == "pull_request"
+              # For pull_request events, return the head (aka., "from") branch,
+              # not the base (aka., "to") branch.
+              BRANCH = ENV["GITHUB_HEAD_REF"]
+          end
+          if startswith(BRANCH, "release-")
+              if (length(VERSION.prerelease) == length(VERSION.build))
+                  println("Version $VERSION on release branch OK")
+              else
+                  @error "Invalid version $VERSION on release branch"
+                  exit(1)
+              end
+          elseif (ENV["GITHUB_REF_TYPE"] == "branch") && (BRANCH != "master")
+              if ("dev" in VERSION.prerelease) || ("dev" in VERSION.build)
+                  println("Version $VERSION OK with dev-suffix on $BRANCH")
+              else
+                  @error "Invalid version $VERSION on branch $BRANCH: must contain dev suffix"
+                  exit(1)
+              end
+          else
+              println("Version $VERSION OK on $BRANCH")
+          end
+          exit(0)
       - name: Get codestyle settings
         run: wget https://raw.githubusercontent.com/JuliaQuantumControl/JuliaQuantumControl/master/.JuliaFormatter.toml
       - name: Install JuliaFormatter and format
-        # This will use the latest version by default but you can set the version like so:
-        #
-        # julia  -e 'using Pkg; Pkg.add(PackageSpec(name="JuliaFormatter", version="0.13.0"))'
+        shell: julia {0}
         run: |
-          julia  -e 'using Pkg; Pkg.add(PackageSpec(name="JuliaFormatter"))'
-          julia  -e 'using JuliaFormatter; format(".", verbose=true)'
-      - name: Format check
+          using Pkg
+          Pkg.add(PackageSpec(name="JuliaFormatter"))
+          using JuliaFormatter
+          format(".", verbose=true)
+      - name: Format Check
+        shell: julia {0}
         run: |
-          julia -e '
-          out = Cmd(`git diff --name-only`) |> read |> String
+          out = Cmd(`git diff -U0`) |> read |> String
           if out == ""
               exit(0)
           else
-              @error "Some files have not been formatted !!!"
-              write(stdout, out)
+              @error "Some files have not been formatted !!!\n\n$out"
               exit(1)
-          end'
+          end

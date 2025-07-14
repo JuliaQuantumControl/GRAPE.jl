@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: © 2025 Michael Goerz <mail@michaelgoerz.net>
+#
+# SPDX-License-Identifier: MIT
+
 import Literate
 
 println("Start generating tests for Literate.jl examples")

@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: © 2025 Michael Goerz <mail@michaelgoerz.net>
+#
+# SPDX-License-Identifier: MIT
+
 import QuantumControl
 using QuantumControl.QuantumPropagators.Storage: init_storage
 using QuantumControl.QuantumPropagators.Controls: get_controls, discretize_on_midpoints

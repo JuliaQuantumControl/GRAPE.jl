@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: © 2025 Michael Goerz <mail@michaelgoerz.net>
+#
+# SPDX-License-Identifier: MIT
+
 using QuantumControl
 using QuantumControl.Functionals: J_a_fluence
 using Test

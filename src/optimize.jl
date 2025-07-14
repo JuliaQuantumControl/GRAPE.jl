@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: © 2025 Michael Goerz <mail@michaelgoerz.net>
+#
+# SPDX-License-Identifier: MIT
+
 using QuantumControl.QuantumPropagators.Controls: evaluate, evaluate!, discretize
 using QuantumControl.QuantumPropagators: prop_step!, set_state!, reinit_prop!, propagate
 using QuantumControl.QuantumPropagators.Storage:
@@ -22,13 +26,45 @@ optimizes the given control [`problem`](@ref QuantumControl.ControlProblem)
 via the GRAPE method, by minimizing the functional
 
 ```math
-J(\{ϵ_{nl}\}) = J_T(\{|ϕ_k(T)⟩\}) + λ_a J_a(\{ϵ_{nl}\})
+J(\{ϵ_{nl}\}) = J_T(\{|Ψ_k(T)⟩\}) + λ_a J_a(\{ϵ_{nl}\})\,,
 ```
 
 where the final time functional ``J_T`` depends explicitly on the
-forward-propagated states and the running cost ``J_a`` depends explicitly on
+forward-propagated states ``|Ψ_k(T)⟩``, where ``|Ψ_k(t)⟩`` is the time
+evolution of the `initial_state` in the ``k``th' trajectory in
+`problem.trajectories`, and the running cost ``J_a`` depends explicitly on
 pulse values ``ϵ_{nl}`` of the l'th control discretized on the n'th interval of
 the time grid.
+
+It does this by calculating the gradient of the final-time functional
+
+```math
+\nabla J_T \equiv \frac{\partial J_T}{\partial ϵ_{nl}}
+= -2 \Re
+\underbrace{%
+\underbrace{\bigg\langle χ(T) \bigg\vert \hat{U}^{(k)}_{N_T} \dots \hat{U}^{(k)}_{n+1} \bigg \vert}_{\equiv \bra{\chi(t_n)}\;\text{(bw. prop.)}}
+\frac{\partial \hat{U}^{(k)}_n}{\partial ϵ_{nl}}
+}_{\equiv \bra{χ_k^\prime(t_{n-1})}}
+\underbrace{\bigg \vert \hat{U}^{(k)}_{n-1} \dots \hat{U}^{(k)}_1 \bigg\vert Ψ_k(t=0) \bigg\rangle}_{\equiv |\Psi(t_{n-1})⟩\;\text{(fw. prop.)}}\,,
+```
+
+where ``\hat{U}^{(k)}_n`` is the time evolution operator for the ``n`` the
+interval, generally assumed to be ``\hat{U}^{(k)}_n = \exp[-i \hat{H}_{kn}
+dt_n]``, where ``\hat{H}_{kn}`` is the operator obtained by
+evaluating `problem.trajectories[k].generator` on the ``n``'th time interval.
+
+The backward-propagation of ``|\chi_k(t)⟩`` has the boundary condition
+
+```math
+    |\chi_k(T)⟩ \equiv - \frac{\partial J_T}{\partial ⟨\Psi_k(T)|}\,.
+```
+
+The final-time gradient ``\nabla J_T`` is combined with the gradient for the
+running costs, and the total gradient is then fed into an optimizer
+(L-BFGS-B by default) that iteratively changes the values ``\{ϵ_{nl}\}`` to
+minimize ``J``.
+
+See [Background](@ref GRAPE-Background) for details.
 
 Returns a [`GrapeResult`](@ref).
 
@@ -68,7 +104,7 @@ with explicit keyword arguments to `optimize`.
   [QuantumGradientGenerators](https://github.com/JuliaQuantumControl/QuantumGradientGenerators.jl).
   With `gradient_method=:taylor`, it is evaluated via a Taylor series, see
   Eq. (20) in Kuprov and Rogers,  J. Chem. Phys. 131, 234108
-  (2009) [KuprovJCP09](@cite).
+  (2009) [KuprovJCP2009](@cite).
 * `taylor_grad_max_order=100`: If given with `gradient_method=:taylor`, the
   maximum number of terms in the Taylor series. If
   `taylor_grad_check_convergence=true` (default), if the Taylor series does not
@@ -165,6 +201,19 @@ with explicit keyword arguments to `optimize`.
   `result.converged` to `true` and `result.message` to an appropriate string in
   case of convergence. Multiple convergence checks can be performed by chaining
   functions with `∘`. The convergence check is performed after any `callback`.
+* `prop_method`: The propagation method to use for each trajectory, see below.
+* `verbose=false`: If `true`, print information during initialization
+* `rethrow_exceptions`: By default, any exception ends the optimization, but
+  still returns a [`GrapeResult`](@ref) that captures the message associated
+  with the exception. This is to avoid losing results from a long-running
+  optimization when an exception occurs in a later iteration. If
+  `rethrow_exceptions=true`, instead of capturing the exception, it will be
+  thrown normally.
+
+# Experimental keyword arguments
+
+The following keyword arguments may change in non-breaking releases:
+
 * `x_tol`: Parameter for Optim.jl
 * `f_tol`: Parameter for Optim.jl
 * `g_tol`: Parameter for Optim.jl
@@ -175,14 +224,6 @@ with explicit keyword arguments to `optimize`.
 * `optimizer`: An optional Optim.jl optimizer (`Optim.AbstractOptimizer`
   instance). If not given, an [L-BFGS-B](https://github.com/Gnimuc/LBFGSB.jl)
   optimizer will be used.
-* `prop_method`: The propagation method to use for each trajectory, see below.
-* `verbose=false`: If `true`, print information during initialization
-* `rethrow_exceptions`: By default, any exception ends the optimization, but
-  still returns a [`GrapeResult`](@ref) that captures the message associated
-  with the exception. This is to avoid losing results from a long-running
-  optimization when an exception occurs in a later iteration. If
-  `rethrow_exceptions=true`, instead of capturing the exception, it will be
-  thrown normally.
 
 # Trajectory propagation
 

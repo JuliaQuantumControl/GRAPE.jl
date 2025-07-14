@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: © 2025 Michael Goerz <mail@michaelgoerz.net>
+#
+# SPDX-License-Identifier: CC0-1.0
+
 *.jl.*.cov
 *.jl.cov
 *.jl.mem
@@ -8,7 +12,6 @@
 /test/LocalPreferences.toml
 /docs/Manifest.toml
 /docs/LocalPreferences.toml
-/docs/Project.toml
 /docs/build/
 /docs/src/examples
 /gh-pages/
