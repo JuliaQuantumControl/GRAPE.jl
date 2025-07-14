@@ -55,16 +55,16 @@ The defining assumptions of the GRAPE method are
    where ``\hat{H}_{kn} = \hat{H}_k(\{\epsilon_{nl}\})`` is ``\hat{H}_k(\{\epsilon_l(t)\})`` evaluated at the midpoint of the ``n``'th interval (respectively at ``t=0`` and ``t=T`` for ``n=1`` and ``n=N_T``), and with the time step ``dt_n = (t_n - t_{n-1})``.
 
 
-These two assumptions allow to analytically derive the gradient ``(\nabla J)_{nl} \equiv \frac{\partial J}{\partial \epsilon_{nl}}``. The initial derivation of GRAPE by [KhanejaJMR2005](@citet) focuses on a final-time functional ``J_T`` that depends on the overlap of each forward-propagated ``|\Psi_k(T)⟩`` with a target state ``|\Psi^{\text{tgt}}_k(T)⟩`` and updates the pulse values ``\epsilon_{nl}`` directly in the direction of the negative gradient. Improving on this, [FouquieresJMR2011](@citet) showed that using a quasi-Newton method to update the pulses based on the gradient information leads to a dramatic improvement in convergence and stability. Furthermore, [GoodwinJCP2015](@citet) improved on the precision of evaluating the gradient of a local time evolution operator, which is a critical step in the GRAPE scheme. Finally, [GoerzQ2022](@citet) generalized GRAPE to arbitrary functionals of the form \eqref{eq:grape-functional}, bridging the gap to automatic differentiation techniques [LeungPRA2017, AbdelhafezPRA2019, AbdelhafezPRA2020](@cite) by introducing the technique of "semi-automatic differentiation". This most general derivation is the basis for the implementation in `GRAPE.jl`.
+These two assumptions allow to analytically derive the gradient ``(\nabla J)_{nl} \equiv \frac{\partial J}{\partial \epsilon_{nl}}``. The initial derivation of GRAPE by [KhanejaJMR2005](@citet) focuses on a final-time functional ``J_T`` that depends on the overlap of each forward-propagated ``|\Psi_k(T)⟩`` with a target state ``|\Psi^{\text{tgt}}_k(T)⟩`` and updates the pulse values ``\epsilon_{nl}`` directly in the direction of the negative gradient. Improving on this, [FouquieresJMR2011](@citet) showed that using a quasi-Newton method to update the pulses based on the gradient information leads to a dramatic improvement in convergence and stability. Furthermore, [GoodwinJCP2015](@citet) improved on the precision of evaluating the gradient of a local time evolution operator, which is a critical step in the GRAPE scheme. Finally, [GoerzQ2022](@citet) generalized GRAPE to arbitrary functionals of the form \eqref{eq:grape-functional}, bridging the gap to automatic differentiation techniques [LeungPRA2017, AbdelhafezPRA2019, AbdelhafezPRA2020](@cite) by introducing the idea of "semi-automatic differentiation". This most general derivation is the basis for the implementation in `GRAPE.jl`.
 
 
 ## [Too Many Indices; Didn't Read](@id tmidr)
 
 !!! tip "TMIDR"
 
-    Below, we derive the GRAPE scheme here in full generality. This implies keeping track of a lot of indices:
+    Below, we derive the GRAPE scheme in full generality. This implies keeping track of a lot of indices:
 
-    * ``k``: the index over the different [trajectories](@extref QuantumControl.Trajectory), i.e., the states ``|\Psi_k(t)⟩`` whose time evolution contribute to the functional
+    * ``k``: the index over the different [trajectories](@extref QuantumControl.Trajectory), i.e., the states ``|\Psi_k(t)⟩`` whose time evolution contributes to the functional
     * ``l``: the index over the different [control functions](@extref QuantumControl :label:`Control-Function`) ``\epsilon_l(t)`` that the Hamiltonian/Liouvillian may depend on
     * ``n``: The index over the intervals of the time grid
 
@@ -72,7 +72,7 @@ These two assumptions allow to analytically derive the gradient ``(\nabla J)_{nl
 
     We can further simplify by considering only final-time functionals ``J_T(\{|\Psi_k(T)⟩\})``. Running costs ``J_a(\{ϵ_l(t)\})`` are quite straightforward to add (just take the derivative w.r.t. the values ``ϵ_{nl}``), and running costs ``J_b(\{|Ψ_k(t)⟩\})`` are [too complicated](@ref State-Dependent-Running-Costs) to consider in any kind of "simplified" scheme.
 
-    In essence, then, the GRAPE scheme that is implemented here can then be concisely summarized, cf. Eq. \eqref{eq:grad-at-T-U}, as
+    In essence, then, the GRAPE scheme that is implemented here can be concisely summarized as
 
     ```math
     \begin{equation}
@@ -86,7 +86,7 @@ These two assumptions allow to analytically derive the gradient ``(\nabla J)_{nl
     \end{equation}
     ```
 
-    with the boundary condition, cf. Eq. \eqref{eq:chi},
+    cf. Eq. \eqref{eq:grad-at-T-U}, with the boundary condition, cf. Eq. \eqref{eq:chi},
 
     ```math
     \begin{equation}
@@ -159,7 +159,7 @@ which instead treats ``z_k`` and the conjugate value ``z_k^*`` as independent va
 \end{equation}
 ```
 
-So, we have a simple chain rule, modified only by ``2 \Re[…]``, where we can otherwise "forget" that ``z_k`` is a complex variable. The fact that ``J \in \mathbb{R}`` guarantees that ``z_k`` and ``z_k^*`` can only occur in such ways that we don't have to worry about having "lost" ``z_k^*``.
+So, we have a simple chain rule, modified only by ``2 \Re[…]``, where we can otherwise "forget" that ``z_k`` is a complex variable. The fact that ``J`` is real-valued guarantees that ``z_k`` and ``z_k^*`` can only occur in such ways that we don't have to worry about having "lost" ``z_k^*``.
 
 The derivative of the complex value ``z_k`` with respect to the real value ``\epsilon_{nl}`` is defined straightforwardly as
 
@@ -193,7 +193,7 @@ The derivative ``\partial J/\partial |\Psi_k⟩`` is
 
 ```math
 \begin{equation}\label{eq:dJ_dKet}
-\frac{\partial J}{\partial |\Psi_k}⟩ = \langle \Psi_k \vert \Psi_k^{\text{tgt}} \rangle \langle\Psi_k^{\text{tgt}}\vert\,,
+\frac{\partial J}{\partial |\Psi_k⟩} = \langle \Psi_k \vert \Psi_k^{\text{tgt}} \rangle \langle\Psi_k^{\text{tgt}}\vert\,,
 \end{equation}
 ```
 
@@ -313,7 +313,7 @@ with
 \end{equation}
 ```
 
-i.e., a backward propagation of the state given by Eq. \eqref{eq:chi} with the adjoint Hamiltonian or Liouvillian and
+i.e., a backward propagation of the state given by Eq. \eqref{eq:chi} with the adjoint Hamiltonian or Liouvillian, and
 
 ```math
 \begin{equation}\label{eq:psi-time-evolution}
@@ -399,7 +399,7 @@ In `GRAPE.jl`, Eq. \eqref{eq:U-deriv} can be evaluated via a Taylor expansion a
 
 !!! tip "TMIDR"
 
-    As in the [general TMIDR](#tmidr), the indices ``k`` and ``l`` are somewhat superfluous here. In addition, ``\hat{\mu}_{lkn} \equiv \frac{\partial \hat{H}_{kn}}{\partial \epsilon_{nl}}`` still depends on ``\epsilon_{nl}`` only for non-linear controls. Much more commonly, for linear Hamiltonians of the form ``\hat{H} = \hat{H_0} + \epsilon(t) \hat{\mu}``, ``\hat{\mu}`` is just a static [control operator](@extref QuantumControl :label:`Control-Operator`). If ``\hat{H}`` is a standard Hamiltonian, and thus Hermitian, we can drop the dagger. The time grid is usually uniform, so we can drop the index ``n`` from ``dt``. Thus, a simplified version of Eq. \eqref{eq:taylor-op} is
+    As in the [general TMIDR](#tmidr), the indices ``k`` and ``l`` are somewhat superfluous here. In addition, ``\hat{\mu}_{lkn} \equiv \frac{\partial \hat{H}_{kn}}{\partial \epsilon_{nl}}`` still depends on ``\epsilon_{nl}`` only for non-linear controls. Much more commonly, for linear Hamiltonians of the form ``\hat{H} = \hat{H_0} + \epsilon(t) \hat{\mu}``, the derivative ``\hat{\mu}`` is just a static [control operator](@extref QuantumControl :label:`Control-Operator`). If ``\hat{H}`` is a standard Hamiltonian, and thus Hermitian, we can drop the dagger. The time grid is usually uniform, so we can drop the index ``n`` from ``dt``. Thus, a simplified version of Eq. \eqref{eq:taylor-op} is
 
     ```math
     \begin{equation}\label{eq:taylor-op-simplified}
@@ -418,8 +418,8 @@ In `GRAPE.jl`, Eq. \eqref{eq:U-deriv} can be evaluated via a Taylor expansion a
     \begin{equation}
     \begin{split}
     |\chi^\prime(t_{n-1})⟩ &= \sum_{m=1}^{\infty} \frac{\left(-\ii \, dt^{(-)}\right)^m}{m!} |\Phi_m⟩\,,\\
-    |\Phi_1⟩ &= \hat{\mu} |\chi_k(t_n)⟩\,,              \\
-    |\Phi_m⟩ &= \hat{\mu} {\hat{H}_{n}}^{\!\!m-1}  |\chi_k(t_n)⟩ + {\hat{H}_{n}} |\Phi_{m-1}⟩\,.
+    |\Phi_1⟩ &= \hat{\mu} |\chi(t_n)⟩\,,              \\
+    |\Phi_m⟩ &= \hat{\mu} {\hat{H}_{n}}^{\!\!m-1}  |\chi(t_n)⟩ + {\hat{H}_{n}} |\Phi_{m-1}⟩\,.
     \end{split}
     \end{equation}
     ```
@@ -513,7 +513,7 @@ In each iteration, we start in the bottom left with the initial state ``|\Psi_k(
 
 Having determined ``|\Psi_k(T)⟩``, the state ``|\chi_k(T)⟩`` is calculated according to Eq. \eqref{eq:chi} for each trajectory ``k``. With the default `gradient_method=:gradgen` that is depicted here, ``|\chi_k(T)⟩`` is then converted into a zero-padded extended state ``|\tilde\chi_k(T)⟩``, see Eq. \eqref{eq:gradgen-state}, which is then backward propagated under a gradient-generator ``G[\hat{H}_{kn}^{\dagger}]`` defined according to Eq. \eqref{eq:gradgen}.
 
-After each step in the backward propagation, the extended state ``|\tilde\chi_k(t_n)\rangle⟩`` contains the gradient-states ``|\chi^{\prime}_{kl}(t_n)⟩``, cf. Eq. \eqref{eq:gradprop-bw}. The corresponding forward-propagated states ``\Psi_k(t_n)`` are read from storage; the overlap ``⟨\chi^{\prime}_{kl}(t_n)|\Psi_k(t_n)⟩`` then contributes to the element ``(\nabla J)_{nl}`` of the gradient, cf. Eq. \eqref{eq:grad-via-chi-prime}.
+After each step in the backward propagation, the extended state ``|\tilde\chi_k(t_n)\rangle⟩`` contains the gradient-states ``|\chi^{\prime}_{kl}(t_n)⟩``, cf. Eq. \eqref{eq:gradprop-bw}. The corresponding forward-propagated states ``\Psi_k(t_n)`` are read from storage; the overlap ``⟨\chi^{\prime}_{kl}(t_n)|\Psi_k(t_n)⟩`` then contributes to the element ``(\nabla J)_{nl}`` of the gradient, cf. Eq. \eqref{eq:grad-via-chi-prime}. Note that ``|\tilde\chi_k(t_n)\rangle⟩`` must be reset in each time set, i.e., the components ``|\chi^{\prime}_{kl}(t_n)⟩`` must be zeroed out.
 
 In the original formulation of GRAPE [KhanejaJMR2005](@cite), ``|\chi_k(T)⟩`` is always the target state associated with the ``k``'th trajectory. This makes it arbitrary whether to forward-propagate (and store) ``|\Psi_k(t)⟩`` first, or backward-propagate (and store) ``|\chi_k(t)⟩`` first. However, with the generalization to arbitrary functionals [GoerzQ2022](@cite) via the definition in Eq. \eqref{eq:chi}, ``|\chi_k(T)⟩`` can now depend on the forward-propagated states ``\{|\Psi_k(T)⟩\}``. Thus, the forward propagation and storage must always precede the backward propagation. The requirement for storing the forward-propagated states also explains the choice to let ``\frac{\partial \hat{U}_n^{(k)}}{\partial \epsilon_{nl}}`` act to the left in Eq. \eqref{eq:grad-at-T-U} to get Eq. \eqref{eq:grad-via-chi-prime}. If we had instead chosen to let the derivative act to the right to get Eq. \eqref{eq:grad-via-psi-prime}, we would have to store all of the states ``|\Psi^{\prime}_k(t_{n})⟩`` in addition to just ``|\Psi_k(t_{n})⟩`` for every time step, which would increase the required memory ``L``-fold for ``L`` controls.
 
@@ -522,9 +522,9 @@ The above scheme may be further augmented for [running costs](@ref Overview-Runn
 
 ## [Semi-automatic differentiation](@id Overview-SemiAD)
 
-For most functionals, the boundary condition for the backward propagations, ``|\chi_k(T)⟩`` as defined in Eq. \eqref{eq:chi}, is straightforward to calculate analytically, using basic matrix calculus and Wirtinger derivatives, as in the example in [Derivative w.r.t. complex vectors](@ref Wirtinger-Vectors). In such cases, a function that constructs the states ``|\chi_k(T)⟩`` from the forward-propagated states and information in the `trajectories` should be implemented by hand, and either passed explicitly to [`QuantumControl.optimize`](@ref) as `chi`, or associated with the function passed as `J_T` by implementing a custom method for `QuantumControl.Functionals.make_analytic_chi`, see the Tip in [`QuantumControl.Functionals.make_chi`](@extref) for details.
+For most functionals, the boundary condition for the backward propagations, ``|\chi_k(T)⟩`` as defined in Eq. \eqref{eq:chi}, is straightforward to calculate analytically, using basic matrix calculus and Wirtinger derivatives, as in the example in the [Derivative w.r.t. complex vectors](@ref Wirtinger-Vectors). In such cases, a function that constructs the states ``|\chi_k(T)⟩`` from the forward-propagated states and information in the `trajectories` should be implemented by hand, and either passed explicitly to [`QuantumControl.optimize`](@ref) as `chi`, or associated with the function passed as `J_T` by implementing a custom method for `QuantumControl.Functionals.make_analytic_chi`, see the Tip in [`QuantumControl.Functionals.make_chi`](@extref) for details.
 
-In other situations, the derivative might be overly cumbersome [WattsPRA2015, GoerzPRA2015](@cite), or completely non-analytical [KrausPRA2001](@cite). In such cases, the ``|\chi_k(T)⟩`` may be obtained via [automatic differentiation](https://en.wikipedia.org/wiki/Automatic_differentiation) [GoerzQ2022](@cite) (AD). `GRAPE.jl` supports this via the [`QuantumControl.Functionals.make_chi`](@extref) function with `mode=:automatic`. There is no restriction to a particular AD Framework. Any supported framework (see [`QuantumControl.set_default_ad_framework`](@extref) like [`Zygote`](https://github.com/FluxML/Zygote.jl) can be loaded and passed to `make_chi` via the `automatic` argument.
+In other situations, the derivative might be overly cumbersome [WattsPRA2015, GoerzPRA2015](@cite), or completely non-analytical [KrausPRA2001](@cite). In such cases, the ``|\chi_k(T)⟩`` may be obtained via [automatic differentiation](https://en.wikipedia.org/wiki/Automatic_differentiation) [GoerzQ2022](@cite) (AD). `GRAPE.jl` supports this via the [`QuantumControl.Functionals.make_chi`](@extref) function with `mode=:automatic`. There is no restriction to a particular AD Framework. Any supported framework like [`Zygote`](https://github.com/FluxML/Zygote.jl) can be loaded and passed to `make_chi` via the `automatic` argument, see [`QuantumControl.set_default_ad_framework`](@extref).
 
 The AD overhead of evaluating `J_T` should be extremely minimal (negligible compared to the numerical cost of the backward and forward propagations), but it can be further simplified with analytic chain rules [GoerzQ2022](@cite):
 
