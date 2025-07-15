@@ -9,6 +9,7 @@ SPDX-License-Identifier: CC-BY-4.0
 [![Version](https://juliahub.com/docs/General/GRAPE/stable/version.svg)](https://juliahub.com/ui/Packages/General/GRAPE)
 [![Stable](https://img.shields.io/badge/docs-stable-blue.svg)](https://juliaquantumcontrol.github.io/GRAPE.jl/)
 [![Dev](https://img.shields.io/badge/docs-dev-blue.svg)](https://juliaquantumcontrol.github.io/GRAPE.jl/dev)
+[![JOSS](https://joss.theoj.org/papers/25e7a240c129459ad160dd3fb9d009d8/status.svg)](https://joss.theoj.org/papers/25e7a240c129459ad160dd3fb9d009d8)
 [![Build Status](https://github.com/JuliaQuantumControl/GRAPE.jl/workflows/CI/badge.svg)](https://github.com/JuliaQuantumControl/GRAPE.jl/actions)
 [![REUSE](https://github.com/JuliaQuantumControl/GRAPE.jl/actions/workflows/REUSE.yml/badge.svg)](https://github.com/JuliaQuantumControl/GRAPE.jl/actions/workflows/REUSE.yml)
 [![Coverage](https://codecov.io/gh/JuliaQuantumControl/GRAPE.jl/branch/master/graph/badge.svg)](https://codecov.io/gh/JuliaQuantumControl/GRAPE.jl)

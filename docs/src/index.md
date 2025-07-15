@@ -17,7 +17,9 @@ github_badge = "[![Github](https://img.shields.io/badge/JuliaQuantumControl-GRAP
 
 version_badge = "![v$VERSION](https://img.shields.io/badge/version-v$VERSION-green.svg)"
 
-Markdown.parse("$github_badge $version_badge")
+joss_badge = "[![status](https://joss.theoj.org/papers/25e7a240c129459ad160dd3fb9d009d8/status.svg)](https://joss.theoj.org/papers/25e7a240c129459ad160dd3fb9d009d8)"
+
+Markdown.parse("$github_badge $version_badge $joss_badge")
 ```
 
 Gradient Ascent Pulse Engineering in Julia
