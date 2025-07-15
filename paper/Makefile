@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: CC0-1.0
 
-.PHONY: help clean paper pandoc
+.PHONY: help clean paper preprint pandoc
 
 DOCKER ?= docker
 FOLDER ?= $(PWD)
@@ -32,6 +32,7 @@ help:  ## Show this help
 
 clean: ## Clean up generated files
 	rm -f paper.pdf
+	rm -f paper.preprint.*
 	rm -rf jats
 
 paper: paper.pdf ## Compile the JOSS manuscript paper.md
@@ -41,3 +42,12 @@ pandoc:  ## Compile the manuscript directly with `pandoc` (light-weight preview)
 
 paper.pdf: paper.md paper.bib
 	$(DOCKER) run --rm --volume $(FOLDER):/data --user $(id -u):$(id -g) --env JOURNAL=joss openjournals/inara -o pdf -p paper.md
+
+preprint: paper.preprint.pdf  ## Compile the manuscript in "preprint" format
+
+paper.preprint.tex: paper.md paper.bib
+	$(DOCKER) run --rm --volume $(FOLDER):/data --user $(id -u):$(id -g) --env JOURNAL=joss openjournals/inara -o preprint -p paper.md
+
+paper.preprint.pdf: paper.preprint.tex
+	pdflatex $<
+	pdflatex $<
