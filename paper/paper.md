@@ -1,9 +1,3 @@
-<!--
-SPDX-FileCopyrightText: © 2025 Michael Goerz <mail@michaelgoerz.net>
-
-SPDX-License-Identifier: CC-BY-4.0
--->
-
 ---
 title: 'GRAPE.jl: Gradient Ascent Pulse Engineering in Julia'
 tags:
@@ -24,9 +18,7 @@ authors:
 affiliations:
  - name: DEVCOM Army Research Laboratory, 2800 Powder Mill Road, Adelphi, MD 20783, United States
    index: 1
-biblatexoptions:
-    uniquename=false
-date: 14 July 2025
+date: 15 July 2025
 bibliography: paper.bib
 ---
 
