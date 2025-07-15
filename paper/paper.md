@@ -12,12 +12,17 @@ authors:
   - name: Sebastián C. Carrasco
     orcid: 0000-0002-6512-9695
     affiliation: "1"
+  - name: Alastair Marshall
+    orcid: 0000-0001-7772-2173
+    affiliation: "2"
   - name: Vladimir S. Malinovsky
     orcid: 0000-0002-0243-9282
     affiliation: "1"
 affiliations:
  - name: DEVCOM Army Research Laboratory, 2800 Powder Mill Road, Adelphi, MD 20783, United States
    index: 1
+ - name: Universitat Ulm,  Institute for Quantum Optics, Albert-Einstein-Allee 11, 89081 Ulm, Germany
+   index: 2
 date: 15 July 2025
 bibliography: paper.bib
 ---
