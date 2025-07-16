@@ -19,9 +19,9 @@ authors:
     orcid: 0000-0002-0243-9282
     affiliation: "1"
 affiliations:
- - name: DEVCOM Army Research Laboratory, 2800 Powder Mill Road, Adelphi, MD 20783, United States
+ - name: DEVCOM Army Research Laboratory, United States
    index: 1
- - name: Universität Ulm,  Institute for Quantum Optics, Albert-Einstein-Allee 11, 89081 Ulm, Germany
+ - name: Universität Ulm, Institute for Quantum Optics, Germany
    index: 2
 date: 15 July 2025
 bibliography: paper.bib
