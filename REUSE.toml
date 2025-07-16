@@ -6,7 +6,10 @@ SPDX-FileCopyrightText = "© 2025 Michael Goerz <mail@michaelgoerz.net>"
 SPDX-License-Identifier = "CC0-1.0"
 
 [[annotations]]
-path = "paper/paper.bib"
+path = [
+    "paper/paper.bib",
+    "docs/src/refs.bib"
+]
 SPDX-FileCopyrightText = "© 2025 Michael Goerz <mail@michaelgoerz.net>"
 SPDX-License-Identifier = "CC0-1.0"
 

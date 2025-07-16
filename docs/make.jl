@@ -51,7 +51,7 @@ fallbacks = ExternalFallbacks(
 
 println("Starting makedocs")
 
-bib = CitationBibliography(joinpath(@__DIR__, "..", "paper", "paper.bib"); style=:numeric)
+bib = CitationBibliography(joinpath(@__DIR__, "src", "refs.bib"); style=:numeric)
 
 PAGES = [
     "Home" => "index.md",
