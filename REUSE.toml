@@ -1,6 +1,11 @@
 version = 1
 
 [[annotations]]
+path = "CLAUDE.md"
+SPDX-FileCopyrightText = "© 2025 Michael Goerz <mail@michaelgoerz.net>"
+SPDX-License-Identifier = "CC0-1.0"
+
+[[annotations]]
 path = "docs/src/inventories/*"
 SPDX-FileCopyrightText = "© 2025 Michael Goerz <mail@michaelgoerz.net>"
 SPDX-License-Identifier = "CC0-1.0"
