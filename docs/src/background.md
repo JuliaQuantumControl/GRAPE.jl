@@ -640,7 +640,7 @@ As in Eq. \eqref{eq:psi-time-evolution}, we define ``|\Psi_k(t_n)⟩ = \hat{U}^
 
 Typically, running costs on the control fields are direct analytic expressions, e.g., ``g_a(\{\epsilon_{nl}\}) = \epsilon_{nl}^2`` to penalize large amplitudes. Thus, they are easily included in the gradient, e.g., ``(\nabla g_a)_{nl} = 2 \epsilon_{nl}``. For convenience, this can also be done with automatic differentiation. This even extends to penalties on the first and second derivatives of the controls [LeungPRA2017,AbdelhafezPRA2019,AbdelhafezPRA2020](@cite).
 
-In `GRAPE.jl`, running costs are enabled by passing a `J_a` function together with `lambda_a` to [`QuantumControl.optimize`](@extref) with `method=GRAPE`. The optimization also needs a function `grad_J_a` which can be obtained automatically, see [`QuantumControl.Functionals.make_grad_J_a`](@ref).
+In `GRAPE.jl`, running costs are enabled by passing a `J_a` function together with `lambda_a` to [`QuantumControl.optimize`](@extref) with `method=GRAPE`. The optimization also needs a function `grad_J_a` which can be obtained automatically, see [`QuantumControl.Functionals.make_grad_J_a`](@extref).
 
 
 ### [State-dependent running costs](@id State-Dependent-Running-Costs)

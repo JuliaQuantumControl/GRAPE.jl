@@ -17,9 +17,9 @@ The workspace is for internal use. However, it is also accessible in a
 attributes:
 
 * `trajectories`: a copy of the trajectories defining the control problem
+* `tlist`: the time grid for the optimization
 * `adjoint_trajectories`: The `trajectories` with the adjoint generator
-* `kwargs`: The keyword arguments from the [`ControlProblem`](@ref) or the
-  call to [`optimize`](@ref).
+* `kwargs`: The keyword arguments from the call to [`optimize`](@ref).
 * `controls`: A tuple of the original controls (probably functions)
 * `pulsevals_guess`: The combined vector of pulse values that are the guess in
   the current iteration. Initially, the vector is the concatenation of
@@ -50,7 +50,7 @@ attributes:
   of storage contains (one for each trajectory)
 * `fw_propagators`: The propagators used for the forward propagation
 * `bw_grad_propagators`: The propagators used for the backward propagation of
-  [`QuantumGradientGenerators.GradVector`](@ref) states
+  [`QuantumGradientGenerators.GradVector`](@extref) states
   (`gradient_method=:gradgen` only)
 * `bw_propagators`: The propagators used for the backward propagation
   (`gradient_method=:taylor` only)
@@ -69,10 +69,11 @@ information in the workspace
 mutable struct GrapeWrk{O}
 
     trajectories
+    tlist
     adjoint_trajectories
     # trajectories for bw-prop of gradients
     grad_trajectories
-    kwargs
+    kwargs::Dict{Symbol,Any}
     controls
     pulsevals_guess::Vector{Float64}
     pulsevals::Vector{Float64}
@@ -133,23 +134,23 @@ mutable struct GrapeWrk{O}
 end
 
 
-function GrapeWrk(problem::QuantumControl.ControlProblem; verbose=false)
-    use_threads = get(problem.kwargs, :use_threads, false)
-    gradient_method = get(problem.kwargs, :gradient_method, :gradgen)
-    trajectories = [traj for traj in problem.trajectories]
+function GrapeWrk(trajectories, tlist, kwargs)
+    verbose = get(kwargs, :verbose, false)
+    use_threads = get(kwargs, :use_threads, false)
+    gradient_method = get(kwargs, :gradient_method, :gradgen)
+    trajectories = [traj for traj in trajectories]  # shallow copy
     N = length(trajectories)
-    adjoint_trajectories = [adjoint(traj) for traj in problem.trajectories]
+    adjoint_trajectories = [adjoint(traj) for traj in trajectories]
     controls = get_controls(trajectories)
     if length(controls) == 0
         error("no controls in trajectories: cannot optimize")
     end
-    tlist = problem.tlist
     N_T = length(tlist) - 1
     # Concatenate pulse values. For `N_T = length(tlist) - 1` time intervals,
     # `pulsesvals[(l-1)*N_T + n]` is the value for the l'th control and time
     # index n
     pulsevals = vcat([discretize_on_midpoints(control, tlist) for control in controls]...)
-    kwargs = Dict(problem.kwargs)  # creates a shallow copy; ok to modify
+    kwargs = Dict{Symbol,Any}(kwargs)  # creates a shallow copy; ok to modify
     default_pulse_options = IdDict()  # not used
     pulse_options = get(kwargs, :pulse_options, default_pulse_options)
     fg_count = zeros(Int64, 2)
@@ -174,7 +175,7 @@ function GrapeWrk(problem::QuantumControl.ControlProblem; verbose=false)
             )
         )
     else
-        result = GrapeResult(problem)
+        result = GrapeResult(trajectories, tlist, kwargs)
     end
     parameters = IdDict(
         # The view-aliasing below ensures that we can mutate `pulsevals` and
@@ -299,6 +300,7 @@ function GrapeWrk(problem::QuantumControl.ControlProblem; verbose=false)
         hasmethod(chi, Tuple{typeof(result.states),typeof(trajectories)}, (:tau,))
     GrapeWrk{O}(
         trajectories,
+        tlist,
         adjoint_trajectories,
         grad_trajectories,
         kwargs,
@@ -332,6 +334,12 @@ function GrapeWrk(problem::QuantumControl.ControlProblem; verbose=false)
         taylor_grad_states,
         use_threads
     )
+end
+
+
+# undocumented fallback, for backwards compatibility / debugging
+function GrapeWrk(problem::QuantumControl.ControlProblem)
+    return GrapeWrk(problem.trajectories, problem.tlist, problem.kwargs)
 end
 
 

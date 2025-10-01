@@ -145,6 +145,33 @@ function print_ls_table(res)
     println("")
 end
 
+@testset "GRAPE.optimize" begin
+
+    println("\n================== GRAPE.optimize ==================\n")
+    H = tls_hamiltonian()
+    tlist = collect(range(0, 5, length=501))
+    Ψ₀ = ComplexF64[1, 0]
+    Ψtgt = ComplexF64[0, 1]
+    trajectories = [Trajectory(Ψ₀, H, target_state=Ψtgt)] # XXX
+    res = GRAPE.optimize(
+        trajectories,
+        tlist;
+        iter_stop=5,
+        prop_method=ExpProp,
+        J_T=J_T_sm,
+        check_convergence=res -> begin
+            ((res.J_T < 1e-10) && (res.converged = true) && (res.message = "J_T < 10⁻¹⁰"))
+        end,
+        callback=ls_info_hook,
+    )
+    print_ls_table(res)
+    display(res)
+    @test res.J_T < 1e-3
+    @test 0.75 < maximum(abs.(res.optimized_controls[1])) < 0.85
+    println("===================================================\n")
+
+end
+
 
 @testset "TLS (LBFGS.jl)" begin
 

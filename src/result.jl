@@ -7,7 +7,7 @@ using QuantumControl: AbstractOptimizationResult
 using Printf
 using Dates
 
-"""Result object returned by [`optimize_grape`](@ref).
+"""Result object returned by [`GRAPE.optimize`](@ref).
 
 # Attributes
 
@@ -33,7 +33,7 @@ The attributes of a `GrapeResult` object include
 
 All of the above attributes may be referenced in a `check_convergence` function
 passed to
-[`optimize(problem; method=GRAPE)`](@ref optimize(::Any, ::Val{:GRAPE}))
+[`QuantumControl.optimize(problem; method=GRAPE)`](@ref QuantumControl.optimize(::Any, ::Val{:GRAPE}))
 """
 mutable struct GrapeResult{STST} <: AbstractOptimizationResult
     tlist::Vector{Float64}
@@ -59,21 +59,20 @@ mutable struct GrapeResult{STST} <: AbstractOptimizationResult
 
 end
 
-function GrapeResult(problem)
-    tlist = problem.tlist
-    controls = get_controls(problem.trajectories)
-    iter_start = get(problem.kwargs, :iter_start, 0)
-    iter_stop = get(problem.kwargs, :iter_stop, 5000)
+function GrapeResult(trajectories, tlist, kwargs)
+    controls = get_controls(trajectories)
+    iter_start = get(kwargs, :iter_start, 0)
+    iter_stop = get(kwargs, :iter_stop, 5000)
     iter = iter_start
     secs = 0
-    tau_vals = zeros(ComplexF64, length(problem.trajectories))
+    tau_vals = zeros(ComplexF64, length(trajectories))
     guess_controls = [discretize(control, tlist) for control in controls]
     J_T = 0.0
     J_T_prev = 0.0
     J_a = 0.0
     J_a_prev = 0.0
     optimized_controls = [copy(guess) for guess in guess_controls]
-    states = [similar(traj.initial_state) for traj in problem.trajectories]
+    states = [similar(traj.initial_state) for traj in trajectories]
     start_local_time = now()
     end_local_time = now()
     records = Vector{Tuple}()
