@@ -5,16 +5,21 @@
 
 # Usage
 
-The `GRAPE` package is used in the context of the `QuantumControl` framework. You should be familiar with the [concepts used in the framework](@extref QuantumControl :label:`Glossary`) and its [overview](@extref QuantumControl :label:`Overview`).
+The `GRAPE` package is best used via the interface provided by the `QuantumControl` framework, see the [Relation to the QuantumControl Framework](@ref). It helps to be familiar with the [concepts used in the framework](@extref QuantumControl :label:`Glossary`) and its [overview](@extref QuantumControl :label:`Overview`).
 
-For specific examples of the use of `GRAPE`, see the [Tutorials of the JuliaQuantumControl organization](https://juliaquantumcontrol.github.io/Tutorials/), e.g., the simple [State-to-state transfer in a two-level system](https://juliaquantumcontrol.github.io/Tutorials/TLS_State_to_State.html).
+The package can also be used standalone, as illustrated in the previous [Tutorial](@ref), and encapsulated in the API of the `GRAPE.optimize` function:
 
-More generally:
+```@docs; canonical=false
+GRAPE.optimize
+```
 
-* Set up a [`QuantumControl.ControlProblem`](@extref) with one or more [trajectories](@extref `QuantumControl.Trajectory`). The `problem` must have a set of controls, see [`QuantumControl.Controls.get_controls(problem)`](@extref QuantumControl `QuantumPropagators.Controls.get_controls`), that can be discretized as piecewise-constant on the intervals of the time grid, cf. [`QuantumPropagators.Controls.discretize_on_midpoints`](@extref).
-* Make sure the `problem` includes a well-defined final time functional `J_T`. The GRAPE method also requires `chi` to determine the boundary condition ``\ket{\chi_k} = \partial J_T / \partial \bra{\Psi_k(T)}``. This can be determined automatically, analytically for known functions `J_T`, or via automatic differentiation, so it is an optional parameter.
-* Propagate the system described by `problem` to ensure you understand the dynamics under the guess controls!
-* Call [`QuantumControl.optimize`](@extref), or, preferably, [`QuantumControl.@optimize_or_load`](@extref `QuantumControl.Workflows.@optimize_or_load`) with `method = GRAPE`. Pass additional keyword arguments to customize GRAPE's behavior:
+## Relation to the QuantumControl Framework
+
+The `GRAPE` package is associated with the broader [`QuantumControl` framework](@extref QuantumControl :doc:`index`). The role of `QuantumControl` in relation to `GRAPE` has two aspects:
+
+1. `QuantumControl` provides a collection of components that are useful for formulating control problems in general, for solution via `GRAPE` or arbitrary other methods of quantum control. This includes, for example, [control functions](@extref QuantumControl `QuantumControlControlsAPI`) and [control amplitudes](@extref QuantumControl `QuantumControlAmplitudesAPI`), [data structures for time-dependent Hamiltonians or Liouvillians](@extref QuantumControl `QuantumControlGeneratorsAPI`), or [common optimization functionals](@extref QuantumControl `QuantumControlFunctionalsAPI`).
+
+2. `QuantumControl` provides a common way to formulate a [`ControlProblem`](@extref `QuantumControl.ControlProblem`) and general [`optimize`](@extref `QuantumControl.optimize`) and [`@optimize_or_load`](@extref `QuantumControl.Workflows.@optimize_or_load`) functions that particular optimization packages like `GRAPE` can plug in to. The aim is to encourage a common interface between different optimization packages that makes it easy to switch between different methods.
 
 ```@docs; canonical=false
 QuantumControl.optimize(::ControlProblem, ::Val{:GRAPE})

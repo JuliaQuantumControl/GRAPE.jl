@@ -10,16 +10,13 @@ LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 Printf = "de0858da-6303-5e67-8744-51eddeeeb8d7"
 QuantumControl = "8a270532-f23f-47a8-83a9-b33d10cad486"
 QuantumGradientGenerators = "a563f35e-61db-434d-8c01-8b9e3ccdfd85"
+SciMLPublic = "431bcebd-1456-4ced-9d72-93c2757fff0b"
 
 [weakdeps]
 Optim = "429524aa-4258-5aef-a3af-852621145aeb"
 
-
 [extensions]
 GRAPEOptimExt = "Optim"
-# GRAPELBFGSBExt = "LBFGSB"
-# Cannot load GRAPELBFGSBExt as an extension if LBFGSB is a hard
-# dependency. See `include` in `src/GRAPE.jl`.
 
 [compat]
 Dates = "1"
@@ -29,4 +26,5 @@ Optim = "1"
 Printf = "1"
 QuantumControl = ">=0.11.1"
 QuantumGradientGenerators = ">=0.1.8"
+SciMLPublic = "1.0.0"
 julia = "1.9"

@@ -4,8 +4,6 @@
 
 # init file for "make devrepl"
 using Revise
-using Plots
-unicodeplots()
 using JuliaFormatter
 using QuantumControlTestUtils: test, show_coverage, generate_coverage_html
 using LiveServer: LiveServer, serve, servedocs

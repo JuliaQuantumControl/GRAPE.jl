@@ -31,6 +31,7 @@ links = InterLinks(
     ),
     "Zygote" => "https://fluxml.ai/Zygote.jl/dev/",
     "Optim" => "https://julianlsolvers.github.io/Optim.jl/stable/",
+    "StaticArrays" => "https://juliaarrays.github.io/StaticArrays.jl/stable/",
     "QuantumPropagators" => "https://juliaquantumcontrol.github.io/QuantumPropagators.jl/$DEV_OR_STABLE",
     "QuantumGradientGenerators" => "https://juliaquantumcontrol.github.io/QuantumGradientGenerators.jl/$DEV_OR_STABLE",
     "QuantumControl" => "https://juliaquantumcontrol.github.io/QuantumControl.jl/$DEV_OR_STABLE",
@@ -47,6 +48,14 @@ fallbacks = ExternalFallbacks(
     "propagate" => "@extref QuantumPropagators.propagate",
     "init_prop_trajectory" => "@extref QuantumControl.init_prop_trajectory",
     "Functional" => "@extref QuantumControl :std:label:`Functional`",
+    "QuantumControl.Functionals.make_chi" => "@extref QuantumControl :jl:function:`QuantumControl.Functionals.make_chi`",
+    "make_grad_J_a" => "@extref QuantumControl :jl:function:`QuantumControl.Functionals.make_grad_J_a`",
+    "QuantumControl.Workflows.@optimize_or_load" => "@extref QuantumControl :jl:macro:`QuantumControl.Workflows.@optimize_or_load`",
+    "QuantumControl.@optimize_or_load" => "@extref QuantumControl :jl:macro:`QuantumControl.Workflows.@optimize_or_load`",
+    "propagate_trajectory" => "@extref QuantumControl :jl:function:`QuantumControl.propagate_trajectory`",
+    "QuantumControl.Functionals.make_gate_chi" => "@extref QuantumControl :jl:function:`QuantumControl.Functionals.make_gate_chi`",
+    "QuantumControl.Functionals.make_grad_J_a" => "@extref QuantumControl :jl:function:`QuantumControl.Functionals.make_grad_J_a`",
+    automatic=false,
 )
 
 println("Starting makedocs")
@@ -55,6 +64,7 @@ bib = CitationBibliography(joinpath(@__DIR__, "src", "refs.bib"); style=:numeric
 
 PAGES = [
     "Home" => "index.md",
+    "Tutorial" => "tutorial.md",
     "Usage" => "usage.md",
     "Background" => "background.md",
     "API" => "api.md",
@@ -63,7 +73,6 @@ PAGES = [
 
 makedocs(;
     plugins=[bib, links, fallbacks],
-    modules=[GRAPE],
     authors=AUTHORS,
     sitename="GRAPE.jl",
     doctest=false,  # we have no doctests (but trying to run them is slow)
@@ -93,7 +102,7 @@ makedocs(;
         footer="[$NAME.jl]($GITHUB) v$VERSION docs [CC-BY-4.0](https://creativecommons.org/licenses/by/4.0/deed.en). Powered by [Documenter.jl](https://github.com/JuliaDocs/Documenter.jl).",
     ),
     pages=PAGES,
-    warnonly=true,
+    warnonly=false,
 )
 
 println("Finished makedocs")

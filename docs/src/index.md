@@ -58,7 +58,7 @@ Pages = [pair[2] for pair in Main.PAGES[2:end-1]]
 
 `GRAPE.jl` integrates with the [JuliaQuantumControl ecosystem](https://github.com/JuliaQuantumControl) and, in particular, the following packages:
 
-* [`QuantumControl.jl`](https://github.com/JuliaQuantumControl/QuantumControl.jl) – The overall control framework, used to define the quantum control problem. `GRAPE` is used by calling [`QuantumControl.optimize`](@extref) with `method = GRAPE`.
+* [`QuantumControl.jl`](https://github.com/JuliaQuantumControl/QuantumControl.jl) – The overall control framework, used to define quantum control problems independent of a particular method. `GRAPE` can be used by calling [`QuantumControl.optimize`](@extref) with `method = GRAPE`. See [Relation to the QuantumControl Framework](@ref)
 * [`QuantumPropagators.jl`](https://github.com/JuliaQuantumControl/QuantumPropagators.jl) – The numerical backend for simulating the piecewise-constant time dynamics of the system. Implements efficient schemes such as Chebychev propagation [Tal-EzerJCP1984](@cite), but also can further delegate to [`DifferentialEquations.jl`](https://docs.sciml.ai/DiffEqDocs/stable/)
 * [`QuantumGradientGenerators.jl`](https://github.com/JuliaQuantumControl/QuantumGradientGenerators.jl) – Implementation of the gradient of a single-time-step evolution operator according to [GoodwinJCP2015](@citet), a [key component of the GRAPE scheme as implemented here](@ref Overview-Gradgen).
 
