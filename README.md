@@ -54,10 +54,8 @@ result = GRAPE.optimize(
     [traj], tlist;
     prop_method = ExpProp,  # suitable for small systems only!
     J_T = J_T_sm,  #  J_T = 1 - |⟨Ψ(T)|1⟩|²
-    check_convergence=res -> begin
-        # without convergence check, stop after 5000 iterations
-        ((res.J_T < 1e-3) && (res.converged = true) && (res.message = "J_T < 10⁻³"))
-    end,
+    # without convergence check, stop after 5000 iterations
+    check_convergence=(res -> ((res.J_T < 1e-3) && "J_T < 10⁻³")),
 )
 
 ϵ_opt = result.optimized_controls[1]
@@ -71,9 +69,7 @@ problem = ControlProblem(
     [traj], tlist,
     prop_method = ExpProp,
     J_T = J_T_sm,
-    check_convergence=res -> begin
-        ((res.J_T < 1e-3) && (res.converged = true) && (res.message = "J_T < 10⁻³"))
-    end,
+    check_convergence=(res -> ((res.J_T < 1e-3) && "J_T < 10⁻³")),
 )
 
 result = optimize(problem; method=GRAPE)

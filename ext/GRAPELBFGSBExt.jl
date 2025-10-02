@@ -6,10 +6,16 @@ module GRAPELBFGSBExt
 
 import LBFGSB
 using GRAPE: GrapeWrk, update_result!
-import GRAPE: run_optimizer, gradient, step_width, search_direction, norm_search
+import GRAPE:
+    run_optimizer,
+    gradient,
+    step_width,
+    search_direction,
+    norm_search,
+    _apply_convergence_check!
 
 
-function run_optimizer(optimizer::LBFGSB.L_BFGS_B, wrk, fg!, callback, check_convergence!)
+function run_optimizer(optimizer::LBFGSB.L_BFGS_B, wrk, fg!, callback, check_convergence)
 
     m = get(wrk.kwargs, :lbfgsb_m, 10)
     factr = get(wrk.kwargs, :lbfgsb_factr, 1e1)
@@ -111,7 +117,7 @@ function run_optimizer(optimizer::LBFGSB.L_BFGS_B, wrk, fg!, callback, check_con
             if !(isnothing(info_tuple) || isempty(info_tuple))
                 push!(wrk.result.records, info_tuple)
             end
-            check_convergence!(wrk.result)
+            _apply_convergence_check!(wrk.result, check_convergence)
             if wrk.result.converged
                 fill!(obj.task, Cuchar(' '))
                 obj.task[1:24] = b"STOP: NEW_X -> CONVERGED"

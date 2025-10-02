@@ -34,6 +34,7 @@ The attributes of a `GrapeResult` object include
 All of the above attributes may be referenced in a `check_convergence` function
 passed to
 [`QuantumControl.optimize(problem; method=GRAPE)`](@ref QuantumControl.optimize(::Any, ::Val{:GRAPE}))
+or [`GRAPE.optimize`](@ref).
 """
 mutable struct GrapeResult{STST} <: AbstractOptimizationResult
     tlist::Vector{Float64}

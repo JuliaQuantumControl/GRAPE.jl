@@ -128,18 +128,21 @@ Returns a [`GrapeResult`](@ref).
     that time interval, respectively the global `upper_bound`, if given.
   - `:lower_bounds`: A vector of lower bound values. Values of `-Inf` indicate
     an unconstrained lower bound for that time interval,
-* `callback`: A function (or tuple of functions) that receives the
-  [GRAPE workspace](@ref GrapeWrk) and the iteration number. The function
-  may return a tuple of values which are stored in the
-  [`GrapeResult`](@ref) object `result.records`. The function can also mutate
-  the workspace, in particular the updated `pulsevals`. This may be used,
-  e.g., to apply a spectral filter to the updated pulses or to perform
+* `callback`: A function that receives the [GRAPE workspace](@ref GrapeWrk)
+  and the iteration number. The function may return a tuple of values which are
+  stored in the [`GrapeResult`](@ref) object `result.records`. The function can
+  also mutate the workspace, in particular the updated `pulsevals`. This may be
+  used, e.g., to apply a spectral filter to the updated pulses or to perform
   similar manipulations.
 * `check_convergence`: A function to check whether convergence has been reached.
-  Receives a [`GrapeResult`](@ref) object `result`, and should set
-  `result.converged` to `true` and `result.message` to an appropriate string in
-  case of convergence. Multiple convergence checks can be performed by chaining
-  functions with `∘`. The convergence check is performed after any `callback`.
+  Receives a [`GrapeResult`](@ref) object `result`, and must return one of the
+  following:
+  - A boolean (`true` if convergence is reached, `false` otherwise)
+  - A string with a reason for the convergence, or an empty string if not converged.
+  - The original `result` object or `nothing`, indicating that
+    `result.converged` and   `result.message` may have been modified to
+    indicate convergence
+  The convergence check is performed after any `callback`.
 * `prop_method`: The propagation method to use for each trajectory, see below.
 * `verbose=false`: If `true`, print information during initialization
 * `rethrow_exceptions`: By default, any exception ends the optimization, but

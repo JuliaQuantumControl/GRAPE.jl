@@ -11,6 +11,11 @@ unicodeplots()
 # Note: comment outer @testset to stop after first @safetestset failure
 @time @testset verbose = true "GRAPE.jl Package" begin
 
+    println("\n* README Example (test_readme.jl)")
+    @time @safetestset "README Example" begin
+        include("test_readme_example.jl")
+    end
+
     println("\n* TLS Optimization (test_tls_optimization.jl)")
     @time @safetestset "TLS Optimization" begin
         include("test_tls_optimization.jl")
@@ -39,6 +44,11 @@ unicodeplots()
     println("\n* LBFGSB Saddle point (test_lbfgsb_saddle_point.jl):")
     @time @safetestset "LBFGSB Saddle point" begin
         include("test_lbfgsb_saddle_point.jl")
+    end
+
+    println("\n* Convergence Checks (test_convergence_checks.jl):")
+    @time @safetestset "Convergence Checks" begin
+        include("test_convergence_checks.jl")
     end
 
     println("\n* Iterations (test_iterations.jl)")

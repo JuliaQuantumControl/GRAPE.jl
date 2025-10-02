@@ -50,7 +50,10 @@ arguments:
   a list of header labels, see `print_iter_info`. See
   [`make_grape_print_iters`](@ref)
 
-These options still allow for the normal `callback` argument.
+These options still allow for the normal `callback` argument. With
+`QuantumcControl.optimize`, the `callback` can be a tuple of callback
+functions that will be combined automatically, which `GRAPE.optimize` only
+supports as single callback function.
 
 The GRAPE optimization may also be initiated via
 [`QuantumControl.@optimize_or_load`](@ref), which additionally adds
@@ -74,7 +77,7 @@ function optimize(trajectories, tlist; kwargs...)
         msg = "The `update_hook` and `info_hook` arguments have been superseded by the `callback` argument"
         throw(ArgumentError(msg))
     end
-    check_convergence! = get(kwargs, :check_convergence, res -> res)
+    check_convergence = get(kwargs, :check_convergence, res -> res)
     verbose = get(kwargs, :verbose, false)
 
     wrk = GrapeWrk(trajectories, tlist, kwargs)
@@ -120,7 +123,7 @@ function optimize(trajectories, tlist; kwargs...)
         end
     end
     try
-        run_optimizer(optimizer, wrk, fg!, callback, check_convergence!)
+        run_optimizer(optimizer, wrk, fg!, callback, check_convergence)
     catch exc
         if get(kwargs, :rethrow_exceptions, false)
             rethrow()
@@ -145,6 +148,37 @@ function run_optimizer(optimizer, args...)
     error("Unknown optimizer: $optimizer")
     # The methods for different optimizers are implemented as module extensions
     # for LBFGS and Optim.
+end
+
+
+function _apply_convergence_check!(result, check_convergence)
+    if result.converged
+        # If the result was already set as "converged", most likely because it
+        # reached iter_stop, or _maybe_ because convergence was set in a
+        # callback (people shouldn't, but they _can_), we don't want to further
+        # interfere with that
+        return nothing
+    else
+        converged = check_convergence(result)
+        if converged isa Bool
+            result.converged = converged
+            if converged
+                result.message = "Convergence check returned true"
+            end
+        elseif converged isa AbstractString
+            if !isempty(converged)
+                result.converged = true
+                result.message = string(converged)
+            end
+        elseif isnothing(converged)
+            # `check_convergence` is allowed to mutate `result` and then return
+            # either the original `result` object or `nothing`
+        elseif converged ≢ result
+            msg = "The check_convergence function did not return a Boolean, String, Nothing, or modified GrapeResult object"
+            @warn msg converged
+        end
+        return nothing
+    end
 end
 
 

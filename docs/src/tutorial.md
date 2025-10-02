@@ -427,13 +427,7 @@ result = GRAPE.optimize(
     J_T = J_T_sm,
     callback = GRAPE.make_grape_print_iters(),
     iter_stop = 200,
-    check_convergence = res -> begin
-        # TODO: make not-in-place
-        if res.J_T < 1e-2
-            res.message = "Gate error < 10⁻²"
-            res.converged = true
-        end
-    end,
+    check_convergence = (res -> ((res.J_T < 1e-2) && "Gate error < 10⁻²")),
     upper_bound = 50⋅2π⋅MHz,
     lower_bound = -50⋅2π⋅MHz,
     use_threads = true,

@@ -6,7 +6,7 @@ module GRAPEOptimExt
 
 import Optim
 using GRAPE: GrapeWrk, update_result!
-import GRAPE: run_optimizer, step_width, search_direction
+import GRAPE: run_optimizer, step_width, search_direction, _apply_convergence_check!
 
 
 function run_optimizer(
@@ -14,7 +14,7 @@ function run_optimizer(
     wrk,
     fg!,
     callback,
-    check_convergence!
+    check_convergence
 )
 
     tol_options = Optim.Options(
@@ -67,7 +67,7 @@ function run_optimizer(
         if !(isnothing(info_tuple) || isempty(info_tuple))
             push!(wrk.result.records, info_tuple)
         end
-        check_convergence!(wrk.result)
+        _apply_convergence_check!(wrk.result, check_convergence)
         return wrk.result.converged
     end
 

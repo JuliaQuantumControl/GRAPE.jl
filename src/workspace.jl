@@ -35,7 +35,6 @@ attributes:
 * `grad_J_a`: The *current*  gradient for the running cost part of the
   functional.
 * `J_parts`: The two-component vector ``[J_T, J_a]``
-* `result`: The current result object
 * `upper_bounds`: Upper bound for every `pulsevals`; `+Inf` indicates no bound.
 * `lower_bounds`: Lower bound for every `pulsevals`; `-Inf` indicates no bound.
 * `fg_count`: A two-element vector containing the number of evaluations of the
