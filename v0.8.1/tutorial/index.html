@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Tutorial · GRAPE.jl</title><meta name="title" content="Tutorial · GRAPE.jl"/><meta property="og:title" content="Tutorial · GRAPE.jl"/><meta property="twitter:title" content="Tutorial · GRAPE.jl"/><meta name="description" content="Documentation for GRAPE.jl."/><meta property="og:description" content="Documentation for GRAPE.jl."/><meta property="twitter:description" content="Documentation for GRAPE.jl."/><meta property="og:url" content="https://juliaquantumcontrol.github.io/GRAPE.jl/tutorial/"/><meta property="twitter:url" content="https://juliaquantumcontrol.github.io/GRAPE.jl/tutorial/"/><link rel="canonical" href="https://juliaquantumcontrol.github.io/GRAPE.jl/tutorial/"/><script data-outdated-warner src="../assets/warner.js"></script><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.050/juliamono.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.8/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL=".."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../assets/documenter.js"></script><script src="../search_index.js"></script><script src="../siteinfo.js"></script><script src="../../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/catppuccin-mocha.css" data-theme-name="catppuccin-mocha"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/catppuccin-macchiato.css" data-theme-name="catppuccin-macchiato"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/catppuccin-frappe.css" data-theme-name="catppuccin-frappe"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/catppuccin-latte.css" data-theme-name="catppuccin-latte"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../assets/themeswap.js"></script><link href="../assets/citations.css" rel="stylesheet" type="text/css"/><link href="https://juliaquantumcontrol.github.io/QuantumControl.jl/dev/assets/topbar/topbar.css" rel="stylesheet" type="text/css"/><script src="https://juliaquantumcontrol.github.io/QuantumControl.jl/dev/assets/topbar/topbar.js"></script></head><body><div id="documenter"><nav class="docs-sidebar"><div class="docs-package-name"><span class="docs-autofit"><a href="../">GRAPE.jl</a></span></div><button class="docs-search-query input is-rounded is-small is-clickable my-2 mx-auto py-1 px-2" id="documenter-search-query">Search docs (Ctrl + /)</button><ul class="docs-menu"><li><a class="tocitem" href="../">Home</a></li><li class="is-active"><a class="tocitem" href>Tutorial</a><ul class="internal"><li><a class="tocitem" href="#A-Two-Qubit-System"><span>A Two-Qubit System</span></a></li><li><a class="tocitem" href="#Units"><span>Units</span></a></li><li><a class="tocitem" href="#Control-Amplitudes"><span>Control Amplitudes</span></a></li><li><a class="tocitem" href="#Hamiltonian"><span>Hamiltonian</span></a></li><li><a class="tocitem" href="#Optimization-Target"><span>Optimization Target</span></a></li><li><a class="tocitem" href="#Optimization"><span>Optimization</span></a></li><li><a class="tocitem" href="#Optimization-Result"><span>Optimization Result</span></a></li></ul></li><li><a class="tocitem" href="../usage/">Usage</a></li><li><a class="tocitem" href="../background/">Background</a></li><li><a class="tocitem" href="../api/">API</a></li><li><a class="tocitem" href="../references/">References</a></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><a class="docs-sidebar-button docs-navbar-link fa-solid fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a><nav class="breadcrumb"><ul class="is-hidden-mobile"><li class="is-active"><a href>Tutorial</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>Tutorial</a></li></ul></nav><div class="docs-right"><a class="docs-navbar-link" href="https://github.com/JuliaQuantumControl/GRAPE.jl" title="View the repository on GitHub"><span class="docs-icon fa-brands"></span><span class="docs-label is-hidden-touch">GitHub</span></a><a class="docs-navbar-link" href="https://github.com/JuliaQuantumControl/GRAPE.jl/blob/master/docs/src/tutorial.md" title="Edit source on GitHub"><span class="docs-icon fa-solid"></span></a><a class="docs-settings-button docs-navbar-link fa-solid fa-gear" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-article-toggle-button fa-solid fa-chevron-up" id="documenter-article-toggle-button" href="javascript:;" title="Collapse all docstrings"></a></div></header><article class="content" id="documenter-page"><h1 id="Tutorial"><a class="docs-heading-anchor" href="#Tutorial">Tutorial</a><a id="Tutorial-1"></a><a class="docs-heading-anchor-permalink" href="#Tutorial" title="Permalink"></a></h1><p>This introductory tutorial illustrates the basic usage of the <code>GRAPE</code> package for an example of a quantum gate on two qubits. It tries to be a self-contained as possible, to highlight some of the core concepts and features of the <code>GRAPE</code> package:</p><ul><li>Using arbitrary data structures for quantum states and operators</li><li>Defining a control problem based on multiple &quot;trajectories&quot;, with multi-threading</li><li>Optimizing multiple control fields at the same time (the real and imaginary part of a physical control)</li><li>Using non-trivial <a href="https://juliaquantumcontrol.github.io/QuantumControl.jl/stable/glossary/#Control-Amplitude">&quot;control amplitudes&quot;</a> to ensure smooth switch-on/off</li><li>Using automatic differentiation to minimize arbitrary optimization functionals</li><li>Applying bounds on the amplitude of the control field</li></ul><h2 id="A-Two-Qubit-System"><a class="docs-heading-anchor" href="#A-Two-Qubit-System">A Two-Qubit System</a><a id="A-Two-Qubit-System-1"></a><a class="docs-heading-anchor-permalink" href="#A-Two-Qubit-System" title="Permalink"></a></h2><p>The quantum state of a <a href="https://en.wikipedia.org/wiki/Qubit">two-qubit system</a> is described by a complex vector spanned by the possible classical bit configurations, <span>$|00⟩$</span>, <span>$|01⟩$</span>, <span>$|10⟩$</span>, and <span>$|11⟩$</span> in <a href="https://en.wikipedia.org/wiki/Bra–ket_notation">braket notation</a>. This basis is represented as</p><pre><code class="language-julia hljs">using StaticArrays: SVector
+
+basis = [
+    SVector{4}(ComplexF64[1, 0, 0, 0]),  # |00⟩
+    SVector{4}(ComplexF64[0, 1, 0, 0]),  # |01⟩
+    SVector{4}(ComplexF64[0, 0, 1, 0]),  # |10⟩
+    SVector{4}(ComplexF64[0, 0, 0, 1]),  # |11⟩
+];</code></pre><p>An arbitrary vector <span>$|Ψ⟩ = α_{00} |00⟩ + α_{01} |01⟩ + α_{10} |10⟩ + α_{11} |11⟩$</span> with complex coefficients <span>$α_i = α_{00}$</span>, <span>$α_{01}$</span>, <span>$α_{10}$</span>, <span>$α_{11}$</span> is understood according to the <a href="https://en.wikipedia.org/wiki/Born_rule">Born rule</a> to specify the probability as <span>$|α_{i}|^2$</span> to find the system in the corresponding possible classical state on measurement.</p><p>We&#39;ve used the <a href="https://github.com/JuliaArrays/StaticArrays.jl"><code>StaticArrays</code> Julia package</a> to encode the quantum states as an <a href="https://juliaarrays.github.io/StaticArrays.jl/stable/api/#SVector"><code>SVector</code></a>, which provides numerical advantages for very small vectors such as these, but also illustrates an important design choice of the <code>GRAPE</code> package: states can be expressed in any data structure fulfilling a <a href="https://juliaquantumcontrol.github.io/QuantumControl.jl/stable/api/quantum_propagators/#QuantumPropagators.Interfaces.check_state">well-specified interface</a>. This allows for custom, problem-specific encodings.</p><p>Prior to a measurement, quantum mechanics postulates that a quantum state <span>$|Ψ(t)⟩$</span> evolves according to the <a href="https://en.wikipedia.org/wiki/Schrödinger_equation#Time-dependent_equation">Schrödinger equation</a>, based on a Hamiltonian matrix <span>$\hat{H}$</span>. We consider here a setup inspired by <a href="https://en.wikipedia.org/wiki/Superconducting_quantum_computing#Transmon">superconducting transmon qubits</a>. Each qubit is driven by an oscillating microwave field with frequency near the resonance for that qubit, and the two qubits are coupled by a shared transmission line. As is common in simulating quantum systems with a fast-oscillating field, the <a href="https://en.wikipedia.org/wiki/Rotating-wave_approximation">rotating wave approximation</a> allows us to formulate the system in the &quot;rotating frame&quot; of the microwave field center frequency <span>$ω_{mw}$</span>. The Hamiltonian for the two-qubit system is then</p><p class="math-container">\[\hat{H}
+    = \left(δ_1 \hat{n}_1 + \frac{Ω(t)}{2} \hat{a}_1 + \frac{Ω^*(t)}{2} \hat{a}_1^\dagger\right)
+    +  \left(δ_2 \hat{n}_2 + \frac{Ω(t)}{2} \hat{a}_2 + \frac{Ω^*(t)}{2} \hat{a}_2^\dagger\right)
+    + J (\hat{a}_1\hat{a}_2^\dagger + \hat{a}_1^\dagger\hat{a}_2)
+    \tag{1}\]</p><p>with the usual <a href="https://en.wikipedia.org/wiki/Creation_and_annihilation_operators#Matrix_representation">raising and lowering operators</a> <span>$\hat{a}^\dagger$</span> and <span>$\hat{a}$</span> and the number operator <span>$\hat{n} = \hat{a}^\dagger \hat{a}$</span>, and where <span>$δ_{1,2}$</span> is the <a href="https://en.wikipedia.org/wiki/Laser_detuning">detuning</a> of microwave angular central frequency from the transition frequency of the first and second qubit, respectively, <span>$J$</span> is the static coupling, and <span>$Ω(t)$</span> is the envelope of the microwave field. In the rotating frame, when the physical microwave can deviate from its central frequency <span>$ω_{mw}$</span>, this is equivalent to a <em>complex</em> amplitude, where the complex phase of <span>$Ω(t)$</span> is the phase relative to <span>$ω_{mw} t$</span>. Note that Eq. (1) is an oversimplified model for <em>actual</em> transmons, which should include more levels than just the two lowest-lying levels defining the qubit.</p><h2 id="Units"><a class="docs-heading-anchor" href="#Units">Units</a><a id="Units-1"></a><a class="docs-heading-anchor-permalink" href="#Units" title="Permalink"></a></h2><p>Generally, the elements of the Hamiltonian are in units of energy. However, the <a href="https://juliaquantumcontrol.github.io/QuantumPropagators.jl/stable/"><code>QuantumPropagators</code> package</a> that <code>GRAPE</code> uses to simulate all dynamics assumes <span>$ħ = 1$</span>, turning all elements of the Hamiltonian into angular frequencies (from the <a href="https://en.wikipedia.org/wiki/Planck_relation">Planck relation</a> <span>$E = ħω$</span>), expressed in units of 2π⋅Hz. It also makes &quot;energy&quot; and &quot;time&quot; directly reciprocal (only the phase <span>$ωt$</span> is relevant for the dynamics). In numerics generally, it is best for all quantities to have magnitudes between maybe 10⁻³ and 10³ to avoid floating point errors. Here, the numerical quantities are the elements of the operators and the values in the time grid. With superconducting qubits typically having energies in a GHz regime (with detunings in MHz) and a timescale of ns for operations, we can define corresponding &quot;internal&quot; units:</p><pre><code class="language-julia hljs">const GHz = 1.0;
+const MHz = 0.001GHz;
+const ns = 1.0;</code></pre><p>We can then specify any of the &quot;energy&quot; parameters below with units, e.g.,</p><pre><code class="language-julia hljs">using LinearAlgebra: ⋅  # just so that the code looks nicer
+δ₁ = 100⋅2π⋅MHz;</code></pre><h2 id="Control-Amplitudes"><a class="docs-heading-anchor" href="#Control-Amplitudes">Control Amplitudes</a><a id="Control-Amplitudes-1"></a><a class="docs-heading-anchor-permalink" href="#Control-Amplitudes" title="Permalink"></a></h2><p><span>$Ω(t)$</span> in Eq. (1) is our control amplitude; the aim of optimal control is to find the particular <span>$Ω(t)$</span> that steers the system in some particular way. In our case: to implement a quantum gate. However, the implementation of optimal control in <code>GRAPE</code> assumes real-valued controls. Thus, we have to split the complex <span>$Ω(t)$</span> into an independent real and imaginary part.</p><p>We may also want to place some <em>physical</em> constraints onto <span>$Ω(t)$</span>. For example, we may want <span>$Ω(t)$</span> to smoothly switch on from zero and off to zero at the beginning and end of the time grid. One way of achieving this is to define <span>$Ω(t) = S(t) ϵ(t)$</span> where <span>$S(t)$</span> is a static shape that has the smooth switch-on and off, and <span>$ϵ(t)$</span> is an arbitrary function that we can optimize freely.</p><p>The <code>QuantumPropagators</code> framework provides a <a href="https://juliaquantumcontrol.github.io/QuantumPropagators.jl/stable/api/quantumpropagators/#QuantumPropagators.Amplitudes.ShapedAmplitude"><code>ShapedAmplitude</code></a> object to implement this:</p><pre><code class="language-julia hljs">using QuantumPropagators.Amplitudes: ShapedAmplitude</code></pre><p>For a fixed time grid ending at</p><pre><code class="language-julia hljs">T = 400ns;</code></pre><p>we can define the function <span>$S(t)$</span> as</p><pre><code class="language-julia hljs">using QuantumPropagators.Shapes: flattop
+shape(t) = flattop(t, T = T, t_rise = 15ns);</code></pre><p>where <a href="https://juliaquantumcontrol.github.io/QuantumPropagators.jl/stable/api/quantumpropagators/#QuantumPropagators.Shapes.flattop"><code>flattop</code></a> is a function that switches on smoothly from zero, reaches 1.0 after 15 ns, and remains constant at 1.0 until the last 15 ns before the final time <span>$T =$</span> 400 ns, where it smoothly switches off to zero.</p><p>We can then define an initial guess for <span>$ϵ(t)$</span> as a constant function and assemble that into the complete <span>$Ω(t)$</span>:</p><pre><code class="language-julia hljs">ϵ_re_guess(t; Ω₀ = 35⋅2π⋅MHz) = Ω₀
+ϵ_im_guess(t) = 0.0
+
+Ω_re_guess = ShapedAmplitude(ϵ_re_guess; shape);
+Ω_im_guess = ShapedAmplitude(ϵ_im_guess; shape);</code></pre><p>By setting the guess for the imaginary part to zero, we let the system start exactly at the central frequency of the microwave field.</p><p>In general, the choice of the initial guess function can have a significant impact on the optimization. What makes a good guess pulse, in terms of which shape to use, or what initial amplitude (35⋅2π MHz, here) is often the result of some physical intuition, or some trial and error.</p><p>With the above definition, <code>Ω_re_guess</code> and <code>Ω_im_guess</code> are <a href="https://juliaquantumcontrol.github.io/QuantumControl.jl/stable/glossary/#Control-Amplitude">&quot;control amplitudes&quot;</a> that are the <em>physical</em> control, whereas <code>ϵ_re_guess</code> and <code>ϵ_im_guess</code> are the <a href="https://juliaquantumcontrol.github.io/QuantumControl.jl/stable/glossary/#Control-Function">&quot;controls&quot;</a> from the perspective of GRAPE. The basic task of the GRAPE method is to discretize these controls to the intervals of the time grid (<a href="https://juliaquantumcontrol.github.io/QuantumControl.jl/stable/glossary/#Pulse">&quot;pulses&quot;</a>, and then iteratively update the pulse values at each time interval, based on the gradient of some optimization functional with respect to the pulse value. This distinction between physical control amplitudes and optimization control functions / pulses is a core design aspect of <code>GRAPE</code>, providing great flexibility in the models that can be used for optimization.</p><p>We can now define an explicit time grid</p><pre><code class="language-julia hljs">tlist = collect(range(0, T, step = 0.1ns));</code></pre><p>and plot the combined <span>$Ω(t)$</span>:</p><pre><code class="language-julia hljs">using Plots
+using QuantumPropagators.Controls: discretize
+
+&quot;&quot;&quot;
+Plot the given complex pulse in two panels: absolute value and phase.
+
+```julia
+fig = plot_complex_pulse(tlist, Ω; time_unit=:ns, ampl_unit=:(2π⋅MHz), kwargs...)
+```
+
+generates a plot of the complex field `Ω` over the time grid `tlist`.
+
+Arguments:
+
+* `tlist`: A vector of time grid values
+* `Ω`: A complex vector of the same length as `tlist` or a function `Ω(t)` returning a complex number
+* `time_unit`: A symbol that evaluates to the conversion factor for the time unit
+* `ampl_unit`: A symbol that evaluates to the conversion factor of the amplitude unit
+
+All other keyword arguments are forwarded to `Plots.plot`.
+```
+&quot;&quot;&quot;
+function plot_complex_pulse(tlist, Ω; time_unit=:ns, ampl_unit=:(2π⋅MHz), kwargs...)
+
+    Ω = discretize(Ω, tlist)  # make sure Ω is defined on *points* of `tlist`
+
+    s_ampl_unit = string(ampl_unit)
+    if startswith(s_ampl_unit, &quot;(2π) ⋅ &quot;)
+        s_ampl_unit = &quot;2π &quot; * s_ampl_unit[11:end]
+    end
+
+    ax1 = plot(
+        tlist ./ eval(time_unit),
+        abs.(Ω) ./ eval(ampl_unit);
+        label=&quot;|Ω|&quot;,
+        xlabel=&quot;time ($time_unit)&quot;,
+        ylabel=&quot;amplitude ($s_ampl_unit)&quot;,
+        kwargs...
+    )
+
+    ax2 = plot(
+        tlist ./ eval(time_unit),
+        angle.(Ω) ./ π;
+        label=&quot;ϕ(Ω)&quot;,
+        xlabel=&quot;time ($time_unit)&quot;,
+        ylabel=&quot;phase (π)&quot;
+    )
+
+    plot(ax1, ax2, layout=(2, 1))
+
+end
+
+const 𝕚 = 1im
+
+fig = plot_complex_pulse(tlist, t -&gt; Ω_re_guess(t) + 𝕚 * Ω_im_guess(t))</code></pre><img src="fbdad931.svg" alt="Example block output"/><p>We see the expected shape with the smooth switch-on/-off and the amplitude of 35⋅2π MHz that we specified, while from the perspective of the GRAPE method, the &quot;guess control&quot; is a constant function.</p><h2 id="Hamiltonian"><a class="docs-heading-anchor" href="#Hamiltonian">Hamiltonian</a><a id="Hamiltonian-1"></a><a class="docs-heading-anchor-permalink" href="#Hamiltonian" title="Permalink"></a></h2><p>With the separation of <span>$Ω(t)$</span> into real and imaginary parts, we can now express the Hamiltonian in Eq. (1) numerically:</p><pre><code class="language-julia hljs">import QuantumPropagators: hamiltonian
+using StaticArrays: SMatrix
+
+&quot;&quot;&quot;Construct the time-dependent Hamiltonian for a two-qubit transmon system.
+
+```julia
+Ĥ = transmon_hamiltonian(; δ₁, δ₂, J, Ω_re, Ω_im)
+```
+
+constructs a [Generator](@extref `QuantumPropagators.Generators.Generator`) for
+a two-transmon system truncated to two levels for each qubit, in the rotating
+wave approximation (RWA)
+
+Arguments:
+
+* `δ₁`: The detuning of qubit 1 from the RWA angular frequency
+* `δ₂`: The detuning of qubit 2 from the RWA angular frequency
+* `J`: The static coupling between the two qubits, as angular frequency
+* `Ω_re`: The amplitude (angular frequency) of the real part of the microwave drive
+* `Ω_im`: The amplitude (angular frequency) of the imaginary part of the microwave drive
+
+Both `Ω_re` and `Ω_im` can be given as a function `Ω_re(t)` and `Ω_im(t)`, or as a
+vector of values on the time grid, or on the intervals of the time grid.
+&quot;&quot;&quot;
+function transmon_hamiltonian(; δ₁, δ₂, J, Ω_re, Ω_im)
+
+    Ĥ₀ = SMatrix{4,4,ComplexF64}(
+        [0        0       0       0
+         0        δ₂      J       0
+         0        J       δ₁      0
+         0        0       0       δ₁+δ₂]
+    )
+
+    Ĥ₁_re = (1/2) * SMatrix{4,4,ComplexF64}(
+        [0      1       1      0
+         1      0       0      1
+         1      0       0      1
+         0      1       1      0]
+    )
+
+    Ĥ₁_im = (𝕚/2) * SMatrix{4,4,ComplexF64}(
+        [0      -1      -1      0
+         1       0       0     -1
+         1       0       0     -1
+         0       1       1      0]
+    )
+
+    return hamiltonian(Ĥ₀, (Ĥ₁_re, Ω_re), (Ĥ₁_im, Ω_im))
+
+end</code></pre><p>where we have used the <a href="https://juliaquantumcontrol.github.io/QuantumPropagators.jl/stable/api/quantumpropagators/#QuantumPropagators.Generators.hamiltonian"><code>QuantumPropagators.Generators.hamiltonian</code></a> function to construct an object that serves as a time-dependent Hamiltonian (a <a href="https://juliaquantumcontrol.github.io/QuantumControl.jl/stable/glossary/#Generator">&quot;Generator&quot;</a>, in the terminology of the general <code>QuantumControl</code> framework, ensuring adherence to the <a href="https://juliaquantumcontrol.github.io/QuantumControl.jl/stable/api/reference/#QuantumControl.Interfaces.check_generator">required interface</a>). The <a href="https://juliaarrays.github.io/StaticArrays.jl/stable/api/#SMatrix"><code>SMatrix</code></a> used for the drift and control Hamiltonian operators match the <a href="https://juliaarrays.github.io/StaticArrays.jl/stable/api/#SVector"><code>SVector</code></a> used to encode states.</p><p>We use some arbitrary but reasonable values here, with the central frequency of the microwave field centered between the frequencies of the two qubits, resulting in a detuning of ±100⋅2π MHz and a static coupling of 3⋅2π MHz.</p><pre><code class="language-julia hljs">Ĥ = transmon_hamiltonian(;
+    δ₁ = 100⋅2π⋅MHz,
+    δ₂ = -100⋅2π⋅MHz,
+    J = 3⋅2π⋅MHz,
+    Ω_re = Ω_re_guess,
+    Ω_im = Ω_im_guess,
+)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">Generator with 3 ops and 2 amplitudes
+ ops::Vector{StaticArraysCore.SMatrix{4, 4, ComplexF64, 16}}:
+  ComplexF64[0.0 + 0.0im 0.0 + 0.0im 0.0 + 0.0im 0.0 + 0.0im; 0.0 + 0.0im -0.6283185307179586 + 0.0im 0.01884955592153876 + 0.0im 0.0 + 0.0im; 0.0 + 0.0im 0.01884955592153876 + 0.0im 0.6283185307179586 + 0.0im 0.0 + 0.0im; 0.0 + 0.0im 0.0 + 0.0im 0.0 + 0.0im 0.0 + 0.0im]
+  ComplexF64[0.0 + 0.0im 0.5 + 0.0im 0.5 + 0.0im 0.0 + 0.0im; 0.5 + 0.0im 0.0 + 0.0im 0.0 + 0.0im 0.5 + 0.0im; 0.5 + 0.0im 0.0 + 0.0im 0.0 + 0.0im 0.5 + 0.0im; 0.0 + 0.0im 0.5 + 0.0im 0.5 + 0.0im 0.0 + 0.0im]
+  ComplexF64[0.0 + 0.0im -0.0 - 0.5im -0.0 - 0.5im 0.0 + 0.0im; 0.0 + 0.5im 0.0 + 0.0im 0.0 + 0.0im -0.0 - 0.5im; 0.0 + 0.5im 0.0 + 0.0im 0.0 + 0.0im -0.0 - 0.5im; 0.0 + 0.0im 0.0 + 0.5im 0.0 + 0.5im 0.0 + 0.0im]
+ amplitudes::Vector{QuantumPropagators.Amplitudes.ShapedContinuousAmplitude}:
+  ShapedAmplitude(::typeof(Main.ϵ_re_guess); shape::typeof(Main.shape))
+  ShapedAmplitude(::typeof(Main.ϵ_im_guess); shape::typeof(Main.shape))
+</code></pre><h2 id="Optimization-Target"><a class="docs-heading-anchor" href="#Optimization-Target">Optimization Target</a><a id="Optimization-Target-1"></a><a class="docs-heading-anchor-permalink" href="#Optimization-Target" title="Permalink"></a></h2><p>We will now use the GRAPE method to find an <span>$Ω(t)$</span> that implements a <a href="https://en.wikipedia.org/wiki/Controlled_NOT_gate">CNOT</a>, one of the fundamental building blocks of a quantum computer. In classical terms, a CNOT gate flips the state of the second qubit if and only if the first qubit is &quot;1&quot;. This is fundamentally an <a href="https://en.wikipedia.org/wiki/Quantum_entanglement">entangling</a> operation, and the equivalent of an &quot;if&quot; statement in a quantum circuit.</p><p>In terms of the <code>basis</code> states, we have corresponding target states:</p><pre><code class="language-julia hljs">target_states = [
+    SVector{4}(ComplexF64[1, 0, 0, 0]),  # |00⟩
+    SVector{4}(ComplexF64[0, 1, 0, 0]),  # |01⟩
+    SVector{4}(ComplexF64[0, 0, 0, 1]),  # |10⟩ → |11⟩
+    SVector{4}(ComplexF64[0, 0, 1, 0]),  # |11⟩ → |10⟩
+];</code></pre><p>Beyond a classical interpretation, <em>any</em> quantum state <span>$|Ψ⟩$</span> should be mapped to the state</p><p class="math-container">\[|Ψ^{(tgt)}⟩ = \hat{O} |Ψ⟩ = \sum_k α_k \hat{O} |k⟩\]</p><p>for the four basis states <span>$|k⟩ = |00⟩$</span>, <span>$|01⟩$</span>, <span>$|10⟩$</span>, <span>$|11⟩$</span>, with</p><p class="math-container">\[\hat{O} ≡ \begin{pmatrix}
+1 &amp; 0 &amp; 0 &amp; 0\\
+0 &amp; 1 &amp; 0 &amp; 0\\
+0 &amp; 0 &amp; 0 &amp; 1\\
+0 &amp; 0 &amp; 1 &amp; 0
+\end{pmatrix}\,.\]</p><p>being the matrix representation of the CNOT gate.</p><p>We can use the <a href="https://juliaquantumcontrol.github.io/QuantumPropagators.jl/stable/"><code>QuantumPropagators</code> propagators</a> to simulate (&quot;propagate&quot;) the <span>$|10⟩$</span> state exemplarily. <code>QuantumPropagators</code> can use a variety of methods to do this. We use the <a href="https://juliaquantumcontrol.github.io/QuantumPropagators.jl/stable/methods/#method_cheby"><code>Cheby</code> method</a> here, which is extremely efficient at solving the Schrödinger equation for piecewise-constant pulses by expanding the <a href="https://en.wikipedia.org/wiki/Time_evolution#Time-independent_Hamiltonian">time evolution operator</a> into Chebychev polynomials.</p><pre><code class="language-julia hljs">using QuantumPropagators: propagate, Cheby
+
+pops = propagate(
+    basis[3], Ĥ, tlist; method=Cheby, storage=true, observables=(Ψ -&gt; Array(abs2.(Ψ)), )
+)
+
+fig = plot(tlist ./ ns, pops&#39;; label=[&quot;00&quot; &quot;01&quot; &quot;10&quot; &quot;11&quot;], xlabel=&quot;time (ns)&quot;, legend=:outertop, legend_column=-1)</code></pre><img src="b7f40736.svg" alt="Example block output"/><p>From the dynamics, we can see that the <span>$|10⟩$</span> initial state remains approximately unchanged by the guess controls, instead of evolving into the <span>$|11⟩$</span> state as it should.</p><p>In order to find a field <span>$\Omega(t)$</span> that implements the desired CNOT gate, the GRAPE method minimizes an appropriate (user-supplied) mathematical functional. We define here</p><pre><code class="language-julia hljs">@doc raw&quot;&quot;&quot;Square-Modulus functional
+
+```julia
+J_T = J_T_sm(Ψ, trajectories)
+```
+
+calculates the real-valued scalar
+
+```math
+J_{T,sm} = 1 - \frac{1}{N^2} \left\vert\sum_n ⟨Ψ_k(T)|Ψ_k^{(tgt)}⟩\right\vert^2
+```
+
+where the state ``|Ψ_k⟩`` is the k&#39;th element of `Ψ` and ``|Ψ_k^{(tgt))⟩`` is
+the state stored in the `target_state` attribute of the k&#39;th element of the
+`trajectories` list. The ``|Ψ_k⟩`` should generally be the states obtained from
+propagating the state stored in the `initial_state` attribute of the k&#39;th
+element of `trajectories` forward to some final time ``T``.
+
+Conceptually, this becomes zero if and only if all the forward propagated
+states have an overlap of 1 with their respective target state, up to a
+global phase.
+&quot;&quot;&quot;
+function J_T_sm(Ψ, trajectories)
+    N = length(trajectories)
+    f = zero(ComplexF64)
+    for (Ψ_k, traj) in zip(Ψ, trajectories)
+        f += Ψ_k ⋅ traj.target_state
+    end
+    return 1.0 - (abs2(f) / N^2)
+end</code></pre><p>to implement</p><p class="math-container">\[J_{T,sm} = 1 - \frac{1}{N^2} \left\vert\sum_n ⟨Ψ_k(T)|Ψ_k^{(tgt)}⟩\right\vert^2\]</p><p>appropriate for optimization of a quantum gate if the states <span>$|Ψ_k(T)⟩$</span> are evolved from the <span>$N = 4$</span> basis states (for a two-qubit gate) and the target states <span>$|Ψ_k^{(tgt)}⟩$</span> are chosen as <span>$\hat{O} |Ψ_k(T)⟩$</span>. A generalization of the functional <code>J_T</code> (which is one of the standard functionals of quantum control) is also implemented in <a href="https://juliaquantumcontrol.github.io/QuantumControl.jl/stable/api/reference/#QuantumControl.Functionals.J_T_sm"><code>QuantumControl.Functionals.J_T_sm</code></a>. We have re-implemented it here by hand to illustrate the API that the <code>GRAPE</code> package expects for a functional <code>J_T</code>. In particular, <code>GRAPE</code> requires optimization functionals to be defined in terms of <code>trajectories</code>, as the way to implicitly define the final-time states <span>$|Ψ_k(T)⟩$</span> that enter the functional:</p><pre><code class="language-julia hljs">using GRAPE: Trajectory
+
+trajectories = [
+    Trajectory(Ψ, Ĥ; target_state=Ψ_tgt)
+    for (Ψ, Ψ_tgt) in zip(basis, target_states)
+]</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">4-element Vector{Trajectory{StaticArraysCore.SVector{4, ComplexF64}, QuantumPropagators.Generators.Generator{StaticArraysCore.SMatrix{4, 4, ComplexF64, 16}, QuantumPropagators.Amplitudes.ShapedContinuousAmplitude}}}:
+ Trajectory with 4-element StaticArraysCore.SVector{4, ComplexF64} with indices SOneTo(4) initial state, Generator with 3 ops and 2 amplitudes, 4-element StaticArraysCore.SVector{4, ComplexF64} with indices SOneTo(4) target state
+ Trajectory with 4-element StaticArraysCore.SVector{4, ComplexF64} with indices SOneTo(4) initial state, Generator with 3 ops and 2 amplitudes, 4-element StaticArraysCore.SVector{4, ComplexF64} with indices SOneTo(4) target state
+ Trajectory with 4-element StaticArraysCore.SVector{4, ComplexF64} with indices SOneTo(4) initial state, Generator with 3 ops and 2 amplitudes, 4-element StaticArraysCore.SVector{4, ComplexF64} with indices SOneTo(4) target state
+ Trajectory with 4-element StaticArraysCore.SVector{4, ComplexF64} with indices SOneTo(4) initial state, Generator with 3 ops and 2 amplitudes, 4-element StaticArraysCore.SVector{4, ComplexF64} with indices SOneTo(4) target state</code></pre><p>Each trajectory, at a minimum, defines an initial state <code>Ψ</code> and a dynamical generator <code>Ĥ</code> (i.e., a time-dependent Hamiltonian, in our case). In general, these can be arbitrary problem-specific objects, as long as they implement the <a href="https://juliaquantumcontrol.github.io/QuantumControl.jl/stable/api/quantum_propagators/#QuantumPropagatorsInterfacesAPI">required interfaces</a>. Each trajectory can also attach arbitrary additional attributes that may be used by the <code>J_T</code> function, e.g., a <code>target_state</code> in our case.</p><p>Defining an optimization in terms of multiple &quot;trajectories&quot; has a number of benefits. For one, simulating the dynamics for the different trajectories can be performed in parallel, resulting in a potential speedup proportional to the number of trajectories. Second, it also enables advanced use cases such as &quot;ensemble optimizations&quot; that consider multiple &quot;copies&quot; of the quantum system, each with a different noisy Hamiltonian, in an effort to find controls that are robust with respect to these variations.</p><p>The important point is that all of the trajectories <em>share</em> the same set of controls, two in our case (the real and imaginary part of <span>$Ω(t)$</span> divided by our shape <span>$S(t)$</span>):</p><pre><code class="language-julia hljs">using QuantumPropagators.Controls: get_controls
+
+get_controls(trajectories)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">(Main.ϵ_re_guess, Main.ϵ_im_guess)</code></pre><p>The GRAPE method works by numerically evaluating gradients of the given functional <code>J_T</code> with respect to the pulse values at each interval of the time grid. As derived fully in <a href="../background/#GRAPE-Background">Background</a>, the resulting scheme depends explicitly on <code>J_T</code> via the definition of a set of &quot;adjoint states&quot;,</p><p class="math-container">\[|χ_k(T)⟩ \equiv - \frac{\partial J_T}{\partial \bra{Ψ_k(T)}}\,,\]</p><p>The calculation of these states must be implemented in a function <code>chi</code> that will be passed to the optimization alongside <code>J_T</code>. For <span>$J_{T,sm}$</span>, the states <span>$|χ_k(T)⟩$</span> can be calculated analytically, as</p><p class="math-container">\[|χ_k(T)⟩ = \frac{1}{N^2} \left(\sum_j ⟨Ψ_j^{(tgt)}|Ψ_j(T)⟩\right) |Ψ_k^{(tgt)}⟩\,,\]</p><p>and is implemented in <a href="https://juliaquantumcontrol.github.io/QuantumControl.jl/stable/api/reference/#QuantumControl.Functionals.chi_sm"><code>QuantumControl.Functionals.chi_sm</code></a>.</p><p>However, for more advanced functionals, <code>J_T</code> may not always have an analytic derivative that can be written in closed form, or the derivative is just too cumbersome to write out. The GRAPE package allows constructing <code>chi</code> via automatic differentiation, e.g., via the popular <a href="https://fluxml.ai/Zygote.jl/dev/"><code>Zygote</code> package</a>. This feature can be enabled as follows:</p><pre><code class="language-julia hljs">import Zygote
+using GRAPE
+
+GRAPE.set_default_ad_framework(Zygote)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">[ Info: QuantumControl: Setting Zygote as the default provider for automatic differentiation.</code></pre><h2 id="Optimization"><a class="docs-heading-anchor" href="#Optimization">Optimization</a><a id="Optimization-1"></a><a class="docs-heading-anchor-permalink" href="#Optimization" title="Permalink"></a></h2><p>We can now run the actual optimization by calling <code>GRAPE.optimize</code>. The main positional arguments are the <code>trajectories</code> that enter the functional and the time grid <code>tlist</code>. Beyond that, the <em>required</em> key arguments are <code>J_T</code> to give the functional and <code>prop_method</code> to specify the method to be used for any internal time propagation. We do not specify <code>chi</code>, since we are relying on the automatic differentiation that we activated above.</p><p>The optimization will run for as many iterations as given by <code>iter_stop</code> (5000 by default), and we can give a <code>check_convergence</code> callback to stop the optimization earlier, based on some value of the functional being reached. There is also a <code>callback</code> to print some information after each iteration.</p><p>By setting <code>use_threads=true</code>, we parallelize the optimization over the different <code>trajectories</code>. This requires that the Julia process was started with the <code>-t &lt;NTHREADS&gt;</code> option, or that the <code>JULIA_NUM_THREADS</code> environment variable was set before starting the Julia process.</p><p>Lastly, we make use of the <code>GRAPE</code> package&#39;s ability to apply box constraints, i.e., an <code>upper_bound</code> and <code>lower_bound</code> for the values of the control pulse.</p><pre><code class="language-julia hljs">result = GRAPE.optimize(
+    trajectories,
+    tlist;
+    prop_method = Cheby,
+    J_T = J_T_sm,
+    callback = GRAPE.make_grape_print_iters(),
+    iter_stop = 200,
+    check_convergence = (res -&gt; ((res.J_T &lt; 1e-2) &amp;&amp; &quot;Gate error &lt; 10⁻²&quot;)),
+    upper_bound = 50⋅2π⋅MHz,
+    lower_bound = -50⋅2π⋅MHz,
+    use_threads = true,
+)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">[ Info: make_chi for J_T=J_T_sm: fallback to mode=:automatic
+[ Info: make_chi for J_T=J_T_sm: automatic with Zygote
+ iter.        J_T       ǁ∇Jǁ       ǁΔϵǁ         ΔJ   FG(F)    secs
+     0   8.32e-01   1.21e+00        n/a        n/a    1(0)    24.6
+     1   8.29e-01   1.21e+00   1.21e+00  -3.43e-03    1(0)     0.8
+     2   6.18e-01   1.39e+00   2.79e-01  -2.10e-01    5(0)     2.8
+     3   5.46e-01   1.16e+00   3.47e-01  -7.25e-02    2(0)     1.1
+     4   4.45e-01   1.15e+00   2.49e-01  -1.01e-01    1(0)     0.5
+     5   4.29e-01   7.21e-01   4.04e-01  -1.61e-02    1(0)     0.6
+     6   3.92e-01   6.22e-01   2.31e-01  -3.74e-02    1(0)     0.6
+     7   3.62e-01   3.70e-01   1.08e-01  -2.97e-02    1(0)     0.5
+     8   3.18e-01   2.80e-01   2.81e-01  -4.36e-02    2(0)     1.1
+     9   3.01e-01   4.61e-01   1.39e-01  -1.74e-02    1(0)     0.6
+    10   2.89e-01   3.18e-01   1.15e-01  -1.23e-02    1(0)     0.6
+    11   2.86e-01   1.26e-01   5.32e-02  -2.47e-03    1(0)     0.6
+    12   2.81e-01   1.32e-01   1.62e-01  -5.15e-03    1(0)     0.6
+    13   2.78e-01   2.11e-01   1.56e-01  -3.14e-03    1(0)     0.6
+    14   2.74e-01   2.24e-01   4.54e-02  -3.60e-03    1(0)     0.6
+    15   2.71e-01   1.08e-01   5.31e-02  -2.91e-03    1(0)     0.6
+    16   2.65e-01   8.78e-02   1.79e-01  -6.39e-03    1(0)     0.6
+    17   2.56e-01   1.43e-01   4.04e-01  -8.95e-03    1(0)     0.6
+    18   2.46e-01   2.74e-01   2.89e-01  -9.92e-03    1(0)     0.6
+    19   2.38e-01   2.98e-01   6.18e-01  -8.12e-03    1(0)     0.6
+    20   2.33e-01   4.16e-01   1.25e-01  -5.33e-03    1(0)     0.6
+    21   2.27e-01   2.93e-01   5.17e-02  -6.07e-03    1(0)     0.6
+    22   2.25e-01   1.32e-01   5.54e-02  -1.67e-03    1(0)     0.6
+    23   2.22e-01   1.24e-01   1.04e-01  -3.32e-03    1(0)     0.5
+    24   2.08e-01   1.22e-01   4.43e-01  -1.37e-02    2(0)     1.1
+    25   1.97e-01   2.14e-01   5.25e-01  -1.10e-02    2(0)     1.1
+    26   1.87e-01   4.06e-01   4.44e-01  -9.51e-03    1(0)     0.6
+    27   1.72e-01   5.73e-01   5.91e-01  -1.50e-02    1(0)     0.6
+    28   1.59e-01   4.11e-01   1.13e-01  -1.35e-02    1(0)     0.6
+    29   1.52e-01   3.06e-01   7.94e-02  -6.79e-03    1(0)     0.6
+    30   1.41e-01   2.68e-01   2.60e-01  -1.15e-02    1(0)     0.6
+    31   1.33e-01   3.56e-01   7.29e-02  -7.60e-03    1(0)     0.6
+    32   1.21e-01   2.39e-01   2.06e-01  -1.14e-02    1(0)     0.6
+    33   1.12e-01   1.19e-01   2.26e-01  -9.34e-03    1(0)     0.6
+    34   1.05e-01   8.67e-02   4.97e-01  -6.96e-03    1(0)     0.6
+    35   9.85e-02   3.66e-01   9.72e-02  -6.73e-03    1(0)     0.6
+    36   9.79e-02   9.94e-02   1.61e-02  -6.07e-04    1(0)     0.6
+    37   9.71e-02   6.93e-02   2.27e-02  -7.73e-04    1(0)     0.6
+    38   9.47e-02   5.66e-02   1.33e-01  -2.40e-03    1(0)     0.6
+    39   8.99e-02   8.02e-02   2.72e-01  -4.82e-03    1(0)     0.6
+    40   8.51e-02   1.13e-01   2.28e-01  -4.73e-03    1(0)     0.6
+    41   7.92e-02   1.28e-01   3.48e-01  -5.97e-03    1(0)     0.6
+    42   7.54e-02   1.93e-01   9.98e-02  -3.77e-03    1(0)     0.6
+    43   7.31e-02   8.78e-02   1.06e-01  -2.32e-03    1(0)     0.6
+    44   6.90e-02   7.74e-02   2.20e-01  -4.05e-03    1(0)     0.6
+    45   6.17e-02   7.84e-02   6.19e-01  -7.31e-03    1(0)     0.6
+    46   5.93e-02   1.40e-01   4.22e-02  -2.45e-03    1(0)     0.6
+    47   5.73e-02   6.04e-02   8.69e-02  -1.95e-03    1(0)     0.6
+    48   5.60e-02   7.99e-02   8.99e-02  -1.36e-03    1(0)     0.6
+    49   5.39e-02   7.42e-02   1.75e-01  -2.01e-03    1(0)     0.6
+    50   5.32e-02   6.95e-02   4.58e-02  -7.09e-04    1(0)     0.6
+    51   5.17e-02   6.31e-02   1.39e-01  -1.53e-03    1(0)     0.6
+    52   5.09e-02   6.98e-02   1.37e-01  -8.36e-04    1(0)     0.6
+    53   4.99e-02   1.34e-01   4.11e-02  -9.72e-04    1(0)     0.6
+    54   4.93e-02   6.30e-02   5.58e-02  -6.34e-04    1(0)     0.6
+    55   4.88e-02   4.08e-02   4.14e-02  -4.52e-04    1(0)     0.6
+    56   4.71e-02   4.99e-02   1.67e-01  -1.71e-03    1(0)     0.6
+    57   4.45e-02   7.15e-02   2.72e-01  -2.59e-03    1(0)     0.6
+    58   4.31e-02   1.17e-01   1.98e-01  -1.46e-03    1(0)     0.6
+    59   4.22e-02   1.10e-01   2.40e-02  -8.38e-04    1(0)     0.6
+    60   4.19e-02   4.03e-02   3.54e-02  -3.44e-04    1(0)     0.6
+    61   4.14e-02   4.52e-02   7.28e-02  -5.25e-04    1(0)     0.6
+    62   4.08e-02   5.69e-02   1.27e-01  -6.04e-04    1(0)     0.6
+    63   4.02e-02   1.03e-01   2.88e-02  -5.67e-04    1(0)     0.6
+    64   3.98e-02   4.77e-02   4.69e-02  -3.67e-04    1(0)     0.6
+    65   3.95e-02   3.78e-02   4.89e-02  -3.09e-04    1(0)     0.6
+    66   3.88e-02   4.55e-02   1.12e-01  -7.20e-04    1(0)     0.6
+    67   3.77e-02   5.35e-02   2.84e-01  -1.05e-03    1(0)     0.6
+    68   3.66e-02   1.54e-01   2.85e-02  -1.10e-03    1(0)     0.6
+    69   3.61e-02   6.01e-02   4.89e-02  -5.76e-04    1(0)     0.6
+    70   3.55e-02   4.17e-02   5.47e-02  -5.50e-04    1(0)     0.6
+    71   3.35e-02   5.94e-02   2.51e-01  -2.00e-03    1(0)     0.6
+    72   3.20e-02   8.56e-02   2.35e-01  -1.49e-03    1(0)     0.6
+    73   3.16e-02   4.81e-02   6.36e-02  -3.97e-04    1(0)     0.6
+    74   3.13e-02   6.19e-02   3.88e-02  -3.32e-04    1(0)     0.6
+    75   3.04e-02   5.20e-02   1.46e-01  -9.16e-04    1(0)     0.6
+    76   2.98e-02   5.37e-02   6.97e-02  -5.32e-04    1(0)     0.6
+    77   2.88e-02   5.76e-02   1.34e-01  -1.05e-03    1(0)     0.6
+    78   2.67e-02   6.40e-02   2.61e-01  -2.06e-03    1(0)     0.6
+    79   2.53e-02   6.51e-02   1.66e-01  -1.43e-03    1(0)     0.6
+    80   2.39e-02   5.94e-02   1.48e-01  -1.38e-03    1(0)     0.6
+    81   2.22e-02   3.98e-02   2.25e-01  -1.71e-03    1(0)     0.6
+    82   2.11e-02   5.78e-02   1.38e-01  -1.10e-03    1(0)     0.6
+    83   2.01e-02   5.70e-02   1.26e-01  -1.01e-03    1(0)     0.6
+    84   1.94e-02   3.79e-02   1.10e-01  -7.56e-04    1(0)     0.6
+    85   1.87e-02   3.60e-02   9.71e-02  -6.68e-04    1(0)     0.6
+    86   1.73e-02   3.44e-02   2.27e-01  -1.37e-03    1(0)     0.6
+    87   1.69e-02   4.72e-02   7.00e-02  -4.77e-04    1(0)     0.6
+    88   1.65e-02   3.31e-02   7.40e-02  -3.90e-04    1(0)     0.6
+    89   1.60e-02   4.15e-02   8.41e-02  -4.68e-04    1(0)     0.6
+    90   1.55e-02   3.19e-02   9.27e-02  -5.00e-04    1(0)     0.6
+    91   1.52e-02   2.90e-02   5.72e-02  -3.18e-04    1(0)     0.6
+    92   1.43e-02   3.13e-02   1.89e-01  -9.14e-04    1(0)     0.6
+    93   1.36e-02   4.67e-02   1.28e-01  -6.11e-04    1(0)     0.6
+    94   1.33e-02   3.23e-02   8.86e-02  -3.70e-04    1(0)     0.5
+    95   1.31e-02   1.98e-02   5.30e-02  -2.14e-04    1(0)     0.6
+    96   1.27e-02   1.97e-02   9.88e-02  -3.35e-04    1(0)     0.6
+    97   1.24e-02   3.15e-02   1.18e-01  -3.63e-04    1(0)     0.6
+    98   1.19e-02   3.20e-02   2.23e-01  -4.99e-04    1(0)     0.5
+    99   1.17e-02   5.50e-02   2.97e-02  -1.89e-04    1(0)     0.6
+   100   1.16e-02   2.00e-02   1.98e-02  -5.73e-05    1(0)     0.6
+   101   1.15e-02   1.95e-02   6.65e-02  -1.50e-04    1(0)     0.6
+   102   1.13e-02   2.99e-02   4.70e-02  -1.30e-04    1(0)     0.6
+   103   1.11e-02   2.45e-02   1.01e-01  -2.55e-04    1(0)     0.6
+   104   1.10e-02   2.15e-02   2.86e-02  -7.96e-05    1(0)     0.5
+   105   1.07e-02   2.17e-02   1.45e-01  -3.21e-04    1(0)     0.6
+   106   1.06e-02   3.23e-02   3.84e-02  -1.34e-04    1(0)     0.5
+   107   1.04e-02   2.74e-02   4.70e-02  -1.50e-04    1(0)     0.6
+   108   1.01e-02   2.79e-02   8.75e-02  -2.57e-04    1(0)     0.6
+   109   9.90e-03   2.41e-02   9.03e-02  -2.45e-04    1(0)     0.6</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">GRAPE Optimization Result
+-------------------------
+- Started at 2025-10-02T22:25:34.123
+- Number of trajectories: 4
+- Number of iterations: 109
+- Number of pure func evals: 0
+- Number of func/grad evals: 118
+- Value of functional: 9.90083e-03
+- Reason for termination: Gate error &lt; 10⁻²
+- Ended at 2025-10-02T22:27:03.622 (1 minute, 29 seconds, 499 milliseconds)
+</code></pre><h2 id="Optimization-Result"><a class="docs-heading-anchor" href="#Optimization-Result">Optimization Result</a><a id="Optimization-Result-1"></a><a class="docs-heading-anchor-permalink" href="#Optimization-Result" title="Permalink"></a></h2><p>The call to <code>GRAPE.optimize</code> returns a results-object from which we can extract the optimized controls:</p><pre><code class="language-julia hljs">ϵ_opt = result.optimized_controls[1] + 𝕚 * result.optimized_controls[2];</code></pre><p>While the guess controls <code>ϵ_re_guess</code> and <code>ϵ_im_guess</code> that we defined when setting up the system Hamiltonian could have been either functions (as they were) or vectors of pulse values, the GRAPE method inherently discretizes all control to a time grid (the method is piecewise-constant, by definition). Thus, the <code>optimized_controls</code> are vectors of control values for each point in <code>tlist</code></p><p>Also remember that we used a <code>ShapedAmplitude</code> when setting up the Hamiltonian, with the definition <span>$Ω(t) = S(t)ϵ(t)$</span>. Thus, to get the <em>physical</em> optimized control field, we need to multiply with that same shape <code>S(t)</code>, now also discretized to the time grid.</p><pre><code class="language-julia hljs">Ω_opt = ϵ_opt .* discretize(Ω_re_guess.shape, tlist)
+
+fig = plot_complex_pulse(tlist, Ω_opt)</code></pre><img src="14da670b.svg" alt="Example block output"/><p>We can see how the optimization has tuned both the amplitude and the complex phase of the microwave field, while retaining the overall shape <span>$S(t)$</span>. We can also simulate again the dynamics of the <span>$|10⟩$</span> state under the optimized fields:</p><pre><code class="language-julia hljs">Ĥ_opt = transmon_hamiltonian(;
+    δ₁ = 100⋅2π⋅MHz,
+    δ₂ = -100⋅2π⋅MHz,
+    J = 3⋅2π⋅MHz,
+    Ω_re = real.(Ω_opt),
+    Ω_im = imag.(Ω_opt),
+)
+
+pops = propagate(
+    basis[3], Ĥ_opt, tlist; method=Cheby, storage=true, observables=(Ψ -&gt; Array(abs2.(Ψ)), )
+)
+
+fig = plot(tlist ./ ns, pops&#39;; label=[&quot;00&quot; &quot;01&quot; &quot;10&quot; &quot;11&quot;], xlabel=&quot;time (ns)&quot;, legend=:outertop, legend_column=-1)</code></pre><img src="55fcfc56.svg" alt="Example block output"/><p>As expected (and demanded by the &quot;conditional NOT&quot;), <span>$|10⟩$</span> now evolves into <span>$|11⟩$</span>.</p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../">« Home</a><a class="docs-footer-nextpage" href="../usage/">Usage »</a><div class="flexbox-break"></div><p class="footer-message"><a href="https://github.com/JuliaQuantumControl/GRAPE.jl">GRAPE.jl</a> v0.8.1 docs <a href="https://creativecommons.org/licenses/by/4.0/deed.en">CC-BY-4.0</a>. Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.14.1 on <span class="colophon-date" title="Thursday 2 October 2025 22:27">Thursday 2 October 2025</span>. Using Julia version 1.11.7.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
