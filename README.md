@@ -33,7 +33,7 @@ A minimal working example optimizing a state-to-state transition `|0⟩ → |1�
 ```julia
 using GRAPE
 
-using QuantumControl: hamiltonian  # data structure for `H = H₀ + ϵ(t) H₁`
+using QuantumPropagators: hamiltonian  # data structure for `H = H₀ + ϵ(t) H₁`
 using QuantumControl.Functionals: J_T_sm  # square-modulus functional
 using QuantumPropagators: ExpProp  # propagation method: matrix exponentiation
 

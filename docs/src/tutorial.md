@@ -74,10 +74,10 @@ nothing # hide
 
 We may also want to place some _physical_ constraints onto ``Ω(t)``. For example, we may want ``Ω(t)`` to smoothly switch on from zero and off to zero at the beginning and end of the time grid. One way of achieving this is to define ``Ω(t) = S(t) ϵ(t)`` where ``S(t)`` is a static shape that has the smooth switch-on and off, and ``ϵ(t)`` is an arbitrary function that we can optimize freely.
 
-The `QuantumControl` framework provides a [`ShapedAmplitude`](@extref `QuantumPropagators.Amplitudes.ShapedAmplitude`) object to implement this:
+The `QuantumPropagators` framework provides a [`ShapedAmplitude`](@extref `QuantumPropagators.Amplitudes.ShapedAmplitude`) object to implement this:
 
 ```@example
-using QuantumControl.Amplitudes: ShapedAmplitude
+using QuantumPropagators.Amplitudes: ShapedAmplitude
 ```
 
 For a fixed time grid ending at
@@ -90,7 +90,7 @@ nothing # hide
 we can define the function ``S(t)`` as
 
 ```@example
-using QuantumControl.Shapes: flattop
+using QuantumPropagators.Shapes: flattop
 shape(t) = flattop(t, T = T, t_rise = 15ns);
 nothing # hide
 ```
@@ -378,7 +378,7 @@ The important point is that all of the trajectories _share_ the same set of cont
 
 
 ```@example
-using QuantumControl.Controls: get_controls
+using QuantumPropagators.Controls: get_controls
 
 get_controls(trajectories)
 ```
