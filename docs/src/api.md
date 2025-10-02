@@ -7,12 +7,12 @@ CollapsedDocStrings = false
 
 # API
 
-The stable public API of the `GRAPE` consists of following members:
+The stable public API of the `GRAPE` consists of the following members:
 
 * [`GRAPE.optimize`](@ref) as the main function to run an optimization
 * [`GRAPE.GrapeResult`](@ref) as the object returned by [`GRAPE.optimize`](@ref), and accessible in callbacks
-* [`QuantumControl.optimize`](@ref) with `method=GRAPE`, has a higher-level wrapper around [`GRAPE.optimize`](@ref) with extra features
-* [`GRAPE.Trajectory`](@ref QuantumControl.Trajectory) as an alias of  [`QuantumControl.Trajectory`](@extref)
+* [`QuantumControl.optimize`](@ref) with `method=GRAPE`, as a higher-level wrapper around [`GRAPE.optimize`](@ref) with extra features
+* [`GRAPE.Trajectory`](@ref QuantumControl.Trajectory) as an alias of [`QuantumControl.Trajectory`](@extref)
 * [`GRAPE.set_default_ad_framework`](@ref QuantumControl.set_default_ad_framework) as an alias of [`QuantumControl.set_default_ad_framework`](@extref)
 
 The remaining functions in `GRAPE` documented below should not be considered part of the stable API. They are guaranteed to be stable in bugfix (`x.y.z`) releases, but may change in feature releases (`x.y`).
