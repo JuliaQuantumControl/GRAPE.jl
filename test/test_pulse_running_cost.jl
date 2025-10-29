@@ -48,15 +48,15 @@ using GRAPE
     end
 
     rng = StableRNG(1244561944)
-    problem = dummy_control_problem(; n_controls=2, rng)
+    problem = dummy_control_problem(; n_controls = 2, rng)
     res = optimize(
         problem;
-        method=GRAPE,
-        J_a=_TEST_J_a_smoothness,
-        grad_J_a=_TEST_grad_J_a_smoothness,
-        lambda_a=0.1,
-        J_T=J_T_re,
-        iter_stop=2
+        method = GRAPE,
+        J_a = _TEST_J_a_smoothness,
+        grad_J_a = _TEST_grad_J_a_smoothness,
+        lambda_a = 0.1,
+        J_T = J_T_re,
+        iter_stop = 2
     )
     @test res.converged
     @test res.J_T < res.J_T_prev
@@ -67,9 +67,9 @@ end
 @testset "J_a_fluence running cost" begin
 
     rng = StableRNG(1244561944)
-    problem = dummy_control_problem(; n_controls=2, rng)
-    res0 = optimize(problem; method=GRAPE, J_T=J_T_re, iter_stop=2)
-    res = optimize(problem; method=GRAPE, J_a=J_a_fluence, J_T=J_T_re, iter_stop=2)
+    problem = dummy_control_problem(; n_controls = 2, rng)
+    res0 = optimize(problem; method = GRAPE, J_T = J_T_re, iter_stop = 2)
+    res = optimize(problem; method = GRAPE, J_a = J_a_fluence, J_T = J_T_re, iter_stop = 2)
     @test res0.converged
     @test res.converged
     @test sum(norm.(res.optimized_controls)) < sum(norm.(res0.optimized_controls))

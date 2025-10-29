@@ -211,11 +211,11 @@ function GrapeWrk(trajectories, tlist, kwargs)
             traj,
             tlist;
             verbose,
-            _msg="Initializing fw-prop of trajectory $k",
+            _msg = "Initializing fw-prop of trajectory $k",
             _prefixes,
-            _filter_kwargs=true,
-            _kwargs_dict=fw_prop_kwargs[k],
-            fw_prop_parameters=parameters,  # will filter to `parameters`
+            _filter_kwargs = true,
+            _kwargs_dict = fw_prop_kwargs[k],
+            fw_prop_parameters = parameters,  # will filter to `parameters`
             kwargs...
         ) for (k, traj) in enumerate(trajectories)
     ]
@@ -237,12 +237,12 @@ function GrapeWrk(trajectories, tlist, kwargs)
                 traj,
                 tlist;
                 verbose,
-                _msg="Initializing bw-gradient-prop of trajectory $k",
+                _msg = "Initializing bw-gradient-prop of trajectory $k",
                 _prefixes,
-                _filter_kwargs=true,
-                _kwargs_dict=bw_grad_prop_kwargs[k],
-                grad_prop_backward=true,  # will filter to `backward=true`
-                grad_prop_parameters=parameters,  # will filter to `parameters`
+                _filter_kwargs = true,
+                _kwargs_dict = bw_grad_prop_kwargs[k],
+                grad_prop_backward = true,  # will filter to `backward=true`
+                grad_prop_parameters = parameters,  # will filter to `parameters`
                 kwargs...
             ) for (k, traj) in enumerate(grad_trajectories)
         ]
@@ -259,12 +259,12 @@ function GrapeWrk(trajectories, tlist, kwargs)
                 traj,
                 tlist;
                 verbose,
-                _msg="Initializing bw-prop of trajectory $k",
+                _msg = "Initializing bw-prop of trajectory $k",
                 _prefixes,
-                _filter_kwargs=true,
-                _kwargs_dict=bw_prop_kwargs[k],
-                bw_prop_backward=true,  # will filter to `backward=true`
-                bw_prop_parameters=parameters,  # will filter to `parameters`
+                _filter_kwargs = true,
+                _kwargs_dict = bw_prop_kwargs[k],
+                bw_prop_backward = true,  # will filter to `backward=true`
+                bw_prop_parameters = parameters,  # will filter to `parameters`
                 kwargs...
             ) for (k, traj) in enumerate(adjoint_trajectories)
         ]
@@ -382,7 +382,7 @@ returns the vector describing the search direction used in the current
 iteration. This should be proportional to [`pulse_update`](@ref) with the
 proportionality factor [`step_width`](@ref).
 """
-search_direction(wrk) = -gradient(wrk; which=:initial)  # assumed fallback
+search_direction(wrk) = -gradient(wrk; which = :initial)  # assumed fallback
 
 
 """The norm of the search direction vector in the current iteration.
@@ -420,7 +420,7 @@ g = gradient(wrk; which=:final)
 returns the gradient associated with the optimized pulse of the current
 iteration.
 """
-function gradient(wrk; which=:initial)
+function gradient(wrk; which = :initial)
     if which == :initial
         return wrk.gradient
     elseif which == :final
@@ -460,7 +460,7 @@ returns the angle between two vectors in radians (or degrees, with
 function vec_angle(
     vec1::P,
     vec2::P;
-    unit=:rad
+    unit = :rad
 ) where {P<:Union{NTuple{N,T},AbstractVector{T}}} where {N,T}
     # `vec_angle` function adapted from AngleBetweenVectors.jl
     # by Jeffrey Sarnoff, licensed under the terms of the MIT license

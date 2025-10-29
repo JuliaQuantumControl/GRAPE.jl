@@ -55,12 +55,12 @@ fallbacks = ExternalFallbacks(
     "propagate_trajectory" => "@extref QuantumControl :jl:function:`QuantumControl.propagate_trajectory`",
     "QuantumControl.Functionals.make_gate_chi" => "@extref QuantumControl :jl:function:`QuantumControl.Functionals.make_gate_chi`",
     "QuantumControl.Functionals.make_grad_J_a" => "@extref QuantumControl :jl:function:`QuantumControl.Functionals.make_grad_J_a`",
-    automatic=false,
+    automatic = false,
 )
 
 println("Starting makedocs")
 
-bib = CitationBibliography(joinpath(@__DIR__, "src", "refs.bib"); style=:numeric)
+bib = CitationBibliography(joinpath(@__DIR__, "src", "refs.bib"); style = :numeric)
 
 PAGES = [
     "Home" => "index.md",
@@ -72,14 +72,14 @@ PAGES = [
 ]
 
 makedocs(;
-    plugins=[bib, links, fallbacks],
-    authors=AUTHORS,
-    sitename="GRAPE.jl",
-    doctest=false,  # we have no doctests (but trying to run them is slow)
-    format=Documenter.HTML(;
-        prettyurls=true,
-        canonical="https://juliaquantumcontrol.github.io/GRAPE.jl",
-        assets=[
+    plugins = [bib, links, fallbacks],
+    authors = AUTHORS,
+    sitename = "GRAPE.jl",
+    doctest = false,  # we have no doctests (but trying to run them is slow)
+    format = Documenter.HTML(;
+        prettyurls = true,
+        canonical = "https://juliaquantumcontrol.github.io/GRAPE.jl",
+        assets = [
             "assets/citations.css",
             asset(
                 "https://juliaquantumcontrol.github.io/QuantumControl.jl/dev/assets/topbar/topbar.css"
@@ -89,7 +89,7 @@ makedocs(;
             ),
         ],
         # mathengine=KaTeX(),
-        mathengine=MathJax3(
+        mathengine = MathJax3(
             Dict(
                 :loader => Dict("load" => ["[tex]/physics"]),
                 :tex => Dict(
@@ -99,16 +99,16 @@ makedocs(;
                 ),
             )
         ),
-        footer="[$NAME.jl]($GITHUB) v$VERSION docs [CC-BY-4.0](https://creativecommons.org/licenses/by/4.0/deed.en). Powered by [Documenter.jl](https://github.com/JuliaDocs/Documenter.jl).",
+        footer = "[$NAME.jl]($GITHUB) v$VERSION docs [CC-BY-4.0](https://creativecommons.org/licenses/by/4.0/deed.en). Powered by [Documenter.jl](https://github.com/JuliaDocs/Documenter.jl).",
     ),
-    pages=PAGES,
-    warnonly=false,
+    pages = PAGES,
+    warnonly = false,
 )
 
 println("Finished makedocs")
 
 deploydocs(;
-    repo="github.com/JuliaQuantumControl/GRAPE.jl",
-    devbranch="master",
-    push_preview=true
+    repo = "github.com/JuliaQuantumControl/GRAPE.jl",
+    devbranch = "master",
+    push_preview = true
 )

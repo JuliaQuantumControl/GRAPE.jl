@@ -51,9 +51,9 @@ function two_qubit_hamiltonian(; ϵ1, ϵ2, ϵ3, ϵ4, ϵ5, ϵ6,)
 end;
 
 
-function guess_amplitudes(; T=1.0, E₀=0.1, dt=0.001)
+function guess_amplitudes(; T = 1.0, E₀ = 0.1, dt = 0.001)
 
-    tlist = collect(range(0, T, step=dt))
+    tlist = collect(range(0, T, step = dt))
     shape(t) = box(t, 0.0, T)
     ϵ1 = ShapedAmplitude(t -> E₀, tlist; shape)
     ϵ2 = ShapedAmplitude(t -> E₀, tlist; shape)
@@ -66,13 +66,13 @@ function guess_amplitudes(; T=1.0, E₀=0.1, dt=0.001)
 
 end
 
-function ket(i::Int64; N=2)
+function ket(i::Int64; N = 2)
     Ψ = zeros(ComplexF64, N)
     Ψ[i+1] = 1
     return Ψ
 end
 
-function ket(indices::Int64...; N=2)
+function ket(indices::Int64...; N = 2)
     Ψ = ket(indices[1]; N)
     for i in indices[2:end]
         Ψ = Ψ ⊗ ket(i; N)
@@ -80,7 +80,7 @@ function ket(indices::Int64...; N=2)
     return Ψ
 end
 
-function ket(label::AbstractString; N=2)
+function ket(label::AbstractString; N = 2)
     indices = [parse(Int64, digit) for digit in label]
     return ket(indices...; N)
 end;
@@ -97,27 +97,27 @@ end;
     ]
     basis = [ket("00"), ket("01"), ket("10"), ket("11")]
     basis_tgt = transpose(CNOT) * basis
-    H = two_qubit_hamiltonian(ϵ1=Ω1, ϵ2=Ω2, ϵ3=Ω3, ϵ4=Ω4, ϵ5=Ω5, ϵ6=Ω6)
+    H = two_qubit_hamiltonian(ϵ1 = Ω1, ϵ2 = Ω2, ϵ3 = Ω3, ϵ4 = Ω4, ϵ5 = Ω5, ϵ6 = Ω6)
     trajectories = [
-        Trajectory(initial_state=Ψ, target_state=Ψtgt, generator=H) for
+        Trajectory(initial_state = Ψ, target_state = Ψtgt, generator = H) for
         (Ψ, Ψtgt) ∈ zip(basis, basis_tgt)
     ]
     problem = ControlProblem(
         trajectories,
         tlist;
-        iter_stop=50,
-        prop_method=Cheby,
-        use_threads=true,
-        J_T=J_T_sm,
+        iter_stop = 50,
+        prop_method = Cheby,
+        use_threads = true,
+        J_T = J_T_sm,
     )
 
     # with "medium precision" (old defaults), this gets stuck at a saddle point
-    opt_result = optimize(problem; method=GRAPE, lbfgsb_pgtol=1e-5, lbfgsb_factr=1e7)
+    opt_result = optimize(problem; method = GRAPE, lbfgsb_pgtol = 1e-5, lbfgsb_factr = 1e7)
     @test !opt_result.converged
     @test contains(opt_result.message, "NORM_OF_PROJECTED_GRADIENT_<=_PGTOL")
     @test abs(opt_result.J_T - 0.75) < 1e-3
 
-    opt_result = optimize(problem; method=GRAPE)
+    opt_result = optimize(problem; method = GRAPE)
     @test opt_result.converged
     @test opt_result.J_T < 1e-2
 

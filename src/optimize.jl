@@ -373,7 +373,7 @@ function make_grape_print_iters(; kwargs...)
             info_vals["λ_aǁ∇J_aǁ"] = λ_a * nrm_∇J_a
         end
         if "ǁ∇Jǁ" ∈ needed_fields
-            info_vals["ǁ∇Jǁ"] = norm(gradient(wrk; which=:initial))
+            info_vals["ǁ∇Jǁ"] = norm(gradient(wrk; which = :initial))
         end
         if "ΔJ" ∈ needed_fields
             J = wrk.result.J_T + λ_a * wrk.result.J_a
@@ -418,9 +418,9 @@ function make_grape_print_iters(; kwargs...)
             info_vals["α"] = step_width(wrk)
         end
         if "∠°" ∈ needed_fields
-            s_G = -1 * gradient(wrk; which=:initial)
+            s_G = -1 * gradient(wrk; which = :initial)
             s = search_direction(wrk)
-            info_vals["∠°"] = vec_angle(s_G, s; unit=:degree)
+            info_vals["∠°"] = vec_angle(s_G, s; unit = :degree)
         end
         info_vals["FG(F)"] = Tuple(wrk.fg_count)
         info_vals["secs"] = wrk.result.secs
@@ -555,9 +555,9 @@ function taylor_grad_step!(
     μ̂,
     dt,           # positive for fw-prop, negative for bw-prop
     temp_states;  # need at least 4 states similar to Ψ
-    check_convergence=true,
-    max_order=100,
-    tolerance=1e-16
+    check_convergence = true,
+    max_order = 100,
+    tolerance = 1e-16
 )
 
     ϕₙ, ϕₙ₋₁, ĤⁿΨ, Ĥⁿ⁻¹Ψ = temp_states
@@ -636,7 +636,7 @@ If `storage` is given, as a vector of storage containers suitable for
 
 Returns `J` as `sum(wrk.J_parts)`.
 """
-function evaluate_functional(pulsevals, wrk; storage=nothing, count_call=true)
+function evaluate_functional(pulsevals, wrk; storage = nothing, count_call = true)
     J_T = wrk.kwargs[:J_T]
     J_a = get(wrk.kwargs, :J_a, nothing)
     λₐ = get(wrk.kwargs, :lambda_a, 1.0)
@@ -678,7 +678,7 @@ function evaluate_functional(pulsevals, wrk; storage=nothing, count_call=true)
     end
     Ψ = [p.state for p ∈ wrk.fw_propagators]
     if wrk.J_T_takes_tau
-        wrk.J_parts[1] = J_T(Ψ, trajectories; tau=wrk.result.tau_vals)
+        wrk.J_parts[1] = J_T(Ψ, trajectories; tau = wrk.result.tau_vals)
     else
         wrk.J_parts[1] = J_T(Ψ, trajectories)
     end
@@ -750,7 +750,8 @@ function evaluate_gradient!(G, pulsevals, wrk)
     wrk.fg_count[1] += 1
 
     # forward propagation and storage of states
-    J_val = evaluate_functional(pulsevals, wrk; storage=wrk.fw_storage, count_call=false)
+    J_val =
+        evaluate_functional(pulsevals, wrk; storage = wrk.fw_storage, count_call = false)
 
     chi = wrk.kwargs[:chi]  # guaranteed to exist in `GrapeWrk` constructor
     chi_min_norm = get(wrk.kwargs, :chi_min_norm, 1e-100)
@@ -759,7 +760,7 @@ function evaluate_gradient!(G, pulsevals, wrk)
     if wrk.chi_takes_tau
         # we rely on `evaluate_functional` setting the `tau_vals` as a side
         # effect
-        χ = chi(Ψ, trajectories; tau=wrk.result.tau_vals)
+        χ = chi(Ψ, trajectories; tau = wrk.result.tau_vals)
     else
         χ = chi(Ψ, trajectories)
     end
@@ -846,9 +847,9 @@ function evaluate_gradient!(G, pulsevals, wrk)
                             μₗₖₙ,
                             dt,
                             ϕ_temp;
-                            check_convergence=taylor_grad_check_convergence,
-                            max_order=taylor_grad_max_order,
-                            tolerance=taylor_grad_tolerance
+                            check_convergence = taylor_grad_check_convergence,
+                            max_order = taylor_grad_max_order,
+                            tolerance = taylor_grad_tolerance
                         )
                         # TODO: taylor_grad_step for immutable states
                         wrk.tau_grads[k][n, l] = ρ[k] * dot(χ̃ₗₖ, Ψₖ)

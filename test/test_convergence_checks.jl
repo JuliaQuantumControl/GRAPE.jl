@@ -15,17 +15,17 @@ PASSTHROUGH = false
 @testset "convergence check" begin
     rng = StableRNG(1244538994)
     problem = dummy_control_problem(;
-        N=2,
-        density=1.0,
-        complex_operators=false,
+        N = 2,
+        density = 1.0,
+        complex_operators = false,
         rng,
-        J_T=J_T_ss,
-        prop_method=ExpProp,
-        check_convergence=(res -> ((res.J_T < 1e-5) && "J_T < 10⁻⁵")),
-        callback=GRAPE.make_grape_print_iters(store_iter_info=["iter.", "J_T"]),
+        J_T = J_T_ss,
+        prop_method = ExpProp,
+        check_convergence = (res -> ((res.J_T < 1e-5) && "J_T < 10⁻⁵")),
+        callback = GRAPE.make_grape_print_iters(store_iter_info = ["iter.", "J_T"]),
     )
-    captured = IOCapture.capture(passthrough=PASSTHROUGH) do
-        GRAPE.optimize(problem.trajectories, problem.tlist; problem.kwargs..., iter_stop=100)
+    captured = IOCapture.capture(passthrough = PASSTHROUGH) do
+        GRAPE.optimize(problem.trajectories, problem.tlist; problem.kwargs..., iter_stop = 100)
     end
     res = captured.value
     @test res.converged
@@ -39,17 +39,17 @@ end
 @testset "convergence check with iter_stop" begin
     rng = StableRNG(1244538994)
     problem = dummy_control_problem(;
-        N=2,
-        density=1.0,
-        complex_operators=false,
+        N = 2,
+        density = 1.0,
+        complex_operators = false,
         rng,
-        J_T=J_T_ss,
-        prop_method=ExpProp,
-        check_convergence=(res -> ((res.J_T < 1e-5) && "J_T < 10⁻⁵")),
-        callback=GRAPE.make_grape_print_iters(store_iter_info=["iter.", "J_T"]),
+        J_T = J_T_ss,
+        prop_method = ExpProp,
+        check_convergence = (res -> ((res.J_T < 1e-5) && "J_T < 10⁻⁵")),
+        callback = GRAPE.make_grape_print_iters(store_iter_info = ["iter.", "J_T"]),
     )
-    captured = IOCapture.capture(passthrough=PASSTHROUGH) do
-        GRAPE.optimize(problem.trajectories, problem.tlist; problem.kwargs..., iter_stop=2)
+    captured = IOCapture.capture(passthrough = PASSTHROUGH) do
+        GRAPE.optimize(problem.trajectories, problem.tlist; problem.kwargs..., iter_stop = 2)
     end
     res = captured.value
     @test res.converged

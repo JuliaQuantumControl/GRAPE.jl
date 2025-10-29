@@ -21,19 +21,19 @@ using GRAPE
     H = random_matrix(N; rng)
     trajectories = [
         Trajectory(;
-            initial_state=random_state_vector(N; rng),
-            generator=H,
-            target_state=random_state_vector(N; rng)
+            initial_state = random_state_vector(N; rng),
+            generator = H,
+            target_state = random_state_vector(N; rng)
         )
     ]
 
     @test length(get_controls(trajectories)) == 0
 
-    tlist = collect(range(0; length=1001, step=1.0))
+    tlist = collect(range(0; length = 1001, step = 1.0))
 
-    problem = ControlProblem(trajectories, tlist; J_T=J_T_re)
+    problem = ControlProblem(trajectories, tlist; J_T = J_T_re)
 
     msg = "no controls in trajectories: cannot optimize"
-    @test_throws ErrorException(msg) optimize(problem; method=GRAPE)
+    @test_throws ErrorException(msg) optimize(problem; method = GRAPE)
 
 end

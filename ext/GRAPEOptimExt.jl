@@ -19,9 +19,9 @@ function run_optimizer(
 
     tol_options = Optim.Options(
         # just so we can instantiate `optimizer_state` before `optim_callback`
-        x_tol=get(wrk.kwargs, :x_tol, 0.0),
-        f_tol=get(wrk.kwargs, :f_tol, 0.0),
-        g_tol=get(wrk.kwargs, :g_tol, 1e-8),
+        x_tol = get(wrk.kwargs, :x_tol, 0.0),
+        f_tol = get(wrk.kwargs, :f_tol, 0.0),
+        g_tol = get(wrk.kwargs, :g_tol, 1e-8),
     )
     if any(wrk.lower_bounds .> -Inf) || any(wrk.upper_bounds .< Inf)
         error("bounds are not implemented for Optim.jl optimization")
@@ -72,16 +72,16 @@ function run_optimizer(
     end
 
     options = Optim.Options(
-        callback=optim_callback,
-        iterations=(wrk.result.iter_stop - wrk.result.iter_start), # TODO
-        x_tol=get(wrk.kwargs, :x_tol, 0.0),
-        f_tol=get(wrk.kwargs, :f_tol, 0.0),
-        g_tol=get(wrk.kwargs, :g_tol, 1e-8),
-        show_trace=get(wrk.kwargs, :show_trace, false),
-        extended_trace=get(wrk.kwargs, :extended_trace, false),
-        store_trace=get(wrk.kwargs, :store_trace, false),
-        show_every=get(wrk.kwargs, :show_every, 1),
-        allow_f_increases=get(wrk.kwargs, :allow_f_increases, false),
+        callback = optim_callback,
+        iterations = (wrk.result.iter_stop - wrk.result.iter_start), # TODO
+        x_tol = get(wrk.kwargs, :x_tol, 0.0),
+        f_tol = get(wrk.kwargs, :f_tol, 0.0),
+        g_tol = get(wrk.kwargs, :g_tol, 1e-8),
+        show_trace = get(wrk.kwargs, :show_trace, false),
+        extended_trace = get(wrk.kwargs, :extended_trace, false),
+        store_trace = get(wrk.kwargs, :store_trace, false),
+        show_every = get(wrk.kwargs, :show_every, 1),
+        allow_f_increases = get(wrk.kwargs, :allow_f_increases, false),
     )
 
     res = Optim.optimize(objective, initial_x, method, options, wrk.optimizer_state)

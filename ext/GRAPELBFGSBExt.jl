@@ -152,7 +152,7 @@ function print_lbfgsb_trace(
     optimizer::LBFGSB.L_BFGS_B,
     message_in::AbstractString,
     message_out::AbstractString;
-    show_details=true
+    show_details = true
 )
     n = length(wrk.pulsevals)
     println("- end of task loop: $message_in -> $message_out")
@@ -192,7 +192,7 @@ function print_lbfgsb_trace(
 end
 
 
-function gradient(wrk::GrapeWrk{O}; which=:initial) where {O<:LBFGSB.L_BFGS_B}
+function gradient(wrk::GrapeWrk{O}; which = :initial) where {O<:LBFGSB.L_BFGS_B}
     if which == :initial
         return wrk.gradient
     elseif which == :final
