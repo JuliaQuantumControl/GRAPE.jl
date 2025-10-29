@@ -4,3 +4,6 @@
 
 # REUSE licensing information
 f0ef63e0fb83f83aeee1f6fa2ed068a60cc01579
+
+# Change to project .JuliaFormatter.toml: use spaces around keyword arguments
+ff42648b594b8f2a673a1dafca204aeef21d7256
