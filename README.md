@@ -96,6 +96,13 @@ See [`CONTRIBUTING.md`](https://github.com/JuliaQuantumControl/.github/blob/mast
 
 See the [`CHANGELOG.md`](CHANGELOG.md) and the [Release Notes](https://github.com/JuliaQuantumControl/GRAPE.jl/releases).
 
+## Citing
+
+If you are using this software please cite it as ([bib](CITATION.bib)):
+
+* M. H. Goerz, S. C. Carrasco, A. Marshall, and V. S. Malinovsky, *GRAPE.jl: Gradient Ascent Pulse Engineering
+in Julia*, J. Open Source Softw. **10**, 8813 (2025).
+
 ## License
 
 The source code of this project is licensed under the [MIT License](LICENSE). The documentation is licensed under [Creative Commons (`CC-BY-4.0`)](https://creativecommons.org/licenses/by/4.0/deed.en). License information for all files is [automatically tracked](https://github.com/JuliaQuantumControl/GRAPE.jl/actions/workflows/REUSE.yml) according to [REUSE](https://reuse.software) and can be verified using the [`reuse` tool](https://github.com/fsfe/reuse-tool?tab=readme-ov-file#reuse), e.g., by running `reuse spdx`.
