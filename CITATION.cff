@@ -1,0 +1,44 @@
+cff-version: "1.2.0"
+authors:
+- family-names: Goerz
+  given-names: Michael H.
+  orcid: "https://orcid.org/0000-0003-2839-9976"
+- family-names: Carrasco
+  given-names: Sebastián C.
+  orcid: "https://orcid.org/0000-0002-6512-9695"
+- family-names: Marshall
+  given-names: Alastair
+  orcid: "https://orcid.org/0000-0001-7772-2173"
+- family-names: Malinovsky
+  given-names: Vladimir S.
+  orcid: "https://orcid.org/0000-0002-0243-9282"
+doi: 10.5281/zenodo.17487150
+message: If you use this software, please cite our article in the
+  Journal of Open Source Software.
+preferred-citation:
+  authors:
+  - family-names: Goerz
+    given-names: Michael H.
+    orcid: "https://orcid.org/0000-0003-2839-9976"
+  - family-names: Carrasco
+    given-names: Sebastián C.
+    orcid: "https://orcid.org/0000-0002-6512-9695"
+  - family-names: Marshall
+    given-names: Alastair
+    orcid: "https://orcid.org/0000-0001-7772-2173"
+  - family-names: Malinovsky
+    given-names: Vladimir S.
+    orcid: "https://orcid.org/0000-0002-0243-9282"
+  date-published: 2025-11-02
+  doi: 10.21105/joss.08813
+  issn: 2475-9066
+  issue: 115
+  journal: Journal of Open Source Software
+  publisher:
+    name: Open Journals
+  start: 8813
+  title: "GRAPE.jl: Gradient Ascent Pulse Engineering in Julia"
+  type: article
+  url: "https://joss.theoj.org/papers/10.21105/joss.08813"
+  volume: 10
+title: "GRAPE.jl: Gradient Ascent Pulse Engineering in Julia"

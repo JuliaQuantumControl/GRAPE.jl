@@ -47,6 +47,7 @@ The defining feature of the GRAPE method is that it considers ``\epsilon(t)`` as
     * [Features](@ref)
     * [Contributing](@ref)
     * [History](@ref)
+    * [Citing](@ref)
 
 ```@contents
 Depth = 2
@@ -111,6 +112,13 @@ The `GRAPE.jl` package aims to avoid common shortcomings in [existing implementa
 See [`CONTRIBUTING.md`](https://github.com/JuliaQuantumControl/.github/blob/master/CONTRIBUTING.md#contributing-to-juliaquantumcontrol-packages).
 
 Consider using the [JuliaQuantumControl Dev Environment](https://github.com/JuliaQuantumControl/JuliaQuantumControl?tab=readme-ov-file#juliaquantumcontrol-dev-environment).
+
+## Citing
+
+If you are using this software please cite it as ([bib](https://github.com/JuliaQuantumControl/GRAPE.jl/blob/master/CITATION.bib)):
+
+[GoerzJOSS2025](@cite) M. H. Goerz, S. C. Carrasco, A. Marshall, and V. S. Malinovsky, *GRAPE.jl: Gradient Ascent Pulse Engineering
+in Julia*, J. Open Source Softw. **10**, 8813 (2025).
 
 ## History
 

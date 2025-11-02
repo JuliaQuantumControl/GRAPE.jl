@@ -11,6 +11,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 For releases pre-1.0, see the [GitHub Releases](https://github.com/JuliaQuantumControl/GRAPE.jl/releases).
 
-## [Unreleased]
+## [v1.0.0] — 2025-10-30
 
-[Unreleased]: https://github.com/JuliaQuantumControl/GRAPE.jl/compare/v0.7.5...HEAD
+Initial stable release. No breaking changes compared to [v0.8.1].
+
+[Unreleased]: https://github.com/JuliaQuantumControl/GRAPE.jl/compare/v1.0.0..HEAD
+[v1.0.0]: https://github.com/JuliaQuantumControl/GRAPE.jl/releases/tag/v1.0.0
+[v0.8.1]: https://github.com/JuliaQuantumControl/GRAPE.jl/releases/tag/v0.8.1
