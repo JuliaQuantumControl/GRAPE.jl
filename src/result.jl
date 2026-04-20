@@ -19,7 +19,11 @@ The attributes of a `GrapeResult` object include
 * `J_a`: The value of the running cost ``J_a`` in the current iteration
   (excluding ``λ_a``)
 * `J_a_prev`: The value of ``J_a`` in the previous iteration
-* `tlist`: The time grid on which the control are discetized.
+* `J_b`: If `g_b` and `lambda_b ≠ 0` was given, the value of the
+  state-dependent running cost ``J_b`` in the current iteration
+  (excluding ``λ_b``)
+* `J_b_prev`: The value of ``J_b`` in the previous iteration
+* `tlist`: The time grid on which the control are discretized.
 * `guess_controls`: A vector of the original control fields (each field
   discretized to the points of `tlist`)
 * `optimized_controls`: A vector of the optimized control fields in the current
@@ -47,6 +51,8 @@ mutable struct GrapeResult{STST} <: AbstractOptimizationResult
     J_T_prev::Float64  # previous value of J_T
     J_a::Float64  # the current value of the functional J_a (excluding λ_a)
     J_a_prev::Float64  # previous value of J_a
+    J_b::Float64  # the current value of the functional J_b (excluding λ_b)
+    J_b_prev::Float64  # previous value of J_b
     guess_controls::Vector{Vector{Float64}}
     optimized_controls::Vector{Vector{Float64}}
     states::Vector{STST}
@@ -72,6 +78,8 @@ function GrapeResult(trajectories, tlist, kwargs)
     J_T_prev = 0.0
     J_a = 0.0
     J_a_prev = 0.0
+    J_b = 0.0
+    J_b_prev = 0.0
     optimized_controls = [copy(guess) for guess in guess_controls]
     states = [similar(traj.initial_state) for traj in trajectories]
     start_local_time = now()
@@ -92,6 +100,8 @@ function GrapeResult(trajectories, tlist, kwargs)
         J_T_prev,
         J_a,
         J_a_prev,
+        J_b,
+        J_b_prev,
         guess_controls,
         optimized_controls,
         states,
@@ -125,7 +135,13 @@ GRAPE Optimization Result
 
 
 function Base.convert(::Type{GrapeResult}, result::AbstractOptimizationResult)
-    defaults =
-        Dict{Symbol,Any}(:f_calls => 0, :fg_calls => 0, :J_a => 0.0, :J_a_prev => 0.0)
+    defaults = Dict{Symbol,Any}(
+        :f_calls => 0,
+        :fg_calls => 0,
+        :J_a => 0.0,
+        :J_a_prev => 0.0,
+        :J_b => 0.0,
+        :J_b_prev => 0.0
+    )
     return convert(GrapeResult, result, defaults)
 end

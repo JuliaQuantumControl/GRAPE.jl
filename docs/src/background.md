@@ -620,8 +620,8 @@ So far, we have only discussed the evaluation of gradients for final-time functi
   J(\{\epsilon_{nl}\})
   =
   J_T(\{|\Psi_k(T)⟩\}) +
-  \lambda_a \sum_{n=1}^{N_T} \sum_l (g_a)_{nl} +
-  \lambda_b \sum_{n=0}^{N_T} (g_b)_{n}\,,
+  \lambda_a \sum_{n=1}^{N_T} \sum_l (g_a)_{nl}\,dt_n +
+  \lambda_b \sum_k \sum_{n=0}^{N_T} (g_b)_{kn}\,Δt_n \,,
 \end{equation}
 ```
 
@@ -629,12 +629,12 @@ with
 
 ```math
 \begin{equation}
-  (g_a)_{nl} = \frac{1}{dt_n} g_a(\epsilon_{nl}, dt_n)\,,\qquad
-  (g_b)_{n} = \frac{1}{\Delta t_n} g_b(\{|\Psi_k(t_n)⟩\}, t_n)\,.
+  (g_a)_{nl} = g_a(\epsilon_{nl}, dt_n)\,,\qquad
+  (g_b)_{kn} =  g_b(|\Psi_k(t_n)⟩, t_n)\,.
 \end{equation}
 ```
 
-As in Eq. \eqref{eq:psi-time-evolution}, we define ``|\Psi_k(t_n)⟩ = \hat{U}^{(k)}_n \dots \hat{U}^{(k)}_1 |\Psi_k(t=0)⟩``, with the time grid points ``t_0 = 0``, ``t_{N_T} = T``, and with ``\hat{U}^{(k)}_n = \exp[-i \hat{H}_{kn} dt_n]`` as the time evolution operator for the ``n``'th time interval, ``dt_n = t_{n} - t_{n-1}``. Similarly, ``\Delta t_n`` is the time step around the time grid point ``t_n``, e.g. ``\Delta t_0 = dt_1``, ``\Delta t_n = \frac{1}{2}(t_{n+1} - t_{n-1})`` for ``1\le n < N_T``, and ``\Delta t_{N_T} = dt_{N_T}``. For uniform time grids, ``dt_n \equiv \Delta t_n \equiv dt``.
+As in Eq. \eqref{eq:psi-time-evolution}, we define ``|\Psi_k(t_n)⟩ = \hat{U}^{(k)}_n \dots \hat{U}^{(k)}_1 |\Psi_k(t=0)⟩``, with the time grid points ``t_0 = 0``, ``t_{N_T} = T``, and with ``\hat{U}^{(k)}_n = \exp[-i \hat{H}_{kn} dt_n]`` as the time evolution operator for the ``n``'th time interval, ``dt_n = t_{n} - t_{n-1}``. Similarly, ``Δt_n`` is the time step around the time grid point ``t_n``, e.g. ``Δt_0 = dt_1``, ``Δt_n = \frac{1}{2}(t_{n+1} - t_{n-1})`` for ``1\le n < N_T``, and ``Δt_{N_T} = dt_{N_T}``. For uniform time grids, ``dt_n \equiv Δt_n \equiv dt``.
 
 ### Field-dependent running costs
 
@@ -649,8 +649,8 @@ More interesting is the case of state-dependent constraints. Typical examples [
 
 ```math
 \begin{equation}
-  g_{b,\text{trj}}(\{|\Psi_k(t_n)⟩\})
-  = \sum_k \norm{|\Psi_k(t_n)⟩ - |\Psi^{\text{tgt}}_k(t_n)⟩}^2\,,
+  g_{b,\text{trj}}(|\Psi_k(t_n)⟩)
+  = \norm{|\Psi_k(t_n)⟩ - |\Psi^{\text{tgt}}_k(t_n)⟩}^2\,,
 \end{equation}
 ```
 
@@ -658,8 +658,8 @@ where the time evolution of each state ``|\Psi_k(t_n)⟩`` should be close to so
 
 ```math
 \begin{equation}
-  g_{b,\hat{D}(t)}(\{|\Psi_k(t_n)⟩\})
-  = \sum_k \Braket{\Psi_k(t_n) | \hat{D}(t_n)| \Psi_k(t_n)}\,,
+  g_{b,\hat{D}(t)}(|\Psi_k(t_n)⟩)
+  = \Braket{\Psi_k(t_n) | \hat{D}(t_n)| \Psi_k(t_n)}\,,
 \end{equation}
 ```
 
@@ -675,17 +675,20 @@ To obtain the full gradient of a functional with a state-dependent running cost,
     2 \Re \sum_k \left[
       \frac{\partial J_T}{\partial |\Psi_k(T)⟩}
       \frac{\partial |\Psi_k(T)⟩}{\partial \epsilon_{nl}}
-      + \sum_{n'=0}^{N_T}
-      \frac{\partial\,(g_b)_{n'}}{\partial |\Psi_k(t_{n'})⟩}
+      + \lambda_b \sum_{n'=0}^{N_T}
+      \frac{\partial\,(g_b)_{kn'}}{\partial |\Psi_k(t_{n'})⟩}
       \frac{\partial |\Psi_k(t_{n'})⟩}{\partial \epsilon_{nl}}
-    \right] \\
-    \label{eq:gradJ-rc2}
-    &=
-    -2 \Re \sum_k \frac{\partial}{\partial \epsilon_{nl}} \left[
-      \bigg\langle \chi_{k}^{(0)}(T) \bigg\vert \hat{U}_{N_T} \dots \hat{U}_1 \bigg\vert \Psi_k(0) \bigg\rangle
-     + \sum_{n'=n}^{N_T}
-        \bigg\langle \xi_{k}(t_{n'}) \bigg\vert \hat{U}_{n'} \dots \hat{U}_1 \bigg\vert \Psi_k(0) \bigg\rangle
+      Δt_{n'}
     \right]
+    \label{eq:gradJ-rc2}\\
+    &=
+    -2 \Re \sum_k \frac{\partial}{\partial \epsilon_{nl}} \Bigg[
+      \bigg\langle \chi_{k}^{(0)}(T) \bigg\vert \hat{U}_{N_T} \dots \hat{U}_1 \bigg\vert \Psi_k(0) \bigg\rangle \notag\\
+    &\qquad\qquad\qquad\qquad\qquad
+     + \lambda_b \sum_{n'=n}^{N_T}
+        \bigg\langle \xi_{k}(t_{n'}) \bigg\vert \hat{U}_{n'} \dots \hat{U}_1 \bigg\vert \Psi_k(0) \bigg\rangle
+        Δt_{n'}
+    \Bigg]
   \end{align}
 ```
 
@@ -696,7 +699,7 @@ with
   \label{eq:chi-boundary-gb1}
   |\chi_k^{(0)}(T)⟩ \equiv - \frac{\partial J_T}{\partial \bra{\Psi_k(T)}}\,,
   \qquad
-  |\xi_k(t_{n'})⟩ \equiv - \frac{\partial\,(g_b)_{n'}}{\partial \bra{\Psi_k(t_{n'})}}\,,
+  |\xi_k(t_{n'})⟩ \equiv - \frac{\partial\,(g_b)_{kn'}}{\partial \bra{\Psi_k(t_{n'})}}\,,
 \end{equation}
 ```
 
@@ -719,11 +722,12 @@ with
 \begin{equation}\label{eq:chi-boundary-gb}
   |\chi_k(T)⟩
   \equiv
-  |\chi_k^{(0)}(T)⟩ + |\xi_k(T)⟩
+  |\chi_k^{(0)}(T)⟩ + \lambda_b |\xi_k(T)⟩ Δt_{N_T}
   =
   - \left(
     \frac{\partial J_T}{\partial \bra{\Psi_k(T)}} +
-    \frac{\partial\,(g_b)_{N_T}}{\partial \bra{\Psi_k(T)}}
+    \lambda_b \frac{\partial\,(g_b)_{kN_T}}{\partial \bra{\Psi_k(T)}}
+    Δt_{N_T}
   \right)
   \,.
 \end{equation}
@@ -748,15 +752,11 @@ with
 \begin{equation}\label{eq:chi-bw-gb}
   |\chi_k(t_n)⟩ =
     \hat{U}_{n+1}^\dagger |\chi_k(t_{n+1})⟩ -
-    \frac{\partial\,(g_b)_{n}}{\partial \bra{\Psi_k(t_n)}}\,.
+    \lambda_b \frac{\partial\,(g_b)_{kn}}{\partial \bra{\Psi_k(t_n)}} Δt_{n}\,.
 \end{equation}
 ```
 
 Thus, there are no fundamental changes to the scheme in [Fig. 1](#fig-grape-scheme) in the presence of state-dependent running costs. The states ``\{|\Psi_k(0)⟩\}`` must be forward-propagated and stored, and then the extended states ``|\tilde\chi_k(t_n)⟩`` are propagated backward to produce the gradient. The only difference is that the boundary state ``|\tilde\chi_k(T)⟩`` is now constructed based on Eq. \eqref{eq:chi-boundary-gb} instead of Eq. \eqref{eq:chi}. Furthermore, the backward propagation uses the discrete inhomogeneous Eq. \eqref{eq:chi-bw-gb}. The inhomogeneity is calculated using the forward-propagated states stored previously, with the derivative of ``g_b`` performed analytically or by automatic differentiation.
-
-!!! warning
-
-    Support for state-dependent running costs is planned for a future version of `GRAPE.jl`; currently, there are no parameters to pass for `g_b`, `lambda_a`, etc.
 
 ## Optimizers
 

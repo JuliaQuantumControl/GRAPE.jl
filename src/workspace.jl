@@ -7,6 +7,7 @@ using QuantumControl.QuantumPropagators.Storage: init_storage
 using QuantumControl.QuantumPropagators.Controls: get_controls, discretize_on_midpoints
 using QuantumControl: Trajectory, init_prop_trajectory
 using QuantumControl.Controls: get_control_derivs
+using QuantumControl.Functionals: make_chi, make_xi
 using QuantumGradientGenerators: GradVector, GradGenerator
 import LBFGSB
 
@@ -29,12 +30,21 @@ attributes:
   `pulsevals` such that mutating `pulsevals` is directly reflected in the next
   propagation step.
 * `gradient`: The total gradient for the guess in the current iteration
-* `grad_J_T`: The *current*  gradient for the final-time part of the
-  functional. This is from the last evaluation of the gradient, which may be
-  for the optimized pulse (depending on the internal of the optimizer)
+* `grad_J_Tb`: The *current* gradient contribution from the backward
+  propagation. When no state-dependent running cost `g_b` is present, this is
+  the gradient ``∂J_T/∂ϵ_{nl}`` of the final-time functional only. When `g_b`
+  is given, the state-dependent running cost enters the backward propagation
+  via the modified boundary condition and an inhomogeneity at each time step
+  (see [Running costs](@ref Overview-Running-Costs) in the [Background
+  documentation](@ref GRAPE-Background)), so this field holds the *combined*
+  gradient ``∂(J_T + λ_b J_b)/∂ϵ_{nl}``. The
+  contributions of ``J_T`` and ``λ_b J_b`` cannot be separated without an
+  additional backward propagation. This is from the last evaluation of the
+  gradient, which may be for the optimized pulse (depending on the internals
+  of the optimizer).
 * `grad_J_a`: The *current*  gradient for the running cost part of the
   functional.
-* `J_parts`: The two-component vector ``[J_T, J_a]``
+* `J_parts`: The three-component vector ``[J_T, λ_a J_a, λ_b J_b]``
 * `upper_bounds`: Upper bound for every `pulsevals`; `+Inf` indicates no bound.
 * `lower_bounds`: Lower bound for every `pulsevals`; `-Inf` indicates no bound.
 * `fg_count`: A two-element vector containing the number of evaluations of the
@@ -77,9 +87,10 @@ mutable struct GrapeWrk{O}
     pulsevals_guess::Vector{Float64}
     pulsevals::Vector{Float64}
     gradient::Vector{Float64}
-    grad_J_T::Vector{Float64}
+    grad_J_Tb::Vector{Float64}
     grad_J_a::Vector{Float64}
     J_parts::Vector{Float64}
+    J_b_trajectory::Vector{Float64}  # per-trajectory J_b accumulator
     upper_bounds::Vector{Float64}
     lower_bounds::Vector{Float64}
     fg_count::Vector{Int64}
@@ -183,9 +194,10 @@ function GrapeWrk(trajectories, tlist, kwargs)
         (l, control) in enumerate(controls)
     )
     gradient = zeros(length(pulsevals))
-    grad_J_T = zeros(length(pulsevals))
+    grad_J_Tb = zeros(length(pulsevals))
     grad_J_a = zeros(length(pulsevals))
-    J_parts = zeros(2)
+    J_parts = zeros(3)
+    J_b_trajectory = zeros(N)
     pulsevals_guess = copy(pulsevals)
     upper_bounds = fill(get(kwargs, :upper_bound, Inf), length(pulsevals))
     lower_bounds = fill(get(kwargs, :lower_bound, -Inf), length(pulsevals))
@@ -297,6 +309,19 @@ function GrapeWrk(trajectories, tlist, kwargs)
     chi = kwargs[:chi]
     chi_takes_tau =
         hasmethod(chi, Tuple{typeof(result.states),typeof(trajectories)}, (:tau,))
+    g_b_func = get(kwargs, :g_b, nothing)
+    if !isnothing(g_b_func) && !haskey(kwargs, :xi)
+        kwargs[:xi] = make_xi(g_b_func)
+    end
+    λ_b = get(kwargs, :lambda_b, 1.0)
+    if iszero(λ_b) && !isnothing(g_b_func)
+        @warn "Argument `g_b` was given with `lambda_b = 0.0`. Ignoring"
+        delete!(kwargs, :g_b)
+    end
+    if isnothing(g_b_func) && haskey(kwargs, :xi)
+        @warn "Argument `xi` was given without `g_b`. Ignoring"
+        delete!(kwargs, :xi)
+    end
     GrapeWrk{O}(
         trajectories,
         tlist,
@@ -307,9 +332,10 @@ function GrapeWrk(trajectories, tlist, kwargs)
         pulsevals_guess,
         pulsevals,
         gradient,
-        grad_J_T,
+        grad_J_Tb,
         grad_J_a,
         J_parts,
+        J_b_trajectory,
         upper_bounds,
         lower_bounds,
         fg_count,
@@ -425,7 +451,7 @@ function gradient(wrk; which = :initial)
         return wrk.gradient
     elseif which == :final
         λₐ = get(wrk.kwargs, :lambda_a, 1.0)
-        G = copy(wrk.grad_J_T)
+        G = copy(wrk.grad_J_Tb)
         axpy!(λₐ, wrk.grad_J_a, G)
         return G
     else

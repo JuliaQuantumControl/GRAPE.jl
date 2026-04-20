@@ -36,6 +36,11 @@ unicodeplots()
         include("test_pulse_running_cost.jl")
     end
 
+    println("\n* State Running Cost (test_state_running_cost.jl)")
+    @time @safetestset "State Running Cost" begin
+        include("test_state_running_cost.jl")
+    end
+
     println("\n* Taylor Gradient (test_taylor_grad.jl):")
     @time @safetestset "Taylor Gradient" begin
         include("test_taylor_grad.jl")
