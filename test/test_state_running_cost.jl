@@ -274,6 +274,7 @@ end
 
     opt1_dynamics = propagate(ket1, H_opt1, tlist; method = Cheby, storage = true)
     Pmax1 = maximum(abs2.(opt1_dynamics[2, :]))
+    @test Pmax1 > 0.5
 
     QuantumControl.set_default_ad_framework(nothing; quiet = true)
 
@@ -322,11 +323,27 @@ end
 
     @test Pmax2 / Pmax1 < 1e-1
 
+    result3 = optimize(problem2; method = GRAPE, gradient_method = :taylor)
+    @test result3.iter > result1.iter + 10
+    @test result3.converged
+    @test result3.message == "Convergence check returned true"
+    @test result3.J_b > 0.0
+    @test result3.J_b_prev > 0.0
+
+    H_opt3 = substitute(
+        H,
+        IdDict(ϵ => result3.optimized_controls[i] for (i, ϵ) in enumerate(get_controls(H)))
+    );
+    opt3_dynamics = propagate(ket1, H_opt3, tlist; method = Cheby, storage = true)
+    Pmax3 = maximum(abs2.(opt3_dynamics[2, :]))
+    # Optimizations agree within 5% relative error
+    @test (abs(Pmax3 - Pmax2) / Pmax3) < 0.05
+
     function xi_wrong(Ψ, _, _, _)
         return ComplexF64[0, Ψ[2], 0]  # incorrect sign
     end
-    result3 = optimize(problem2; method = GRAPE, xi = xi_wrong)
-    @test contains(result3.message, "ABNORMAL_TERMINATION_IN_LNSRCH")
+    result4 = optimize(problem2; method = GRAPE, xi = xi_wrong)
+    @test contains(result4.message, "ABNORMAL_TERMINATION_IN_LNSRCH")
 
 
 end

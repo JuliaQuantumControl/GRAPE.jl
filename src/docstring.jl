@@ -114,7 +114,7 @@ Returns a [`GrapeResult`](@ref).
 * `taylor_grad_max_order=100`: If given with `gradient_method=:taylor`, the
   maximum number of terms in the Taylor series. If
   `taylor_grad_check_convergence=true` (default), if the Taylor series does not
-  convergence within the given number of terms, throw an an error. With
+  convergence within the given number of terms, throw an error. With
   `taylor_grad_check_convergence=true`, this is the exact order of the Taylor
   series.
 * `taylor_grad_tolerance=1e-16`: If given with `gradient_method=:taylor` and
@@ -122,7 +122,7 @@ Returns a [`GrapeResult`](@ref).
   the term falls below the given tolerance. Ignored if
   `taylor_grad_check_convergence=false`.
 * `taylor_grad_check_convergence=true`: If given as `true` (default), check the
-  convergence after each term in the Taylor series an stop as soon as the norm
+  convergence after each term in the Taylor series and stop as soon as the norm
   of the term drops below the given number. If `false`, stop after exactly
   `taylor_grad_max_order` terms.
 * `lambda_a=1`: A weight for the running cost `J_a`.

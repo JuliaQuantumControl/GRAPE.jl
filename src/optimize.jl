@@ -924,21 +924,23 @@ function evaluate_gradient!(G, pulsevals, wrk)
                 else
                     Ψₖ = get_from_storage(wrk.fw_storage[k], n)
                 end
+                # pulsevals layout: L blocks of N_T, so the value of the l'th
+                # control at time interval n is `pulsevals[(l-1)*N_T + n]`.
+                local vals_dict = IdDict(
+                    control => pulsevals[(l-1)*N_T+n] for
+                    (l, control) ∈ enumerate(wrk.controls)
+                )
+                if supports_inplace(Hₖₙ⁺)
+                    evaluate!(Hₖₙ⁺, Hₖ⁺, tlist, n; vals_dict)
+                else
+                    Hₖₙ⁺ = evaluate(Hₖ⁺, tlist, n; vals_dict)
+                end
                 for l = 1:L
                     local μₖₗ = wrk.control_derivs[k][l]
                     if isnothing(μₖₗ)
                         wrk.tau_grads[k][n, l] = 0.0
                     else
-                        local ϵₙ⁽ⁱ⁾ = @view pulsevals[((n-1)*L+1):(n*L)]
-                        local vals_dict = IdDict(
-                            control => val for (control, val) ∈ zip(wrk.controls, ϵₙ⁽ⁱ⁾)
-                        )
                         local μₗₖₙ = evaluate(μₖₗ, tlist, n; vals_dict)
-                        if supports_inplace(Hₖₙ⁺)
-                            evaluate!(Hₖₙ⁺, Hₖ⁺, tlist, n; vals_dict)
-                        else
-                            Hₖₙ⁺ = evaluate(Hₖ⁺, tlist, n; vals_dict)
-                        end
                         local χₖ = wrk.bw_propagators[k].state
                         local χ̃ₗₖ = wrk.taylor_grad_states[l, k][1]
                         local ϕ_temp = wrk.taylor_grad_states[l, k][2:5]
