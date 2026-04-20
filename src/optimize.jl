@@ -195,6 +195,13 @@ function update_result!(wrk::GrapeWrk, i::Int64)
         λₐ = get(wrk.kwargs, :lambda_a, 1.0)
         res.J_a /= λₐ
     end
+    res.J_b_prev = res.J_b
+    if !isnothing(get(wrk.kwargs, :g_b, nothing))
+        lambda_b = get(wrk.kwargs, :lambda_b, 1.0)
+        res.J_b = wrk.J_parts[3] / lambda_b
+    else
+        res.J_b = 0.0
+    end
     (i > 0) && (res.iter = i)
     if i >= res.iter_stop
         res.converged = true
@@ -236,7 +243,7 @@ is called via [`QuantumControl.optimize`](@ref) with `print_iters=true`.
 
 The `print_iter_info` keyword argument specifies what information should be
 printed, and defaults to
-`["iter.", "J_T", "|∇J|", "|Δϵ|", "ΔJ", "FG(F)", "secs"]`.
+`["iter.", "J_T", "ǁ∇Jǁ", "ǁΔϵǁ", "ΔJ", "FG(F)", "secs"]`.
 The `store_iter_info` similarly specifies what information should be returned
 from the callback, so that it can be stored in the `records` field of the
 [`GrapeResult`](@ref) object.
@@ -248,11 +255,22 @@ The available fields for `print_iter_info` and `store_iter_info` are:
   optimized pulses
 - `"J_a"`: The value of the pulse-dependent running cost for the optimized
   pulses
+- `"J_b"`: The value of the state-dependent running cost for the optimized
+  states (excluding ``λ_b``)
 - `"λ_a⋅J_a"`: The total contribution of `J_a` to the full functional `J`
+- `"λ_b⋅J_b"`: The total contribution of `J_b` to the full functional `J`
 - `"J"`: The value of the optimization functional for the optimized pulses
 - `"ǁ∇J_Tǁ"`: The ℓ²-norm of the *current* gradient of the final-time
-  functional. Note that this is usually the gradient of the optimize pulse,
-  not the guess pulse.
+  functional, i.e., `norm(wrk.grad_J_Tb)`. This label is only correct when
+  there is no state-dependent running cost `g_b`. Note that this is usually
+  the gradient of the optimized pulse, not the guess pulse.
+- `"ǁ∇(J_T+λ_b·J_b)ǁ"`: Alias for `"ǁ∇J_Tǁ"`, to be used when a
+  state-dependent running cost `g_b` is present. In that case,
+  `wrk.grad_J_Tb` contains the combined gradient of ``J_T + λ_b J_b``, see
+  [Running costs](@ref Overview-Running-Costs) in the [Background
+  documentation](@ref GRAPE-Background). The two labels are interchangeable
+  and give access to the same value; the choice of label only affects how
+  the column is rendered.
 - `"ǁ∇J_aǁ"`: The ℓ²-norm of the the *current* gradient of the pulse-dependent
   running cost. For comparison with `"ǁ∇J_Tǁ"`.
 - `"λ_aǁ∇J_aǁ"`: The ℓ²-norm of the the *current* gradient of the complete
@@ -276,8 +294,12 @@ The available fields for `print_iter_info` and `store_iter_info` are:
   iteration
 - `"ΔJ_a"`:  The change in the control-dependent running cost relative to the
   previous iteration
+- `"ΔJ_b"`:  The change in the state-dependent running cost relative to the
+  previous iteration (excluding ``λ_b``)
 - `"λ_a⋅ΔJ_a"`: The change in the control-dependent running cost term
   relative to the previous iteration.
+- `"λ_b⋅ΔJ_b"`: The change in the state-dependent running cost term relative
+  to the previous iteration.
 - `"ΔJ"`:  The change in the total optimization functional relative to the
   previous iteration.
 - `"FG(F)"`:  The number of functional/gradient evaluation (FG), or pure
@@ -289,16 +311,16 @@ function make_grape_print_iters(; kwargs...)
         "iter.",
         "J_T",
         "J_a",
-        # "J_b",
+        "J_b",
         "λ_a⋅J_a",
-        # "λ_b⋅J_b",
+        "λ_b⋅J_b",
         "J",
         "ǁ∇J_Tǁ",
+        "ǁ∇(J_T+λ_b·J_b)ǁ",
         "ǁ∇J_aǁ",
         "λ_aǁ∇J_aǁ",
-        # "ǁ∇J_bǁ",
         "λ_a⋅ΔJ_a",
-        # "λ_b⋅ΔJ_b",
+        "λ_b⋅ΔJ_b",
         "ǁ∇Jǁ",
         "ǁΔϵǁ",
         "ǁϵǁ",
@@ -311,17 +333,18 @@ function make_grape_print_iters(; kwargs...)
         "α",
         "ΔJ_T",
         "ΔJ_a",
-        # "ΔJ_b",
+        "ΔJ_b",
         "λ_a⋅ΔJ_a",
-        # "λ_b⋅ΔJ_b",
+        "λ_b⋅ΔJ_b",
         "ΔJ",
         "FG(F)",
         "secs"
-    ]  # TODO: update docs when J_b is implemented
+    ]
     delta_headers = Set([
         "ΔJ_T",
         "λ_a⋅ΔJ_a",
         "ΔJ_a",
+        "ΔJ_b",
         "λ_b⋅ΔJ_b",
         "ΔJ",
         "ǁΔϵǁ",
@@ -355,6 +378,26 @@ function make_grape_print_iters(; kwargs...)
     function print_table(wrk, iteration, args...)
 
         λ_a = get(wrk.kwargs, :lambda_a, 1.0)
+        λ_b = get(wrk.kwargs, :lambda_b, 1.0)
+        if iteration == 0
+            has_g_b = !isnothing(get(wrk.kwargs, :g_b, nothing))
+            if has_g_b && ("ǁ∇J_Tǁ" ∈ needed_fields)
+                @warn (
+                    "The label \"ǁ∇J_Tǁ\" was requested, but the optimization " *
+                    "includes a state-dependent running cost `g_b`. The gradient " *
+                    "stored in `wrk.grad_J_Tb` is the combined gradient of " *
+                    "J_T + λ_b·J_b. Consider using the label " *
+                    "\"ǁ∇(J_T+λ_b·J_b)ǁ\" instead."
+                )
+            end
+            if !has_g_b && ("ǁ∇(J_T+λ_b·J_b)ǁ" ∈ needed_fields)
+                @warn (
+                    "The label \"ǁ∇(J_T+λ_b·J_b)ǁ\" was requested, but the " *
+                    "optimization does not include a state-dependent running " *
+                    "cost `g_b`."
+                )
+            end
+        end
         info_vals["iter."] = iteration
         info_vals["J_T"] = wrk.result.J_T
         info_vals["ΔJ_T"] = wrk.result.J_T - wrk.result.J_T_prev
@@ -363,9 +406,16 @@ function make_grape_print_iters(; kwargs...)
         ΔJ_a = wrk.result.J_a - wrk.result.J_a_prev
         info_vals["ΔJ_a"] = ΔJ_a
         info_vals["λ_a⋅ΔJ_a"] = λ_a * ΔJ_a
-        info_vals["J"] = wrk.result.J_T + λ_a * wrk.result.J_a
-        if "ǁ∇J_Tǁ" ∈ needed_fields
-            info_vals["ǁ∇J_Tǁ"] = norm(wrk.grad_J_T)
+        info_vals["J_b"] = wrk.result.J_b
+        info_vals["λ_b⋅J_b"] = wrk.J_parts[3]
+        ΔJ_b = wrk.result.J_b - wrk.result.J_b_prev
+        info_vals["ΔJ_b"] = ΔJ_b
+        info_vals["λ_b⋅ΔJ_b"] = λ_b * ΔJ_b
+        info_vals["J"] = wrk.result.J_T + λ_a * wrk.result.J_a + λ_b * wrk.result.J_b
+        if ("ǁ∇J_Tǁ" ∈ needed_fields) || ("ǁ∇(J_T+λ_b·J_b)ǁ" ∈ needed_fields)
+            nrm_∇J_Tb = norm(wrk.grad_J_Tb)
+            info_vals["ǁ∇J_Tǁ"] = nrm_∇J_Tb
+            info_vals["ǁ∇(J_T+λ_b·J_b)ǁ"] = nrm_∇J_Tb
         end
         if ("ǁ∇J_aǁ" ∈ needed_fields) || ("λ_aǁ∇J_aǁ" ∈ needed_fields)
             nrm_∇J_a = norm(wrk.grad_J_a)
@@ -376,8 +426,9 @@ function make_grape_print_iters(; kwargs...)
             info_vals["ǁ∇Jǁ"] = norm(gradient(wrk; which = :initial))
         end
         if "ΔJ" ∈ needed_fields
-            J = wrk.result.J_T + λ_a * wrk.result.J_a
-            J_prev = wrk.result.J_T_prev + λ_a * wrk.result.J_a_prev
+            J = wrk.result.J_T + λ_a * wrk.result.J_a + λ_b * wrk.result.J_b
+            J_prev =
+                wrk.result.J_T_prev + λ_a * wrk.result.J_a_prev + λ_b * wrk.result.J_b_prev
             info_vals["ΔJ"] = J - J_prev
         end
         if ("ǁΔϵǁ/ǁϵǁ" ∈ needed_fields) ||
@@ -431,6 +482,7 @@ function make_grape_print_iters(; kwargs...)
             "FG(F)" => 8,
             "secs" => 8,
             "∠°" => 7,
+            "ǁ∇(J_T+λ_b·J_b)ǁ" => 17,
         )
 
         if length(print_iter_info) > 0
@@ -640,6 +692,8 @@ function evaluate_functional(pulsevals, wrk; storage = nothing, count_call = tru
     J_T = wrk.kwargs[:J_T]
     J_a = get(wrk.kwargs, :J_a, nothing)
     λₐ = get(wrk.kwargs, :lambda_a, 1.0)
+    g_b_func = get(wrk.kwargs, :g_b, nothing)
+    λ_b = get(wrk.kwargs, :lambda_b, 1.0)
     trajectories = wrk.trajectories
     N = length(trajectories)
     tlist = wrk.tlist
@@ -664,6 +718,10 @@ function evaluate_functional(pulsevals, wrk; storage = nothing, count_call = tru
         (Φₖ !== nothing) && write_to_storage!(Φₖ, 1, Ψ₀(k))
         # The optional storage exists so that `evaluate_functional` can be used
         # as part of `evaluate_gradient!`.
+        local dt = tlist[2] - tlist[1]
+        if !isnothing(g_b_func)
+            wrk.J_b_trajectory[k] = g_b_func(Ψ₀(k), trajectories[k], tlist, 1) * dt
+        end
         for n = 1:N_T  # `n` is the index for the time interval
             local Ψₖ = prop_step!(wrk.fw_propagators[k])
             if haskey(wrk.fw_prop_kwargs[k], :callback)
@@ -672,6 +730,15 @@ function evaluate_functional(pulsevals, wrk; storage = nothing, count_call = tru
                 cb(wrk.fw_propagators[k], observables)
             end
             (Φₖ !== nothing) && write_to_storage!(Φₖ, n + 1, Ψₖ)
+            if !isnothing(g_b_func)
+                local n_tl = n + 1  # index of point in tlist
+                if n_tl < length(tlist)
+                    dt = 0.5 * (tlist[n_tl+1] - tlist[n_tl-1])
+                else
+                    dt = tlist[end] - tlist[end-1]
+                end
+                wrk.J_b_trajectory[k] += g_b_func(Ψₖ, trajectories[k], tlist, n_tl) * dt
+            end
         end
         local Ψₖ = wrk.fw_propagators[k].state
         wrk.result.tau_vals[k] = isnothing(Ψtgt(k)) ? NaN : (Ψtgt(k) ⋅ Ψₖ)
@@ -684,6 +751,9 @@ function evaluate_functional(pulsevals, wrk; storage = nothing, count_call = tru
     end
     if !isnothing(J_a)
         wrk.J_parts[2] = λₐ * J_a(pulsevals, tlist)
+    end
+    if !isnothing(g_b_func)
+        wrk.J_parts[3] = λ_b * sum(wrk.J_b_trajectory)
     end
     return sum(wrk.J_parts)
 end
@@ -728,13 +798,17 @@ information in `wrk`:
   condition for the backward propagation.
 * `wrk.chi_states_norm`: The original norm of the states ``|χ(T)⟩``, as
   calculated by ``-∂J/∂⟨Ψₖ|``
-* `wrk.grad_J_T`: The vector ``∂J_T/∂ϵ_{nl}, i.e., the gradient only for the
-  final-time part of the functional
+* `wrk.grad_J_Tb`: The vector ``∂(J_T + λ_b J_b)/∂ϵ_{nl}`` when a
+  state-dependent running cost `g_b` is given, or the vector
+  ``∂J_T/∂ϵ_{nl}`` when no `g_b` is given. That is, this gradient contains
+  the combined contributions from the final-time functional and (if present)
+  the state-dependent running cost; the two cannot be separated without an
+  additional backward propagation.
 * `wrk.grad_J_a`: The vector ``∂J_a/∂ϵ_{nl}``, i.e., the gradient only for the
   pulse-dependent running cost.
 
-The gradients are `wrk.grad_J_T` and `wrk.grad_J_a` (weighted by ``λ_a``) into
-are combined into the output `G`.
+The gradients `wrk.grad_J_Tb` and `wrk.grad_J_a` (weighted by ``λ_a``) are
+combined into the output `G`.
 
 Returns the value of the functional.
 """
@@ -745,6 +819,9 @@ function evaluate_gradient!(G, pulsevals, wrk)
     tlist = wrk.tlist
     N_T = length(tlist) - 1  # number of time steps
     L = length(wrk.controls)
+
+    xi_func = get(wrk.kwargs, :xi, nothing)
+    λ_b = get(wrk.kwargs, :lambda_b, 1.0)
 
     wrk.result.fg_calls += 1
     wrk.fg_count[1] += 1
@@ -763,6 +840,17 @@ function evaluate_gradient!(G, pulsevals, wrk)
         χ = chi(Ψ, trajectories; tau = wrk.result.tau_vals)
     else
         χ = chi(Ψ, trajectories)
+    end
+    if !isnothing(xi_func)
+        local dt = tlist[end] - tlist[end-1]
+        @threadsif wrk.use_threads for k = 1:N
+            local xi_T = xi_func(Ψ[k], trajectories[k], tlist, length(tlist))
+            if supports_inplace(χ[k])
+                axpy!(λ_b * dt, xi_T, χ[k])
+            else
+                χ[k] = χ[k] + (λ_b * dt) * xi_T
+            end
+        end
     end
     ρ = norm.(χ)
     χ = normalize_chis!(χ, ρ; chi_min_norm)
@@ -794,6 +882,18 @@ function evaluate_gradient!(G, pulsevals, wrk)
                     wrk.tau_grads[k][n, l] = ρ[k] * (χ̃ₖ.grad_states[l] ⋅ Ψₖ)
                 end
                 resetgradvec!(χ̃ₖ)
+                if !isnothing(xi_func) && n > 1
+                    local xi_n = xi_func(Ψₖ, trajectories[k], tlist, n)
+                    local dt = 0.5 * (tlist[n+1] - tlist[n-1])
+                    if supports_inplace(χ̃ₖ.state)
+                        axpy!(λ_b * dt / ρ[k], xi_n, χ̃ₖ.state)
+                    else
+                        χ̃ₖ = GradVector(
+                            χ̃ₖ.state + (λ_b * dt / ρ[k]) * xi_n,
+                            length(wrk.controls)
+                        )
+                    end
+                end
                 set_state!(wrk.bw_grad_propagators[k], χ̃ₖ)
             end
         end
@@ -862,6 +962,20 @@ function evaluate_gradient!(G, pulsevals, wrk)
                         get(wrk.bw_prop_kwargs[k], :observables, _StoreState())
                     cb(wrk.bw_propagators[k], observables)
                 end
+                if !isnothing(xi_func) && n > 1
+                    local chi_k_state = wrk.bw_propagators[k].state
+                    local xi_n = xi_func(Ψₖ, trajectories[k], tlist, n)
+                    local dt = 0.5 * (tlist[n+1] - tlist[n-1])
+                    if supports_inplace(chi_k_state)
+                        axpy!(λ_b * dt / ρ[k], xi_n, chi_k_state)
+                        set_state!(wrk.bw_propagators[k], chi_k_state)
+                    else
+                        set_state!(
+                            wrk.bw_propagators[k],
+                            chi_k_state + (λ_b * dt / ρ[k]) * xi_n
+                        )
+                    end
+                end
             end
         end
 
@@ -871,8 +985,8 @@ function evaluate_gradient!(G, pulsevals, wrk)
 
     end
 
-    _grad_J_T_via_chi!(wrk.grad_J_T, wrk.result.tau_vals, wrk.tau_grads)
-    copyto!(G, wrk.grad_J_T)
+    _grad_J_T_via_chi!(wrk.grad_J_Tb, wrk.result.tau_vals, wrk.tau_grads)
+    copyto!(G, wrk.grad_J_Tb)
     if haskey(wrk.kwargs, :grad_J_a)
         grad_J_a = get(wrk.kwargs, :grad_J_a, nothing)
         if !isnothing(grad_J_a)

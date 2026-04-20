@@ -66,3 +66,11 @@ Single test files can be run directly: `julia --project=test -e 'include("test/t
 - Code formatting follows JuliaQuantumControl organization standards
 - Tests require the full test environment with additional dependencies
 - Uses `devrepl.jl` for unified development environment setup
+
+## General Guidelines
+
+* Make sure to only use explicit imports in Julia code, and that there are no imported functions or constants that are not actually used.
+
+* When adding a new dependency to any `Project.toml` file, run `make distclean`, and then `make test/Manifest.toml`, `make docs/Manifest.toml`, etc. to recreate manifest files as necessary.
+
+* Never commit any changes or ask to commit. I will always create git commits manually.

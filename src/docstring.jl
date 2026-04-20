@@ -5,7 +5,7 @@
 # SPDX-License-Identifier: MIT
 
 @doc raw"""
-Solve a quantum control problem using the GRAPE method.
+Solve a quantum control problem, using the GRAPE method.
 
 ```julia
 using GRAPE
@@ -15,7 +15,12 @@ result = GRAPE.optimize(trajectories, tlist; J_T, kwargs...)
 minimizes a functional
 
 ```math
-J(\{ϵ_{nl}\}) = J_T(\{|Ψ_k(T)⟩\}) + λ_a J_a(\{ϵ_{nl}\})\,,
+J(\{ϵ_{nl}\}) = J_T(\{|Ψ_k(T)⟩\}) + λ_a J_a(\{ϵ_{nl}\}) + λ_b \underbrace{\sum_k \sum_n g_b(|Ψ_k(t_n)⟩) \, Δt_n}_{%
+    \begin{align*}
+     & = J_b(\{|Ψ_k(t_n)⟩\}) \\
+     & \approx \sum_k \int_{0}^{T} g_b(|Ψ_k(t)⟩)\,dt
+    \end{align*}
+}\,,
 ```
 
 via the GRAPE method, where the final time functional ``J_T`` depends
@@ -48,12 +53,20 @@ The backward-propagation of ``|\chi_k(t)⟩`` has the boundary condition
     |\chi_k(T)⟩ \equiv - \frac{\partial J_T}{\partial ⟨\Psi_k(T)|}\,.
 ```
 
-The final-time gradient ``\nabla J_T`` is combined with the gradient for the
-running costs, and the total gradient is then fed into an optimizer
-(L-BFGS-B by default) that iteratively changes the values ``\{ϵ_{nl}\}`` to
-minimize ``J``.
+When there is a state-dependent running cost ``g_b(Ψ_k(t))``,
+the backward-propagation and boundary condition contain an additional
+inhomogeneous term proportional to
 
-See [Background](@ref GRAPE-Background) for details.
+```math
+|\xi_k(t)⟩ = -\frac{\partial g_b(Ψ_k(t))}{\partial ⟨Ψ_k(t)|}\,,
+```
+
+leading to a combined gradient ``\nabla J_{Tb}`` for the ``J_T`` and ``J_b``
+terms of the functional. The final-time gradient ``\nabla J_T``, respectively
+``\nabla J_{Tb}``, is further combined with the gradient for the running
+cost ``J_a``, and the total gradient is then fed into an optimizer (L-BFGS-B
+by default) that iteratively changes the values ``\{ϵ_{nl}\}`` to minimize
+``J``. See [Background](@ref GRAPE-Background) for details.
 
 Returns a [`GrapeResult`](@ref).
 
@@ -116,6 +129,22 @@ Returns a [`GrapeResult`](@ref).
 * `grad_J_a`: A function to calculate the gradient of `J_a`. If not given, it
   will be automatically determined. See [`make_grad_J_a`](@ref) for the
   required interface.
+* `g_b`: A function `g_b(Ψ, trajectory, tlist, n)` that evaluates a
+  per-trajectory, per-time-point state-dependent running cost, where `Ψ` is
+  the forward-propagated state, `trajectory` is the corresponding trajectory,
+  `tlist` is the time grid, and `n` is the 1-based index into `tlist`. The
+  full state-dependent running cost is defined, based on `g_b`, as
+  ``J_b = \sum_k \sum_n g_b(|Ψ_k(t_n)⟩, t_n) \, Δt_n`` with ``Δt_n`` the
+  [time step around the time grid point ``t_n``](@ref Overview-Running-Costs).
+  If not given, no state-dependent running cost is used.
+* `xi`: A function `xi(Ψ, trajectory, tlist, n)` that evaluates the
+  inhomogeneity in the backward propagation due to a state-dependent running
+  cost. This inhomogeneity is ``λ_b Δt_n |ξ_k(t_n)⟩`` with
+  ``|ξ_k(t_n)⟩ = -∂(g_b)_{kn}/∂⟨Ψ_k(t_n)|``, where `k` is the index of
+  `trajectory` in the overall `problem.trajectories` and ``t_n`` is the time
+  grid point `tlist[n]`. If not given, it will be automatically determined
+  from `g_b` via [`QuantumControl.Functionals.make_xi`](@ref).
+* `lambda_b=1.0`: A weight for the state-dependent running cost `g_b`.
 * `upper_bound`: An upper bound for the value of any optimized control.
   Time-dependent upper bounds can be specified via `pulse_options`.
 * `lower_bound`: A lower bound for the value of any optimized control.

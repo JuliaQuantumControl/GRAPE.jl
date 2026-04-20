@@ -55,6 +55,7 @@ fallbacks = ExternalFallbacks(
     "propagate_trajectory" => "@extref QuantumControl :jl:function:`QuantumControl.propagate_trajectory`",
     "QuantumControl.Functionals.make_gate_chi" => "@extref QuantumControl :jl:function:`QuantumControl.Functionals.make_gate_chi`",
     "QuantumControl.Functionals.make_grad_J_a" => "@extref QuantumControl :jl:function:`QuantumControl.Functionals.make_grad_J_a`",
+    "QuantumControl.Functionals.make_xi" => "@extref QuantumControl :jl:function:`QuantumControl.Functionals.make_xi`",
     automatic = false,
 )
 
@@ -103,6 +104,7 @@ makedocs(;
     ),
     pages = PAGES,
     warnonly = false,
+    draft = false,
 )
 
 println("Finished makedocs")
