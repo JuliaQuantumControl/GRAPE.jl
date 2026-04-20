@@ -649,7 +649,7 @@ More interesting is the case of state-dependent constraints. Typical examples [
 
 ```math
 \begin{equation}
-  g_{b,\text{trj}}(\{|\Psi_k(t_n)⟩\})
+  g_{b,\text{trj}}(|\Psi_k(t_n)⟩)
   = \norm{|\Psi_k(t_n)⟩ - |\Psi^{\text{tgt}}_k(t_n)⟩}^2\,,
 \end{equation}
 ```
@@ -658,7 +658,7 @@ where the time evolution of each state ``|\Psi_k(t_n)⟩`` should be close to so
 
 ```math
 \begin{equation}
-  g_{b,\hat{D}(t)}(\{|\Psi_k(t_n)⟩\})
+  g_{b,\hat{D}(t)}(|\Psi_k(t_n)⟩)
   = \Braket{\Psi_k(t_n) | \hat{D}(t_n)| \Psi_k(t_n)}\,,
 \end{equation}
 ```

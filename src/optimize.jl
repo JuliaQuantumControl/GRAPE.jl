@@ -196,8 +196,9 @@ function update_result!(wrk::GrapeWrk, i::Int64)
         res.J_a /= λₐ
     end
     res.J_b_prev = res.J_b
-    if !isnothing(get(wrk.kwargs, :g_b, nothing))
-        lambda_b = get(wrk.kwargs, :lambda_b, 1.0)
+    lambda_b = get(wrk.kwargs, :lambda_b, 1.0)
+    g_b = get(wrk.kwargs, :g_b, nothing)
+    if !(iszero(lambda_b) && isnothing(g_b))
         res.J_b = wrk.J_parts[3] / lambda_b
     else
         res.J_b = 0.0
@@ -380,7 +381,7 @@ function make_grape_print_iters(; kwargs...)
         λ_a = get(wrk.kwargs, :lambda_a, 1.0)
         λ_b = get(wrk.kwargs, :lambda_b, 1.0)
         if iteration == 0
-            has_g_b = !isnothing(get(wrk.kwargs, :g_b, nothing))
+            has_g_b = !(isnothing(get(wrk.kwargs, :g_b, nothing)) || iszero(λ_b))
             if has_g_b && ("ǁ∇J_Tǁ" ∈ needed_fields)
                 @warn (
                     "The label \"ǁ∇J_Tǁ\" was requested, but the optimization " *
@@ -822,6 +823,9 @@ function evaluate_gradient!(G, pulsevals, wrk)
 
     xi_func = get(wrk.kwargs, :xi, nothing)
     λ_b = get(wrk.kwargs, :lambda_b, 1.0)
+    if iszero(λ_b)
+        xi_func = nothing
+    end
 
     wrk.result.fg_calls += 1
     wrk.fg_count[1] += 1

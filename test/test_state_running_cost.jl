@@ -7,10 +7,10 @@ using QuantumControl.Functionals: J_T_re, make_xi, J_b
 using Test
 using StableRNGs
 using QuantumControlTestUtils.DummyOptimization: dummy_control_problem
-using QuantumControlTestUtils.RandomObjects: random_matrix
 using QuantumPropagators.Interfaces: check_state
 using LinearAlgebra: dot, norm
 using GRAPE
+using Zygote
 using IOCapture
 
 
@@ -236,11 +236,25 @@ end
     using QuantumControl.Functionals: J_T_ss
     using QuantumPropagators: Cheby
 
+    function g_b(Ψ, _, _, _)
+        return abs2(Ψ[2]) # = ⟨2|Ψ⟩⟨Ψ|2⟩
+    end
+
+    # We first optimize without the running cost, so that we can compare the
+    # two results. We'll still pass `g_b`, but set `lambda_b = 0` to
+    # effectively disable this. This (as opposed to just not passing `g_b`) is
+    # something people are likely to do in real life, and gives as an
+    # opportunity to test that code path.
+
+    QuantumControl.set_default_ad_framework(Zygote; quiet = true)
+
     problem1 = ControlProblem(
         [trajectory],
         tlist;
         J_T = J_T_ss,
         iter_stop = 50,
+        g_b,
+        lambda_b = 0.0,
         check_convergence = res -> begin
             (res.J_T <= 1e-2) && "J_T < 10⁻²"
         end,
@@ -248,6 +262,9 @@ end
     );
 
     result1 = optimize(problem1; method = GRAPE)
+
+    @test iszero(result1.J_b)
+    @test iszero(result1.J_b_prev)
 
     using QuantumControl.Controls: substitute, get_controls
     H_opt1 = substitute(
@@ -258,9 +275,7 @@ end
     opt1_dynamics = propagate(ket1, H_opt1, tlist; method = Cheby, storage = true)
     Pmax1 = maximum(abs2.(opt1_dynamics[2, :]))
 
-    function g_b(Ψ, _, _, _)
-        return abs2(Ψ[2]) # = ⟨2|Ψ⟩⟨Ψ|2⟩
-    end
+    QuantumControl.set_default_ad_framework(nothing; quiet = true)
 
     function xi(Ψ, _, _, _)
         return ComplexF64[0, -Ψ[2], 0]
@@ -295,6 +310,8 @@ end
     @test result2.iter > result1.iter + 10
     @test result2.converged
     @test result2.message == "Convergence check returned true"
+    @test result2.J_b > 0.0
+    @test result2.J_b_prev > 0.0
 
     H_opt2 = substitute(
         H,

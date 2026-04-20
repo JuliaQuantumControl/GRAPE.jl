@@ -7,6 +7,7 @@ using QuantumControl.QuantumPropagators.Storage: init_storage
 using QuantumControl.QuantumPropagators.Controls: get_controls, discretize_on_midpoints
 using QuantumControl: Trajectory, init_prop_trajectory
 using QuantumControl.Controls: get_control_derivs
+using QuantumControl.Functionals: make_chi, make_xi
 using QuantumGradientGenerators: GradVector, GradGenerator
 import LBFGSB
 
@@ -311,6 +312,11 @@ function GrapeWrk(trajectories, tlist, kwargs)
     g_b_func = get(kwargs, :g_b, nothing)
     if !isnothing(g_b_func) && !haskey(kwargs, :xi)
         kwargs[:xi] = make_xi(g_b_func)
+    end
+    λ_b = get(kwargs, :lambda_b, 1.0)
+    if iszero(λ_b) && !isnothing(g_b_func)
+        @warn "Argument `g_b` was given with `lambda_b = 0.0`. Ignoring"
+        delete!(kwargs, :g_b)
     end
     if isnothing(g_b_func) && haskey(kwargs, :xi)
         @warn "Argument `xi` was given without `g_b`. Ignoring"

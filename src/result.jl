@@ -19,10 +19,11 @@ The attributes of a `GrapeResult` object include
 * `J_a`: The value of the running cost ``J_a`` in the current iteration
   (excluding ``λ_a``)
 * `J_a_prev`: The value of ``J_a`` in the previous iteration
-* `J_b`: The value of the state-dependent running cost ``J_b`` in the current
-  iteration (excluding ``λ_b``)
+* `J_b`: If `g_b` and `lambda_b ≠ 0` was given, the value of the
+  state-dependent running cost ``J_b`` in the current iteration
+  (excluding ``λ_b``)
 * `J_b_prev`: The value of ``J_b`` in the previous iteration
-* `tlist`: The time grid on which the control are discetized.
+* `tlist`: The time grid on which the control are discretized.
 * `guess_controls`: A vector of the original control fields (each field
   discretized to the points of `tlist`)
 * `optimized_controls`: A vector of the optimized control fields in the current
