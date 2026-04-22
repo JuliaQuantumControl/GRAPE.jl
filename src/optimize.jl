@@ -721,7 +721,8 @@ function evaluate_functional(pulsevals, wrk; storage = nothing, count_call = tru
         # as part of `evaluate_gradient!`.
         local dt = tlist[2] - tlist[1]
         if !isnothing(g_b_func)
-            wrk.J_b_trajectory[k] = g_b_func(Ψ₀(k), trajectories[k], tlist, 1) * dt
+            # trapezoid rule with endpoint weight 1/2
+            wrk.J_b_trajectory[k] = g_b_func(Ψ₀(k), trajectories[k], tlist, 1) * (dt / 2)
         end
         for n = 1:N_T  # `n` is the index for the time interval
             local Ψₖ = prop_step!(wrk.fw_propagators[k])
@@ -735,10 +736,13 @@ function evaluate_functional(pulsevals, wrk; storage = nothing, count_call = tru
                 local n_tl = n + 1  # index of point in tlist
                 if n_tl < length(tlist)
                     dt = 0.5 * (tlist[n_tl+1] - tlist[n_tl-1])
+                    wrk.J_b_trajectory[k] += g_b_func(Ψₖ, trajectories[k], tlist, n_tl) * dt
                 else
                     dt = tlist[end] - tlist[end-1]
+                    # trapezoid rule with endpoint weight 1/2
+                    wrk.J_b_trajectory[k] +=
+                        g_b_func(Ψₖ, trajectories[k], tlist, n_tl) * (dt / 2)
                 end
-                wrk.J_b_trajectory[k] += g_b_func(Ψₖ, trajectories[k], tlist, n_tl) * dt
             end
         end
         local Ψₖ = wrk.fw_propagators[k].state
@@ -850,9 +854,9 @@ function evaluate_gradient!(G, pulsevals, wrk)
         @threadsif wrk.use_threads for k = 1:N
             local xi_T = xi_func(Ψ[k], trajectories[k], tlist, length(tlist))
             if supports_inplace(χ[k])
-                axpy!(λ_b * dt, xi_T, χ[k])
+                axpy!(λ_b * dt/2, xi_T, χ[k])  # trapezoid rule
             else
-                χ[k] = χ[k] + (λ_b * dt) * xi_T
+                χ[k] = χ[k] + (λ_b * dt/2) * xi_T
             end
         end
     end

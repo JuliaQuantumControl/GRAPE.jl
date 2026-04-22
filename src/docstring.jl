@@ -15,22 +15,22 @@ result = GRAPE.optimize(trajectories, tlist; J_T, kwargs...)
 minimizes a functional
 
 ```math
-J(\{ϵ_{nl}\}) = J_T(\{|Ψ_k(T)⟩\}) + λ_a J_a(\{ϵ_{nl}\}) + λ_b \underbrace{\sum_k \sum_n g_b(|Ψ_k(t_n)⟩) \, Δt_n}_{%
-    \begin{align*}
-     & = J_b(\{|Ψ_k(t_n)⟩\}) \\
-     & \approx \sum_k \int_{0}^{T} g_b(|Ψ_k(t)⟩)\,dt
-    \end{align*}
-}\,,
+J(\{ϵ_{nl}\}) = J_T(\{|Ψ_k(T)⟩\}) + λ_a J_a(\{ϵ_{nl}\}) + λ_b \underbrace{\sum_k \int_{0}^{T} g_b(|Ψ_k(t)⟩)\,dt}_{%
+     = J_b(\{|Ψ_k(t_n)⟩\})}\,,
 ```
 
 via the GRAPE method, where the final time functional ``J_T`` depends
 explicitly on the forward-propagated states ``|Ψ_k(T)⟩``, where ``|Ψ_k(t)⟩`` is
 the time evolution of the `initial_state` in the ``k``th' element of the
-`trajectories`, and the running cost ``J_a`` depends explicitly on pulse values
+`trajectories`. The running cost ``J_a`` depends explicitly on pulse values
 ``ϵ_{nl}`` of the l'th control discretized on the n'th interval of the time
-grid `tlist`.
+grid `tlist`. The running cost ``J_b`` depends explicitly on the propagated
+state ``|Ψ_k(T)⟩`` in the given form of the integral over a function ``g_b``.
+This integral is assumed to be discretized according to the
+[trapezoidal rule](https://en.wikipedia.org/wiki/Trapezoidal_rule).
 
-It does this by calculating the gradient of the final-time functional
+GRAPE performs the minimization by calculating the gradient of the final-time
+functional
 
 ```math
 \nabla J_T \equiv \frac{\partial J_T}{\partial ϵ_{nl}}
@@ -133,9 +133,12 @@ Returns a [`GrapeResult`](@ref).
   per-trajectory, per-time-point state-dependent running cost, where `Ψ` is
   the forward-propagated state, `trajectory` is the corresponding trajectory,
   `tlist` is the time grid, and `n` is the 1-based index into `tlist`. The
-  full state-dependent running cost is defined, based on `g_b`, as
-  ``J_b = \sum_k \sum_n g_b(|Ψ_k(t_n)⟩, t_n) \, Δt_n`` with ``Δt_n`` the
-  [time step around the time grid point ``t_n``](@ref Overview-Running-Costs).
+  full state-dependent running cost is defined, based on `g_b`, as the
+  trapezoidal discretization
+  ``J_b = \sum_k \sum_{n=0}^{N_T} g_b(|Ψ_k(t_n)⟩, t_n) \, Δt_n`` with
+  ``Δt_n = (t_{n+1} - t_{n-1})/2`` at interior points, and
+  ``Δt_0 = (t_1 - t_0)/2``, ``Δt_{N_T} = (t_{N_T} - t_{N_T-1})/2`` at the
+  endpoints, cf. [`Overview-Running-Costs`](@ref).
   If not given, no state-dependent running cost is used.
 * `xi`: A function `xi(Ψ, trajectory, tlist, n)` that evaluates the
   inhomogeneity in the backward propagation due to a state-dependent running

@@ -304,7 +304,7 @@ end
             "ǁΔϵǁ",
             "ΔJ",
         ],
-        store_iter_info = ["J", "J_T", "J_b", "λ_b⋅J_b", "ǁ∇Jǁ"]
+        store_iter_info = ["J", "J_T", "J_b", "λ_b⋅J_b", "ǁ∇Jǁ", "ΔJ"]
     );
 
     result2 = optimize(problem2; method = GRAPE)
@@ -313,6 +313,8 @@ end
     @test result2.message == "Convergence check returned true"
     @test result2.J_b > 0.0
     @test result2.J_b_prev > 0.0
+    # Check monotonic convergence via negative ΔJ:
+    @test maximum([record[end] for record in result2.records][2:end]) < 0
 
     H_opt2 = substitute(
         H,
@@ -343,7 +345,7 @@ end
         return ComplexF64[0, Ψ[2], 0]  # incorrect sign
     end
     result4 = optimize(problem2; method = GRAPE, xi = xi_wrong)
-    @test contains(result4.message, "ABNORMAL_TERMINATION_IN_LNSRCH")
+    @test !result4.converged
 
 
 end
