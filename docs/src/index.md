@@ -15,7 +15,7 @@ VERSION = Pkg.dependencies()[Base.UUID("6b52fcaf-80fe-489a-93e9-9f92080510be")].
 
 github_badge = "[![Github](https://img.shields.io/badge/JuliaQuantumControl-GRAPE.jl-blue.svg?logo=github)](https://github.com/JuliaQuantumControl/GRAPE.jl)"
 
-version_badge = "![v$VERSION](https://img.shields.io/badge/version-v$VERSION-green.svg)"
+version_badge = "![v$VERSION](https://img.shields.io/badge/version-v$(replace(string(VERSION), "-"=>"--"))-green.svg)"
 
 joss_badge = "[![status](https://joss.theoj.org/papers/25e7a240c129459ad160dd3fb9d009d8/status.svg)](https://joss.theoj.org/papers/25e7a240c129459ad160dd3fb9d009d8)"
 
