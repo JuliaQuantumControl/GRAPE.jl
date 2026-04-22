@@ -25,9 +25,10 @@ the time evolution of the `initial_state` in the ``k``th' element of the
 `trajectories`. The running cost ``J_a`` depends explicitly on pulse values
 ``ϵ_{nl}`` of the l'th control discretized on the n'th interval of the time
 grid `tlist`. The running cost ``J_b`` depends explicitly on the propagated
-state ``|Ψ_k(T)⟩`` in the given form of the integral over a function ``g_b``.
+states ``|Ψ_k(t)⟩`` in the given form of the integral over a function ``g_b``.
 This integral is assumed to be discretized according to the
-[trapezoidal rule](https://en.wikipedia.org/wiki/Trapezoidal_rule).
+[trapezoidal rule](https://en.wikipedia.org/wiki/Trapezoidal_rule), see
+also [`QuantumControl.Functionals.J_b`](@ref).
 
 GRAPE performs the minimization by calculating the gradient of the final-time
 functional
@@ -129,16 +130,14 @@ Returns a [`GrapeResult`](@ref).
 * `grad_J_a`: A function to calculate the gradient of `J_a`. If not given, it
   will be automatically determined. See [`make_grad_J_a`](@ref) for the
   required interface.
-* `g_b`: A function `g_b(Ψ, trajectory, tlist, n)` that evaluates a
+* `g_b`: A function `g_b(Ψ, trajectory, tlist, n) -> Float64` that evaluates a
   per-trajectory, per-time-point state-dependent running cost, where `Ψ` is
-  the forward-propagated state, `trajectory` is the corresponding trajectory,
-  `tlist` is the time grid, and `n` is the 1-based index into `tlist`. The
-  full state-dependent running cost is defined, based on `g_b`, as the
-  trapezoidal discretization
-  ``J_b = \sum_k \sum_{n=0}^{N_T} g_b(|Ψ_k(t_n)⟩, t_n) \, Δt_n`` with
-  ``Δt_n = (t_{n+1} - t_{n-1})/2`` at interior points, and
-  ``Δt_0 = (t_1 - t_0)/2``, ``Δt_{N_T} = (t_{N_T} - t_{N_T-1})/2`` at the
-  endpoints, cf. [`Overview-Running-Costs`](@ref).
+  the state ``|Ψ(t)⟩`` at ``t`` corresponding to the (one-based) time grid
+  point `tlist[n]`, and `trajectory` is a [`QuantumControl.Trajectory`](@ref)
+  that may hold additional data in a custom property that is relevant to the
+  calculation of ``g_b``. The full state-dependent running cost is defined
+  implicitly via the trapezoidal discretization described in
+  [`QuantumControl.Functionals.J_b`](@ref).
   If not given, no state-dependent running cost is used.
 * `xi`: A function `xi(Ψ, trajectory, tlist, n)` that evaluates the
   inhomogeneity in the backward propagation due to a state-dependent running

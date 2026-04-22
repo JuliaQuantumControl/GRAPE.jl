@@ -732,7 +732,7 @@ cf. Eq. \eqref{eq:chi}, and
 \end{equation}
 ```
 
-The minus signs are by convention, to match similar definition in Krotov's method, and are compensated by the minus sign in front of the right-hand-side of Eq. \eqref{eq:gradJ-2}.
+The minus signs are by convention, to match similar a definition in Krotov's method, and are compensated by the minus sign in front of the right-hand-side of Eq. \eqref{eq:gradJ-2}.
 
 With the $n' = N_T$ term of the sum in Eq. \eqref{eq:gradJ-2} pulled out and absorbed into ``|\chi_k(T)⟩``, the derivative for the final time interval ``n = N_T`` reduces to the first line of Eq. \eqref{eq:gradJ-2}:
 
