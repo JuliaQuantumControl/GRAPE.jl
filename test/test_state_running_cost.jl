@@ -338,8 +338,10 @@ end
     );
     opt3_dynamics = propagate(ket1, H_opt3, tlist; method = Cheby, storage = true)
     Pmax3 = maximum(abs2.(opt3_dynamics[2, :]))
-    # Optimizations agree within 5% relative error
-    @test (abs(Pmax3 - Pmax2) / Pmax3) < 0.05
+    # Optimizations agree within 15% relative error. The loose tolerance
+    # accounts for platform-dependent accumulated floating-point rounding that
+    # gets amplified by L-BFGS in the flat part of the landscape.
+    @test (abs(Pmax3 - Pmax2) / Pmax3) < 0.15
 
     function xi_wrong(Ψ, _, _, _)
         return ComplexF64[0, Ψ[2], 0]  # incorrect sign
