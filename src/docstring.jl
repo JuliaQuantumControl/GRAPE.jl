@@ -15,22 +15,23 @@ result = GRAPE.optimize(trajectories, tlist; J_T, kwargs...)
 minimizes a functional
 
 ```math
-J(\{ϵ_{nl}\}) = J_T(\{|Ψ_k(T)⟩\}) + λ_a J_a(\{ϵ_{nl}\}) + λ_b \underbrace{\sum_k \sum_n g_b(|Ψ_k(t_n)⟩) \, Δt_n}_{%
-    \begin{align*}
-     & = J_b(\{|Ψ_k(t_n)⟩\}) \\
-     & \approx \sum_k \int_{0}^{T} g_b(|Ψ_k(t)⟩)\,dt
-    \end{align*}
-}\,,
+J(\{ϵ_{nl}\}) = J_T(\{|Ψ_k(T)⟩\}) + λ_a J_a(\{ϵ_{nl}\}) + λ_b \underbrace{\sum_k \int_{0}^{T} g_b(|Ψ_k(t)⟩)\,dt}_{%
+     = J_b(\{|Ψ_k(t_n)⟩\})}\,,
 ```
 
 via the GRAPE method, where the final time functional ``J_T`` depends
 explicitly on the forward-propagated states ``|Ψ_k(T)⟩``, where ``|Ψ_k(t)⟩`` is
 the time evolution of the `initial_state` in the ``k``th' element of the
-`trajectories`, and the running cost ``J_a`` depends explicitly on pulse values
+`trajectories`. The running cost ``J_a`` depends explicitly on pulse values
 ``ϵ_{nl}`` of the l'th control discretized on the n'th interval of the time
-grid `tlist`.
+grid `tlist`. The running cost ``J_b`` depends explicitly on the propagated
+states ``|Ψ_k(t)⟩`` in the given form of the integral over a function ``g_b``.
+This integral is assumed to be discretized according to the
+[trapezoidal rule](https://en.wikipedia.org/wiki/Trapezoidal_rule), see
+also [`QuantumControl.Functionals.J_b`](@ref).
 
-It does this by calculating the gradient of the final-time functional
+GRAPE performs the minimization by calculating the gradient of the final-time
+functional
 
 ```math
 \nabla J_T \equiv \frac{\partial J_T}{\partial ϵ_{nl}}
@@ -129,13 +130,14 @@ Returns a [`GrapeResult`](@ref).
 * `grad_J_a`: A function to calculate the gradient of `J_a`. If not given, it
   will be automatically determined. See [`make_grad_J_a`](@ref) for the
   required interface.
-* `g_b`: A function `g_b(Ψ, trajectory, tlist, n)` that evaluates a
+* `g_b`: A function `g_b(Ψ, trajectory, tlist, n) -> Float64` that evaluates a
   per-trajectory, per-time-point state-dependent running cost, where `Ψ` is
-  the forward-propagated state, `trajectory` is the corresponding trajectory,
-  `tlist` is the time grid, and `n` is the 1-based index into `tlist`. The
-  full state-dependent running cost is defined, based on `g_b`, as
-  ``J_b = \sum_k \sum_n g_b(|Ψ_k(t_n)⟩, t_n) \, Δt_n`` with ``Δt_n`` the
-  [time step around the time grid point ``t_n``](@ref Overview-Running-Costs).
+  the state ``|Ψ(t)⟩`` at ``t`` corresponding to the (one-based) time grid
+  point `tlist[n]`, and `trajectory` is a [`QuantumControl.Trajectory`](@ref)
+  that may hold additional data in a custom property that is relevant to the
+  calculation of ``g_b``. The full state-dependent running cost is defined
+  implicitly via the trapezoidal discretization described in
+  [`QuantumControl.Functionals.J_b`](@ref).
   If not given, no state-dependent running cost is used.
 * `xi`: A function `xi(Ψ, trajectory, tlist, n)` that evaluates the
   inhomogeneity in the backward propagation due to a state-dependent running
