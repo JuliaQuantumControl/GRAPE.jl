@@ -72,7 +72,7 @@ end
 
 const 𝕚 = 1im
 
-fig = plot_complex_pulse(tlist, t -&gt; Ω_re_guess(t) + 𝕚 * Ω_im_guess(t))</code></pre><img src="0787bf64.svg" alt="Example block output"/><p>We see the expected shape with the smooth switch-on/-off and the amplitude of 35⋅2π MHz that we specified, while from the perspective of the GRAPE method, the &quot;guess control&quot; is a constant function.</p><h2 id="Hamiltonian"><a class="docs-heading-anchor" href="#Hamiltonian">Hamiltonian</a><a id="Hamiltonian-1"></a><a class="docs-heading-anchor-permalink" href="#Hamiltonian" title="Permalink"></a></h2><p>With the separation of <span>$Ω(t)$</span> into real and imaginary parts, we can now express the Hamiltonian in Eq. (1) numerically:</p><pre><code class="language-julia hljs">import QuantumPropagators: hamiltonian
+fig = plot_complex_pulse(tlist, t -&gt; Ω_re_guess(t) + 𝕚 * Ω_im_guess(t))</code></pre><img src="114e943c.svg" alt="Example block output"/><p>We see the expected shape with the smooth switch-on/-off and the amplitude of 35⋅2π MHz that we specified, while from the perspective of the GRAPE method, the &quot;guess control&quot; is a constant function.</p><h2 id="Hamiltonian"><a class="docs-heading-anchor" href="#Hamiltonian">Hamiltonian</a><a id="Hamiltonian-1"></a><a class="docs-heading-anchor-permalink" href="#Hamiltonian" title="Permalink"></a></h2><p>With the separation of <span>$Ω(t)$</span> into real and imaginary parts, we can now express the Hamiltonian in Eq. (1) numerically:</p><pre><code class="language-julia hljs">import QuantumPropagators: hamiltonian
 using StaticArrays: SMatrix
 
 &quot;&quot;&quot;Construct the time-dependent Hamiltonian for a two-qubit transmon system.
@@ -151,7 +151,7 @@ pops = propagate(
     basis[3], Ĥ, tlist; method=Cheby, storage=true, observables=(Ψ -&gt; Array(abs2.(Ψ)), )
 )
 
-fig = plot(tlist ./ ns, pops&#39;; label=[&quot;00&quot; &quot;01&quot; &quot;10&quot; &quot;11&quot;], xlabel=&quot;time (ns)&quot;, legend=:outertop, legend_column=-1)</code></pre><img src="b2a111cf.svg" alt="Example block output"/><p>From the dynamics, we can see that the <span>$|10⟩$</span> initial state remains approximately unchanged by the guess controls, instead of evolving into the <span>$|11⟩$</span> state as it should.</p><p>In order to find a field <span>$\Omega(t)$</span> that implements the desired CNOT gate, the GRAPE method minimizes an appropriate (user-supplied) mathematical functional. We define here</p><pre><code class="language-julia hljs">@doc raw&quot;&quot;&quot;Square-Modulus functional
+fig = plot(tlist ./ ns, pops&#39;; label=[&quot;00&quot; &quot;01&quot; &quot;10&quot; &quot;11&quot;], xlabel=&quot;time (ns)&quot;, legend=:outertop, legend_column=-1)</code></pre><img src="82711aea.svg" alt="Example block output"/><p>From the dynamics, we can see that the <span>$|10⟩$</span> initial state remains approximately unchanged by the guess controls, instead of evolving into the <span>$|11⟩$</span> state as it should.</p><p>In order to find a field <span>$\Omega(t)$</span> that implements the desired CNOT gate, the GRAPE method minimizes an appropriate (user-supplied) mathematical functional. We define here</p><pre><code class="language-julia hljs">@doc raw&quot;&quot;&quot;Square-Modulus functional
 
 ```julia
 J_T = J_T_sm(Ψ, trajectories)
@@ -208,9 +208,9 @@ GRAPE.set_default_ad_framework(Zygote)</code></pre><pre class="documenter-exampl
 )</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">[ Info: make_chi for J_T=J_T_sm: fallback to mode=:automatic
 [ Info: make_chi for J_T=J_T_sm: automatic with Zygote
  iter.        J_T       ǁ∇Jǁ       ǁΔϵǁ         ΔJ   FG(F)    secs
-     0   8.32e-01   1.21e+00        n/a        n/a    1(0)    24.9
+     0   8.32e-01   1.21e+00        n/a        n/a    1(0)    26.0
      1   8.29e-01   1.21e+00   1.21e+00  -3.43e-03    1(0)     0.7
-     2   6.18e-01   1.39e+00   2.79e-01  -2.10e-01    5(0)     2.8
+     2   6.18e-01   1.39e+00   2.79e-01  -2.10e-01    5(0)     2.9
      3   5.46e-01   1.16e+00   3.47e-01  -7.25e-02    2(0)     1.1
      4   4.45e-01   1.15e+00   2.49e-01  -1.01e-01    1(0)     0.6
      5   4.29e-01   7.21e-01   4.04e-01  -1.61e-02    1(0)     0.6
@@ -252,9 +252,9 @@ GRAPE.set_default_ad_framework(Zygote)</code></pre><pre class="documenter-exampl
     41   7.92e-02   1.28e-01   3.48e-01  -5.97e-03    1(0)     0.6
     42   7.54e-02   1.93e-01   9.98e-02  -3.77e-03    1(0)     0.6
     43   7.31e-02   8.78e-02   1.06e-01  -2.32e-03    1(0)     0.6
-    44   6.90e-02   7.74e-02   2.20e-01  -4.05e-03    1(0)     0.6
-    45   6.17e-02   7.84e-02   6.19e-01  -7.31e-03    1(0)     0.6
-    46   5.93e-02   1.40e-01   4.22e-02  -2.45e-03    1(0)     0.6
+    44   6.90e-02   7.74e-02   2.20e-01  -4.05e-03    1(0)     1.0
+    45   6.17e-02   7.84e-02   6.19e-01  -7.31e-03    1(0)     0.7
+    46   5.93e-02   1.40e-01   4.22e-02  -2.45e-03    1(0)     0.7
     47   5.73e-02   6.04e-02   8.69e-02  -1.95e-03    1(0)     0.6
     48   5.60e-02   7.99e-02   8.99e-02  -1.36e-03    1(0)     0.6
     49   5.39e-02   7.42e-02   1.75e-01  -2.01e-03    1(0)     0.6
@@ -319,17 +319,17 @@ GRAPE.set_default_ad_framework(Zygote)</code></pre><pre class="documenter-exampl
    108   1.01e-02   2.79e-02   8.75e-02  -2.57e-04    1(0)     0.6
    109   9.90e-03   2.41e-02   9.03e-02  -2.45e-04    1(0)     0.6</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">GRAPE Optimization Result
 -------------------------
-- Started at 2026-04-22T19:31:16.340
+- Started at 2026-04-22T20:07:16.615
 - Number of trajectories: 4
 - Number of iterations: 109
 - Number of pure func evals: 0
 - Number of func/grad evals: 118
 - Value of functional: 9.90083e-03
 - Reason for termination: Gate error &lt; 10⁻²
-- Ended at 2026-04-22T19:32:46.576 (1 minute, 30 seconds, 236 milliseconds)
+- Ended at 2026-04-22T20:08:51.128 (1 minute, 34 seconds, 513 milliseconds)
 </code></pre><h2 id="Optimization-Result"><a class="docs-heading-anchor" href="#Optimization-Result">Optimization Result</a><a id="Optimization-Result-1"></a><a class="docs-heading-anchor-permalink" href="#Optimization-Result" title="Permalink"></a></h2><p>The call to <code>GRAPE.optimize</code> returns a results-object from which we can extract the optimized controls:</p><pre><code class="language-julia hljs">ϵ_opt = result.optimized_controls[1] + 𝕚 * result.optimized_controls[2];</code></pre><p>While the guess controls <code>ϵ_re_guess</code> and <code>ϵ_im_guess</code> that we defined when setting up the system Hamiltonian could have been either functions (as they were) or vectors of pulse values, the GRAPE method inherently discretizes all control to a time grid (the method is piecewise-constant, by definition). Thus, the <code>optimized_controls</code> are vectors of control values for each point in <code>tlist</code></p><p>Also remember that we used a <code>ShapedAmplitude</code> when setting up the Hamiltonian, with the definition <span>$Ω(t) = S(t)ϵ(t)$</span>. Thus, to get the <em>physical</em> optimized control field, we need to multiply with that same shape <code>S(t)</code>, now also discretized to the time grid.</p><pre><code class="language-julia hljs">Ω_opt = ϵ_opt .* discretize(Ω_re_guess.shape, tlist)
 
-fig = plot_complex_pulse(tlist, Ω_opt)</code></pre><img src="a7c6341b.svg" alt="Example block output"/><p>We can see how the optimization has tuned both the amplitude and the complex phase of the microwave field, while retaining the overall shape <span>$S(t)$</span>. We can also simulate again the dynamics of the <span>$|10⟩$</span> state under the optimized fields:</p><pre><code class="language-julia hljs">Ĥ_opt = transmon_hamiltonian(;
+fig = plot_complex_pulse(tlist, Ω_opt)</code></pre><img src="35c30159.svg" alt="Example block output"/><p>We can see how the optimization has tuned both the amplitude and the complex phase of the microwave field, while retaining the overall shape <span>$S(t)$</span>. We can also simulate again the dynamics of the <span>$|10⟩$</span> state under the optimized fields:</p><pre><code class="language-julia hljs">Ĥ_opt = transmon_hamiltonian(;
     δ₁ = 100⋅2π⋅MHz,
     δ₂ = -100⋅2π⋅MHz,
     J = 3⋅2π⋅MHz,
@@ -341,4 +341,4 @@ pops = propagate(
     basis[3], Ĥ_opt, tlist; method=Cheby, storage=true, observables=(Ψ -&gt; Array(abs2.(Ψ)), )
 )
 
-fig = plot(tlist ./ ns, pops&#39;; label=[&quot;00&quot; &quot;01&quot; &quot;10&quot; &quot;11&quot;], xlabel=&quot;time (ns)&quot;, legend=:outertop, legend_column=-1)</code></pre><img src="c5c45d7f.svg" alt="Example block output"/><p>As expected (and demanded by the &quot;conditional NOT&quot;), <span>$|10⟩$</span> now evolves into <span>$|11⟩$</span>.</p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../">« Home</a><a class="docs-footer-nextpage" href="../usage/">Usage »</a><div class="flexbox-break"></div><p class="footer-message"><a href="https://github.com/JuliaQuantumControl/GRAPE.jl">GRAPE.jl</a> v1.1.0-dev docs <a href="https://creativecommons.org/licenses/by/4.0/deed.en">CC-BY-4.0</a>. Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.17.0 on <span class="colophon-date" title="Wednesday 22 April 2026 19:33">Wednesday 22 April 2026</span>. Using Julia version 1.12.6.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
+fig = plot(tlist ./ ns, pops&#39;; label=[&quot;00&quot; &quot;01&quot; &quot;10&quot; &quot;11&quot;], xlabel=&quot;time (ns)&quot;, legend=:outertop, legend_column=-1)</code></pre><img src="5582407d.svg" alt="Example block output"/><p>As expected (and demanded by the &quot;conditional NOT&quot;), <span>$|10⟩$</span> now evolves into <span>$|11⟩$</span>.</p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../">« Home</a><a class="docs-footer-nextpage" href="../usage/">Usage »</a><div class="flexbox-break"></div><p class="footer-message"><a href="https://github.com/JuliaQuantumControl/GRAPE.jl">GRAPE.jl</a> v1.1.0-dev docs <a href="https://creativecommons.org/licenses/by/4.0/deed.en">CC-BY-4.0</a>. Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.17.0 on <span class="colophon-date" title="Wednesday 22 April 2026 20:09">Wednesday 22 April 2026</span>. Using Julia version 1.12.6.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
