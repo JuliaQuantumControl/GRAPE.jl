@@ -620,27 +620,28 @@ So far, we have only discussed the evaluation of gradients for final-time functi
   J(\{\epsilon_{nl}\})
   =
   J_T(\{|\Psi_k(T)⟩\}) +
-  \lambda_a \sum_{n=1}^{N_T} \sum_l (g_a)_{nl}\,dt_n +
-  \lambda_b \sum_k \sum_{n=1}^{N_T} \frac{(g_b)_{k,n-1} + (g_b)_{kn}}{2}\,dt_n \,,
+  \lambda_a J_a(\{\epsilon_{nl}\}) +
+  \lambda_b \sum_k \sum_{n=1}^{N_T} \frac{g_b(|\Psi_k(t_{n-1})⟩) + g_b(|\Psi_k(t_n)⟩)}{2}\,dt_n \,,
 \end{equation}
 ```
 
-with
-
-```math
-\begin{equation}
-  (g_a)_{nl} = g_a(\epsilon_{nl})\,,\qquad
-  (g_b)_{kn} =  g_b(|\Psi_k(t_n)⟩)\,.
-\end{equation}
-```
-
-As in Eq. \eqref{eq:psi-time-evolution}, we define ``|\Psi_k(t_n)⟩ = \hat{U}^{(k)}_n \dots \hat{U}^{(k)}_1 |\Psi_k(t=0)⟩``, with the time grid points ``t_0 = 0``, ``t_{N_T} = T``, and with ``\hat{U}^{(k)}_n = \exp[-i \hat{H}_{kn} dt_n]`` as the time evolution operator for the ``n``'th time interval, ``dt_n = t_{n} - t_{n-1}``. In discretizing the integral over ``g_b(|Ψ_k(t)⟩)``, we have used the [trapezoidal rule](https://en.wikipedia.org/wiki/Trapezoidal_rule). In contrast, the integral over ``g_a(\epsilon_{nl})`` is sampled on the (piecewise-constant) _intervals_ of the time grid.
+As in Eq. \eqref{eq:psi-time-evolution}, we define ``|\Psi_k(t_n)⟩ = \hat{U}^{(k)}_n \dots \hat{U}^{(k)}_1 |\Psi_k(t=0)⟩``, with the time grid points ``t_0 = 0``, ``t_{N_T} = T``, and with ``\hat{U}^{(k)}_n = \exp[-i \hat{H}_{kn} dt_n]`` as the time evolution operator for the ``n``'th time interval, ``dt_n = t_{n} - t_{n-1}``. In discretizing the integral over ``g_b(|Ψ_k(t)⟩)``, we have used the [trapezoidal rule](https://en.wikipedia.org/wiki/Trapezoidal_rule).
 
 ### Field-dependent running costs
 
-Typically, running costs on the control fields are direct analytic expressions, e.g., ``g_a(\{\epsilon_{nl}\}) = \epsilon_{nl}^2`` to penalize large amplitudes. Thus, they are easily included in the gradient, e.g., ``(\nabla g_a)_{nl} = 2 \epsilon_{nl}``. For convenience, this can also be done with automatic differentiation. This even extends to penalties on the first and second derivatives of the controls [LeungPRA2017,AbdelhafezPRA2019,AbdelhafezPRA2020](@cite).
+In `GRAPE.jl`, field-dependent running costs are enabled by passing a `J_a` function together with `lambda_a` to [`QuantumControl.optimize`](@extref) with `method=GRAPE`. The optimization also needs a function `grad_J_a` which can be obtained automatically, see [`QuantumControl.Functionals.make_grad_J_a`](@extref).
 
-In `GRAPE.jl`, field-dependent running costs are enabled by passing a `J_a` function together with `lambda_a` to [`QuantumControl.optimize`](@extref) with `method=GRAPE`. This is slightly more general than the use of ``g_a`` in Eq. \eqref{eq:functional-discrete}. The optimization also needs a function `grad_J_a` which can be obtained automatically, see [`QuantumControl.Functionals.make_grad_J_a`](@extref).
+Typically, running costs on the control fields are direct analytic expressions, e.g.,
+
+```math
+\begin{equation}
+  J_a(\{\epsilon_{nl}\}) = \sum_{n=1}^{N_T} \sum_l g_a(\epsilon_{nl})\,dt_n\,;
+  \qquad
+  g_a(\{\epsilon_{nl}\}) = \epsilon_{nl}^2
+\end{equation}
+```
+
+to penalize large amplitudes. The integral over ``g_a(\epsilon_{nl})`` is sampled on the (piecewise-constant) _intervals_ of the time grid and needs no trapezoidal rule. Thus, they are easily included in the gradient, e.g., with ``(\nabla g_a(\epsilon_{nl}) = 2 \epsilon_{nl}``. For convenience, this can also be done with automatic differentiation. This even extends to penalties on the first and second derivatives of the controls [LeungPRA2017,AbdelhafezPRA2019,AbdelhafezPRA2020](@cite).
 
 
 ### [State-dependent running costs](@id State-Dependent-Running-Costs)
@@ -670,9 +671,13 @@ To obtain the full gradient of a functional with a state-dependent running cost,
 
 ```math
 \begin{equation}
-    \label{eq:trapezoid-expansion}
-    \sum_{n=1}^{N_T} \frac{(g_b)_{k,n-1} + (g_b)_{kn}}{2}\,dt_n
-    =  \frac{dt_1}{2} g_b(\Psi_k(0)) + \frac{dt_{N_T}}{2} g_b(\Psi_k(T)) + \sum_{n=1}^{N_T-1} (g_b)_{kn}\,Δt_n \,.
+  \label{eq:trapezoid-expansion}
+  \begin{split}
+     &
+   \sum_{n=1}^{N_T} \frac{g_b(|\Psi_k(t_{n-1})⟩) + g_b(|\Psi_k(t_n)⟩)}{2}\,dt_n
+     \\ & \qquad
+   =  \frac{dt_1}{2} g_b(|\Psi_k(0)⟩) + \frac{dt_{N_T}}{2} g_b(|\Psi_k(T)⟩) + \sum_{n=1}^{N_T-1} g_b(|\Psi_k(t_n)⟩)\,Δt_n \,.
+  \end{split}
 \end{equation}
 ```
 
@@ -687,12 +692,12 @@ Since ``|\Psi_k(0)⟩`` does not depend on the controls, the first term in Eq. 
     2 \Re \sum_k \Bigg[
       \frac{\partial J_T}{\partial |\Psi_k(T)⟩}
       \frac{\partial |\Psi_k(T)⟩}{\partial \epsilon_{nl}}
-    + \frac{\lambda_b}{2} \frac{\partial\,g_b(\Psi_k(T))}{\partial |\Psi_k(T)⟩}
+    + \frac{\lambda_b}{2} \frac{\partial\,g_b(|\Psi_k(T)⟩)}{\partial |\Psi_k(T)⟩}
       \frac{\partial |\Psi_k(T)⟩}{\partial \epsilon_{nl}} dt_{N_T}
     \notag\\
     &\qquad\qquad\qquad\qquad\qquad
       + \lambda_b \sum_{n'=1}^{N_T-1}
-      \frac{\partial\,(g_b)_{kn'}}{\partial |\Psi_k(t_{n'})⟩}
+      \frac{\partial\,g_b(|\Psi_k(t_{n'})⟩)}{\partial |\Psi_k(t_{n'})⟩}
       \frac{\partial |\Psi_k(t_{n'})⟩}{\partial \epsilon_{nl}}
       Δt_{n'}
     \Bigg]
@@ -717,7 +722,7 @@ with
   \equiv
   - \left(
     \frac{\partial J_T}{\partial \bra{\Psi_k(T)}} +
-    \frac{\lambda_b}{2} \frac{\partial\,g_b(\Psi_k(T))}{\partial \bra{\Psi_k(T)}}
+    \frac{\lambda_b}{2} \frac{\partial\,g_b(|\Psi_k(T)⟩)}{\partial \bra{\Psi_k(T)}}
     dt_{N_T}
   \right)\,,
 \end{equation}
@@ -728,7 +733,7 @@ cf. Eq. \eqref{eq:chi}, and
 ```math
 \begin{equation}%
   \label{eq:chi-boundary-gb1}
-  |\xi_k(t_{n'})⟩ \equiv - \frac{\partial\,(g_b)_{kn'}}{\partial \bra{\Psi_k(t_{n'})}}\,,
+  |\xi_k(t_{n'})⟩ \equiv - \frac{\partial\,g_b(|\Psi_k(t_{n'})⟩)}{\partial \bra{\Psi_k(t_{n'})}}\,,
 \end{equation}
 ```
 

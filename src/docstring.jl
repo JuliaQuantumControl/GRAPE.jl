@@ -142,7 +142,7 @@ Returns a [`GrapeResult`](@ref).
 * `xi`: A function `xi(Ψ, trajectory, tlist, n)` that evaluates the
   inhomogeneity in the backward propagation due to a state-dependent running
   cost. This inhomogeneity is ``λ_b Δt_n |ξ_k(t_n)⟩`` with
-  ``|ξ_k(t_n)⟩ = -∂(g_b)_{kn}/∂⟨Ψ_k(t_n)|``, where `k` is the index of
+  ``|ξ_k(t_n)⟩ = -∂g_b(|Ψ_k(t_n)⟩)/∂⟨Ψ_k(t_n)|``, where `k` is the index of
   `trajectory` in the overall `problem.trajectories` and ``t_n`` is the time
   grid point `tlist[n]`. If not given, it will be automatically determined
   from `g_b` via [`QuantumControl.Functionals.make_xi`](@ref).
