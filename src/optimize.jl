@@ -619,6 +619,8 @@ function taylor_grad_step!(
     α = -1im * dt
     mul!(Ψ̃, α, ϕₙ₋₁)
 
+    r = 0.0
+
     for n = 2:max_order
 
         mul!(ϕₙ, Ĥ, ϕₙ₋₁)               # matrix-vector product
@@ -641,7 +643,9 @@ function taylor_grad_step!(
 
     if check_convergence && max_order > 1
         # should have returned inside the loop
-        error("taylor_grad_step! did not converge within $max_order iterations")
+        error(
+            "taylor_grad_step! did not converge within $max_order iterations. Residual term r=$r."
+        )
     else
         return Ψ̃
     end
