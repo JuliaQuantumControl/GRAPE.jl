@@ -33,7 +33,7 @@ jobs:
       - name: "Instantiate test environment"
         run: |
           wget https://raw.githubusercontent.com/JuliaQuantumControl/JuliaQuantumControl/master/scripts/installorg.jl
-          julia --project=test installorg.jl
+          julia --project=test installorg.jl --no-precompile
       - name: "Run tests"
         shell: julia --color=yes --project=test --code-coverage="@" --depwarn="yes" --check-bounds="yes" {0}
         run: |
@@ -41,7 +41,7 @@ jobs:
       - uses: julia-actions/julia-processcoverage@v1
       - name: "Summarize coverage"
         run: julia --project=test -e 'using QuantumControlTestUtils; show_coverage();'
-      - uses: codecov/codecov-action@v6
+      - uses: codecov/codecov-action@v7
         with:
           files: lcov.info
           token: ${{ secrets.CODECOV_TOKEN }}
@@ -61,7 +61,7 @@ jobs:
       - name: "Instantiate build environment"
         run: |
           wget https://raw.githubusercontent.com/JuliaQuantumControl/JuliaQuantumControl/master/scripts/installorg.jl
-          julia --project=docs installorg.jl
+          julia --project=docs installorg.jl --no-precompile
       - name: "Build documentation"
         run: julia --project=docs docs/make.jl
         env:
@@ -119,13 +119,15 @@ jobs:
               println("Version $VERSION OK on $BRANCH")
           end
           exit(0)
+      - name: Changelog Check
+        run: julia test/check_changelog.jl
       - name: Get codestyle settings
         run: wget https://raw.githubusercontent.com/JuliaQuantumControl/JuliaQuantumControl/master/.JuliaFormatter.toml
       - name: Install JuliaFormatter and format
         shell: julia {0}
         run: |
           using Pkg
-          Pkg.add(PackageSpec(name="JuliaFormatter"))
+          Pkg.add(PackageSpec(name="JuliaFormatter", version="2.3.0"))
           using JuliaFormatter
           format(".", verbose=true)
       - name: Format Check
