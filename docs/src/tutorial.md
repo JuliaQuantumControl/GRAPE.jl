@@ -151,7 +151,13 @@ All other keyword arguments are forwarded to `Plots.plot`.
 """
 function plot_complex_pulse(tlist, Ω; time_unit=:ns, ampl_unit=:(2π⋅MHz), kwargs...)
 
-    Ω = discretize(Ω, tlist)  # make sure Ω is defined on *points* of `tlist`
+    # make sure Ω is defined on *points* of `tlist`; since `discretize`
+    # returns real values, we handle the real and imaginary parts separately
+    if Ω isa Function
+        Ω = discretize(t -> real(Ω(t)), tlist) .+ 1im .* discretize(t -> imag(Ω(t)), tlist)
+    else
+        Ω = discretize(real.(Ω), tlist) .+ 1im .* discretize(imag.(Ω), tlist)
+    end
 
     s_ampl_unit = string(ampl_unit)
     if startswith(s_ampl_unit, "(2π) ⋅ ")
