@@ -11,7 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 For releases pre-1.0, see the [GitHub Releases](https://github.com/JuliaQuantumControl/GRAPE.jl/releases).
 
-## [Unreleased]
+## [v1.1.0] — 2026-06-20
 
 * Added: Support for state-dependent running costs [[#53], [#103], followup in [#105]]
 * Fixed: Bug in `gradient_method = :taylor` incorrectly accessing `pulsevals`, leading to incorrect gradients when the control problem contains more than one control [fixed as part of [#103]]
@@ -20,7 +20,8 @@ For releases pre-1.0, see the [GitHub Releases](https://github.com/JuliaQuantumC
 
 Initial stable release. No breaking changes compared to [v0.8.1].
 
-[Unreleased]: https://github.com/JuliaQuantumControl/GRAPE.jl/compare/v1.0.0..HEAD
+[Unreleased]: https://github.com/JuliaQuantumControl/GRAPE.jl/compare/v1.1.0..HEAD
+[v1.1.0]: https://github.com/JuliaQuantumControl/GRAPE.jl/releases/tag/v1.1.0
 [v1.0.0]: https://github.com/JuliaQuantumControl/GRAPE.jl/releases/tag/v1.0.0
 [v0.8.1]: https://github.com/JuliaQuantumControl/GRAPE.jl/releases/tag/v0.8.1
 [#105]: https://github.com/JuliaQuantumControl/GRAPE.jl/pull/105
