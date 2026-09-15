@@ -19,7 +19,7 @@ Optim = "429524aa-4258-5aef-a3af-852621145aeb"
 GRAPEOptimExt = "Optim"
 
 [compat]
-Dates = "1"
+Dates = "1, < 0.0.1"
 LBFGSB = "0.4"
 LinearAlgebra = "1"
 Optim = "1"
