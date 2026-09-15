@@ -13,6 +13,8 @@ For releases pre-1.0, see the [GitHub Releases](https://github.com/JuliaQuantumC
 
 ## [Unreleased]
 
+* Changed: The minimum supported Julia version is now 1.10 (LTS)
+
 ## [v1.1.0] — 2026-06-20
 
 * Added: Support for state-dependent running costs [[#53], [#103], followup in [#105]]
