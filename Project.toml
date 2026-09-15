@@ -21,7 +21,7 @@ GRAPEOptimExt = "Optim"
 [compat]
 Dates = "1"
 LBFGSB = "0.4"
-LinearAlgebra = "1"
+LinearAlgebra = "1, < 0.0.1"
 Optim = "1"
 Printf = "1"
 QuantumControl = ">=0.11.1"
