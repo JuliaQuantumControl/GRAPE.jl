@@ -125,23 +125,10 @@ jobs:
         run: julia --project=docs -e 'using Pkg; Pkg.instantiate()'
       - name: "Build documentation"
         run: julia --project=docs docs/make.jl
-      - name: "Install Python dependencies"
-        run: |
-          set -x
-          /usr/bin/python3 -m pip install zip-files
-      - name: Zip the HTML documentation
-        run: zip-folder --debug --auto-root --outfile "docs.zip" docs/build
       - uses: actions/upload-artifact@v7
-        name: Upload documentation artifacts
-        with:
-          name: GRAPE
-          # We need at least two files in the artifact to avoid a weird
-          # double-zip file. Hence README.md
-          path: |
-            README.md
-            ./docs.zip
-      - uses: actions/upload-artifact@v7
-        name: Upload documentation for deployment
+        # For the `docs-deploy` job, and for reviewing pull requests from forks,
+        # which get no preview
+        name: Upload documentation
         with:
           name: docs-build
           path: |
@@ -149,7 +136,6 @@ jobs:
             docs/Manifest.toml
           include-hidden-files: true  # for `.documenter-siteinfo.json`
           if-no-files-found: error
-          retention-days: 1
   docs-deploy:
     name: Deploy documentation
     needs: docs
