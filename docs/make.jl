@@ -110,8 +110,4 @@ makedocs(;
 
 println("Finished makedocs")
 
-deploydocs(;
-    repo = "github.com/JuliaQuantumControl/GRAPE.jl",
-    devbranch = "master",
-    push_preview = true
-)
+# The documentation is deployed by `docs/deploy.jl`, in a separate CI job
