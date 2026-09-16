@@ -21,6 +21,11 @@ unicodeplots()
         include("test_tls_optimization.jl")
     end
 
+    println("\n* Optim.jl Optimizers (test_optim.jl)")
+    @time @safetestset "Optim.jl Optimizers" begin
+        include("test_optim.jl")
+    end
+
     println("\n* Pulse Optimization (test_pulse_optimization.jl)")
     @time @safetestset "Pulse Optimization" begin
         include("test_pulse_optimization.jl")

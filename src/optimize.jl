@@ -182,6 +182,28 @@ function _apply_convergence_check!(result, check_convergence)
 end
 
 
+# Finish iteration `iter` (`iter = 0` for the guess): update `wrk.result`, call
+# the `callback`, reset `wrk.fg_count`, and (for `iter > 0`) apply the
+# `check_convergence`. Every optimizer backend (`run_optimizer`) must call
+# this exactly once per iteration, at a point where `wrk.pulsevals`,
+# `wrk.J_parts`, and the forward-propagated states are for the optimized pulses
+# of that iteration, and `wrk.pulsevals_guess` and `wrk.gradient` are for the
+# guess pulses. Afterwards, the backend must set `wrk.pulsevals_guess` and
+# `wrk.gradient` for the next iteration. Returns `wrk.result.converged`.
+function _finish_iteration!(wrk, iter, callback, check_convergence)
+    update_result!(wrk, iter)
+    info_tuple = callback(wrk, iter)
+    wrk.fg_count .= 0
+    if !(isnothing(info_tuple) || isempty(info_tuple))
+        push!(wrk.result.records, info_tuple)
+    end
+    if iter > 0
+        _apply_convergence_check!(wrk.result, check_convergence)
+    end
+    return wrk.result.converged
+end
+
+
 function update_result!(wrk::GrapeWrk, i::Int64)
     res = wrk.result
     for (k, propagator) in enumerate(wrk.fw_propagators)

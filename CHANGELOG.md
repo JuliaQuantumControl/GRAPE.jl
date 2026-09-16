@@ -16,6 +16,11 @@ For releases pre-1.0, see the [GitHub Releases](https://github.com/JuliaQuantumC
 
 * Changed: The minimum supported Julia version is now 1.10 (LTS)
 * Changed: The minimum supported versions of dependencies are now QuantumControl 0.11.5 and QuantumGradientGenerators 0.1.9. GRAPE does not work with QuantumGradientGenerators 0.1.8, which lacks the type-based `supports_inplace` trait of QuantumPropagators 0.9
+* Changed: An `optimizer` from Optim.jl now requires Optim 2. Support for Optim 1 is dropped. Only first-order optimizers (e.g., `Optim.LBFGS()`) are accepted [[#110]]
+* Changed: The convergence tolerances of an Optim.jl `optimizer` use the keyword arguments `x_abstol`, `x_reltol`, `f_abstol`, `f_reltol`, and `g_abstol`, like `Optim.Options`. The previous `x_tol`, `f_tol`, and `g_tol` remain as aliases for `x_abstol`, `f_reltol`, and `g_abstol`
+* Fixed: With an Optim.jl `optimizer`, the `callback` for the guess received iteration number 1 instead of 0, which shifted all iteration numbers by one and ran one iteration fewer than `iter_stop`
+* Fixed: With an Optim.jl `optimizer`, `search_direction` and `step_width` for `Optim.ConjugateGradient` returned the search direction of the following iteration
+* Fixed: A `callback` that mutates `pulsevals` for an Optim.jl `optimizer` now throws an error instead of silently desynchronizing the workspace from the optimizer
 
 
 ## [v1.1.0] — 2026-06-20
@@ -32,6 +37,7 @@ Initial stable release. No breaking changes compared to [v0.8.1].
 [v1.1.0]: https://github.com/JuliaQuantumControl/GRAPE.jl/releases/tag/v1.1.0
 [v1.0.0]: https://github.com/JuliaQuantumControl/GRAPE.jl/releases/tag/v1.0.0
 [v0.8.1]: https://github.com/JuliaQuantumControl/GRAPE.jl/releases/tag/v0.8.1
+[#110]: https://github.com/JuliaQuantumControl/GRAPE.jl/pull/110
 [#105]: https://github.com/JuliaQuantumControl/GRAPE.jl/pull/105
 [#103]: https://github.com/JuliaQuantumControl/GRAPE.jl/pull/103
 [#53]: https://github.com/JuliaQuantumControl/GRAPE.jl/issues/53
