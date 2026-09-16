@@ -9,7 +9,7 @@ using LinearAlgebra: norm
 using LinearAlgebra.BLAS: scal!
 using GRAPE
 using QuantumPropagators: ExpProp
-using QuantumControlTestUtils.DummyOptimization: dummy_control_problem
+using QuantumControl.DummyOptimization: dummy_control_problem
 using QuantumControl.Functionals: J_T_ss
 using IOCapture
 
