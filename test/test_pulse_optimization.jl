@@ -6,7 +6,7 @@ using Test
 using QuantumControl
 using LinearAlgebra
 using StableRNGs
-using QuantumControlTestUtils.DummyOptimization: dummy_control_problem
+using QuantumControl.DummyOptimization: dummy_control_problem
 using QuantumControl.Controls: get_controls, discretize_on_midpoints
 using QuantumControl.Functionals: J_T_re
 using GRAPE

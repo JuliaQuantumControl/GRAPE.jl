@@ -7,7 +7,7 @@ using StableRNGs
 using GRAPE
 using QuantumControl.Functionals: J_T_ss
 using QuantumPropagators: ExpProp
-using QuantumControlTestUtils.DummyOptimization: dummy_control_problem
+using QuantumControl.DummyOptimization: dummy_control_problem
 using IOCapture
 
 PASSTHROUGH = false

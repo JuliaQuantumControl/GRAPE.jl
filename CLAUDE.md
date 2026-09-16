@@ -17,40 +17,22 @@ GRAPE.jl is a Julia package implementing GRadient Ascent Pulse Engineering (GRAP
 
 ## Development Commands
 
-### Testing
-```bash
-make test                    # Run full test suite
-julia --project=test -e 'include("devrepl.jl"); test()'  # Alternative test command
-- Test individual files by running them from the test REPL
-```
+Run `make help` for all targets. The development workflow is documented in the org-wide [CONTRIBUTING.md](https://github.com/JuliaQuantumControl/.github/blob/master/CONTRIBUTING.md) (`../.github/CONTRIBUTING.md` in the development environment).
 
-### Documentation
-```bash
-make docs                    # Build documentation
-```
+- `make test`: Run the test suite in the `test` environment (or `julia --project=test -e 'include("test/runtests.jl")'`)
+- `make devrepl`: REPL with the `test` environment active and the `docs` environment stacked; run individual test files (`include("test/test_tls_optimization.jl")`), `include("test/runtests.jl")`, or `include("docs/make.jl")` from there
+- `make docs`: Build the documentation in the `docs` environment
+- `make coverage` / `make htmlcoverage`: Test coverage
+- `make codestyle`: Apply JuliaFormatter (version pinned in the `Makefile`) and check `CHANGELOG.md` and `[sources]`
+- `make reuse`: Check REUSE compliance
+- `make paper`: Compile the JOSS manuscript in `./paper`
+- `make clean` / `make distclean`: Remove build/test artifacts
 
-### Development Environment
-```bash
-make devrepl                # Start interactive REPL with test environment
-julia -i --banner=no devrepl.jl  # Alternative way to start dev REPL
-```
-
-### Code Formatting
-```bash
-make codestyle              # Apply JuliaFormatter to entire project
-```
-
-### Cleaning
-```bash
-make clean                  # Clean build/doc/testing artifacts
-make distclean             # Restore to clean checkout state
-```
+Sibling packages (QuantumControl, QuantumPropagators, Krotov, …) come from their registered releases, or temporarily from a GitHub branch via a URL `[sources]` entry in `test/Project.toml` / `docs/Project.toml`. Never commit a `path` source for a sibling (as written by `../scripts/installorg.jl`). The `test` and `docs` environments reference the package itself via `[sources]` (`{path = ".."}`); this needs Julia ≥ 1.11.
 
 ## Testing Framework
 
-The package uses SafeTestsets.jl for isolated test execution.
-
-Single test files can be run directly: `julia --project=test -e 'include("test/test_tls_optimization.jl")'`
+The package uses SafeTestsets.jl for isolated test execution. Tests use `QuantumControl.DummyOptimization` (experimental) for dummy control problems and `QuantumControlTestUtils.RandomObjects` for random states and matrices.
 
 ## Package Structure
 
@@ -61,11 +43,8 @@ Single test files can be run directly: `julia --project=test -e 'include("test/t
 
 ## Development Notes
 
-- Part of JuliaQuantumControl ecosystem - may use shared development scripts in `../scripts/`
-- This package is designed to work within the JuliaQuantumControl development environment
+- Part of the JuliaQuantumControl ecosystem
 - Code formatting follows JuliaQuantumControl organization standards
-- Tests require the full test environment with additional dependencies
-- Uses `devrepl.jl` for unified development environment setup
 
 ## General Guidelines
 

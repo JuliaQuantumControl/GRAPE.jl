@@ -14,6 +14,7 @@ For releases pre-1.0, see the [GitHub Releases](https://github.com/JuliaQuantumC
 ## [Unreleased]
 
 * Changed: The minimum supported Julia version is now 1.10 (LTS)
+* Changed: The minimum supported versions of dependencies are now QuantumControl 0.11.5 and QuantumGradientGenerators 0.1.9. GRAPE does not work with QuantumGradientGenerators 0.1.8, which lacks the type-based `supports_inplace` trait of QuantumPropagators 0.9
 
 ## [v1.1.0] — 2026-06-20
 

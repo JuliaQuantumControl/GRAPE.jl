@@ -4,6 +4,7 @@
 
 *.jl.*.cov
 *.jl.cov
+*.jl.*.mem
 *.jl.mem
 /Manifest.toml
 /examples/dump/
@@ -18,4 +19,5 @@
 /.JuliaFormatter.toml
 /.vscode/
 /lcov.info
-/coverage
+/coverage/
+/.coverage/

@@ -6,7 +6,7 @@ using QuantumControl
 using QuantumControl.Functionals: J_T_re, make_xi, J_b
 using Test
 using StableRNGs
-using QuantumControlTestUtils.DummyOptimization: dummy_control_problem
+using QuantumControl.DummyOptimization: dummy_control_problem
 using QuantumPropagators.Interfaces: check_state
 using LinearAlgebra: dot, norm
 using GRAPE

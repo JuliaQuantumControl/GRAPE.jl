@@ -6,7 +6,7 @@ using QuantumControl
 using QuantumControl.Functionals: J_a_fluence
 using Test
 using StableRNGs
-using QuantumControlTestUtils.DummyOptimization: dummy_control_problem
+using QuantumControl.DummyOptimization: dummy_control_problem
 using QuantumControl.Functionals: J_T_re
 using LinearAlgebra: norm
 using GRAPE
