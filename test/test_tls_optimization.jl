@@ -107,7 +107,7 @@ function ls_info_hook(wrk, iter)
     g = gradient(wrk)
     s = search_direction(wrk)
     Δu = pulse_update(wrk)
-    if iter > 1
+    if iter > 0
         @test abs(vec_angle(Δu, s)) < 1e-10
     end
     g_norm = norm(g)
@@ -117,7 +117,7 @@ function ls_info_hook(wrk, iter)
     # degrees
     angle = vec_angle(-g, s; unit = :degree)
     α = step_width(wrk)
-    if iter > 1
+    if iter > 0
         @test norm(Δu - α * s) < 1e-10
     end
     return (iter, g_norm, s_norm, ratio, angle, α)
@@ -334,9 +334,12 @@ end
     problem = ControlProblem(
         [Trajectory(Ψ₀, H, target_state = Ψtgt)],
         tlist;
-        iter_stop = 5,
+        # With `alphaguess = 0.2`, the HagerZhang line search in LineSearches
+        # ≥ 7.7 converges much slower than in earlier versions
+        iter_stop = 15,
         prop_method = ExpProp,
         J_T = J_T_sm,
+        rethrow_exceptions = true,
         optimizer = Optim.LBFGS(;
             alphaguess = LineSearches.InitialStatic(alpha = 0.2),
             linesearch = LineSearches.HagerZhang(alphamax = 100.0)

@@ -5,8 +5,8 @@
 module GRAPEOptimExt
 
 import Optim
-using GRAPE: GrapeWrk, update_result!
-import GRAPE: run_optimizer, step_width, search_direction, _apply_convergence_check!
+using GRAPE: GrapeWrk, _finish_iteration!
+import GRAPE: run_optimizer, step_width, search_direction
 
 
 function run_optimizer(
@@ -17,85 +17,67 @@ function run_optimizer(
     check_convergence
 )
 
-    tol_options = Optim.Options(
-        # just so we can instantiate `optimizer_state` before `optim_callback`
-        x_tol = get(wrk.kwargs, :x_tol, 0.0),
-        f_tol = get(wrk.kwargs, :f_tol, 0.0),
-        g_tol = get(wrk.kwargs, :g_tol, 1e-8),
-    )
+    if !(optimizer isa Optim.FirstOrderOptimizer)
+        msg = "GRAPE requires a first-order Optim.jl optimizer (e.g., `Optim.LBFGS()`), not $(nameof(typeof(optimizer)))"
+        throw(ArgumentError(msg))
+    end
     if any(wrk.lower_bounds .> -Inf) || any(wrk.upper_bounds .< Inf)
         error("bounds are not implemented for Optim.jl optimization")
     end
-    initial_x = wrk.pulsevals
-    method = optimizer
-    objective = Optim.promote_objtype(method, initial_x, :finite, true, Optim.only_fg!(fg!))
-    wrk.optimizer_state = Optim.initial_state(method, tol_options, objective, initial_x)
-    # Instantiation of `wrk.optimizer_state` calls `fg!` and sets the value of
-    # the functional and gradient for the  `initial_x` in objective.F and
-    # objective.DF, respectively. The `wrk.optimizer_state` is set
-    # correspondingly:
-    @assert wrk.optimizer_state.x ==
-            wrk.optimizer_state.x_previous ==
-            objective.x_f ==
-            objective.x_df
-    # ... but `f_x_previous` does not match the initial `x_previous`:
-    @assert isnan(wrk.optimizer_state.f_x_previous)
 
-    # update the result object and check convergence
-    function optim_callback(optimization_state::Optim.OptimizationState)
-        iter = wrk.result.iter + 1  # Cf. optimization_state.iteration
-        #@assert optimization_state.value == objective.F
-        #if optimization_state.iteration > 0
-        #    @assert norm(
-        #       wrk.optimizer_state.x .-
-        #       (wrk.optimizer_state.x_previous .+ wrk.optimizer_state.alpha .* wrk.optimizer_state.s)
-        #    ) < 1e-14
-        #end
-        update_result!(wrk, iter)
-        info_tuple = callback(wrk, wrk.result.iter)
-        if hasproperty(objective, :DF)
-            # DF is the *current* gradient, i.e., the gradient of the updated
-            # pulsevals, which (after the call to `callback`) is the gradient
-            # for the the guess of the next iteration. It's important that
-            # we're setting this after the GRAPE.jl `callback`
-            wrk.gradient .= objective.DF
-        elseif (optimization_state.iteration == 1)
-            @error "Cannot determine guess gradient"
+    f(x) = fg!(0.0, nothing, x)
+    g!(G, x) = fg!(nothing, G, x)
+    fg_optim!(G, x) = fg!(0.0, G, x)
+    # Note: `Optim.optimize(f, g!, fg!, …)` would interpret `fg!` as a Hessian
+    objective = Optim.OnceDifferentiable(f, g!, fg_optim!, wrk.pulsevals)
+
+    is_guess = true
+
+    function optim_callback(state)
+        # Optim.jl calls this with the optimizer state for the guess, and after
+        # each iteration. At that point, `state.x` are the accepted pulse
+        # values and `state.g_x` is the gradient for `state.x`. Since
+        # `state.x` is always the point of the most recent call to `fg!`, all
+        # "current" fields in `wrk` are for `state.x`.
+        wrk.optimizer_state = state
+        if wrk.pulsevals != state.x
+            error("Optim.jl did not evaluate the functional for the accepted pulse values")
         end
-        copyto!(wrk.pulsevals_guess, wrk.pulsevals)
-        wrk.fg_count .= 0
-        if !(isnothing(info_tuple) || isempty(info_tuple))
-            push!(wrk.result.records, info_tuple)
+        if is_guess
+            is_guess = false
+            copyto!(wrk.gradient, state.g_x)
+            converged = _finish_iteration!(wrk, 0, callback, check_convergence)
+        else
+            iter = wrk.result.iter + 1
+            converged = _finish_iteration!(wrk, iter, callback, check_convergence)
+            copyto!(wrk.pulsevals_guess, wrk.pulsevals)
+            copyto!(wrk.gradient, state.g_x)
         end
-        _apply_convergence_check!(wrk.result, check_convergence)
-        return wrk.result.converged
+        if wrk.pulsevals != state.x
+            error("A `callback` must not modify `pulsevals` for an Optim.jl optimizer")
+        end
+        return converged
     end
 
-    options = Optim.Options(
+    options = Optim.Options(;
         callback = optim_callback,
-        iterations = (wrk.result.iter_stop - wrk.result.iter_start), # TODO
-        x_tol = get(wrk.kwargs, :x_tol, 0.0),
-        f_tol = get(wrk.kwargs, :f_tol, 0.0),
-        g_tol = get(wrk.kwargs, :g_tol, 1e-8),
+        iterations = (wrk.result.iter_stop - wrk.result.iter_start),
+        x_abstol = get(wrk.kwargs, :x_abstol, get(wrk.kwargs, :x_tol, 0.0)),
+        x_reltol = get(wrk.kwargs, :x_reltol, 0.0),
+        f_abstol = get(wrk.kwargs, :f_abstol, 0.0),
+        f_reltol = get(wrk.kwargs, :f_reltol, get(wrk.kwargs, :f_tol, 0.0)),
+        g_abstol = get(wrk.kwargs, :g_abstol, get(wrk.kwargs, :g_tol, 1e-8)),
+        allow_f_increases = get(wrk.kwargs, :allow_f_increases, false),
         show_trace = get(wrk.kwargs, :show_trace, false),
         extended_trace = get(wrk.kwargs, :extended_trace, false),
-        store_trace = get(wrk.kwargs, :store_trace, false),
         show_every = get(wrk.kwargs, :show_every, 1),
-        allow_f_increases = get(wrk.kwargs, :allow_f_increases, false),
     )
 
-    res = Optim.optimize(objective, initial_x, method, options, wrk.optimizer_state)
+    res = Optim.optimize(objective, wrk.pulsevals, optimizer, options)
 
-    if !res.ls_success
-        @error "optimization failed (linesearch)"
-        wrk.result.message = "Failed linesearch"
-    end
-    if res.stopped_by.f_increased
-        @error "loss of monotonic convergence (try allow_f_increases=true)"
-        wrk.result.message = "Loss of monotonic convergence"
-    end
     if !wrk.result.converged
-        @warn "Optimization failed to converge"
+        wrk.result.message = "Optim.jl terminated: $(res.termination_code)"
+        @warn "Optimization failed to converge" message = wrk.result.message
     end
 
     return nothing
@@ -103,12 +85,20 @@ function run_optimizer(
 end
 
 
-function step_width(wrk::GrapeWrk{O}) where {O<:Optim.AbstractOptimizer}
+# Optimizers that update the pulse values as `x = x_previous + α s` for the
+# `α = state.alpha` and `s = state.s` from their line search. Other optimizers
+# (e.g., `ConjugateGradient`, which overwrites `state.s` with the search
+# direction for the next iteration before the callback) use the generic
+# `step_width` and `search_direction`.
+const LineSearchOptimizer = Union{Optim.GradientDescent,Optim.BFGS,Optim.LBFGS}
+
+
+function step_width(wrk::GrapeWrk{O}) where {O<:LineSearchOptimizer}
     return wrk.optimizer_state.alpha
 end
 
 
-function search_direction(wrk::GrapeWrk{O}) where {O<:Optim.AbstractOptimizer}
+function search_direction(wrk::GrapeWrk{O}) where {O<:LineSearchOptimizer}
     return wrk.optimizer_state.s
 end
 

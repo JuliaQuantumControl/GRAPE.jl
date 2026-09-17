@@ -164,7 +164,8 @@ Returns a [`GrapeResult`](@ref).
   stored in the [`GrapeResult`](@ref) object `result.records`. The function can
   also mutate the workspace, in particular the updated `pulsevals`. This may be
   used, e.g., to apply a spectral filter to the updated pulses or to perform
-  similar manipulations.
+  similar manipulations. Mutating `pulsevals` is not supported for an Optim.jl
+  `optimizer`.
 * `check_convergence`: A function to check whether convergence has been reached.
   Receives a [`GrapeResult`](@ref) object `result`, and must return one of the
   following:
@@ -187,16 +188,20 @@ Returns a [`GrapeResult`](@ref).
 
 The following keyword arguments may change in non-breaking releases:
 
-* `x_tol`: Parameter for Optim.jl
-* `f_tol`: Parameter for Optim.jl
-* `g_tol`: Parameter for Optim.jl
-* `show_trace`: Parameter for Optim.jl
-* `extended_trace`:  Parameter for Optim.jl
-* `show_every`: Parameter for Optim.jl
-* `allow_f_increases`: Parameter for Optim.jl
-* `optimizer`: An optional Optim.jl optimizer (`Optim.AbstractOptimizer`
-  instance). If not given, an [L-BFGS-B](https://github.com/Gnimuc/LBFGSB.jl)
-  optimizer will be used.
+* `optimizer`: An optional first-order optimizer from Optim.jl (version 2),
+  e.g., `Optim.LBFGS()`. If not given, an
+  [L-BFGS-B](https://github.com/Gnimuc/LBFGSB.jl) optimizer will be used.
+* `x_abstol=0.0`, `x_reltol=0.0`, `f_abstol=0.0`, `f_reltol=0.0`,
+  `g_abstol=1e-8`: Tolerances for the convergence checks of an Optim.jl
+  `optimizer`, see `Optim.Options`. These checks are in addition to
+  `check_convergence`. If they end the optimization, the result is not marked
+  as converged. The names `x_tol`, `f_tol`, and `g_tol` are accepted as
+  aliases for `x_abstol`, `f_reltol`, and `g_abstol`.
+* `allow_f_increases=false`: Whether an Optim.jl `optimizer` continues after an
+  iteration that increases the value of the functional. Note that the default
+  differs from that of `Optim.Options`.
+* `show_trace=false`, `extended_trace=false`, `show_every=1`: Options for
+  printing the trace of an Optim.jl `optimizer`, see `Optim.Options`.
 
 # Trajectory propagation
 

@@ -5,14 +5,8 @@
 module GRAPELBFGSBExt
 
 import LBFGSB
-using GRAPE: GrapeWrk, update_result!
-import GRAPE:
-    run_optimizer,
-    gradient,
-    step_width,
-    search_direction,
-    norm_search,
-    _apply_convergence_check!
+using GRAPE: GrapeWrk, _finish_iteration!
+import GRAPE: run_optimizer, gradient, step_width, search_direction, norm_search
 
 
 function run_optimizer(optimizer::LBFGSB.L_BFGS_B, wrk, fg!, callback, check_convergence)
@@ -101,23 +95,12 @@ function run_optimizer(optimizer::LBFGSB.L_BFGS_B, wrk, fg!, callback, check_con
             if obj.task[1:5] == b"FG_ST" # FG_START
                 # x is the guess for the 0 iteration
                 copyto!(wrk.gradient, obj.g)
-                update_result!(wrk, 0)
-                info_tuple = callback(wrk, 0)
-                wrk.fg_count .= 0
-                if !(isnothing(info_tuple) || isempty(info_tuple))
-                    push!(wrk.result.records, info_tuple)
-                end
+                _finish_iteration!(wrk, 0, callback, check_convergence)
             end
         elseif obj.task[1:5] == b"NEW_X"
             # x is the optimized pulses for the current iteration
             iter = wrk.result.iter + 1  # Cf. `obj.isave[30]`
-            update_result!(wrk, iter)
-            info_tuple = callback(wrk, wrk.result.iter)
-            wrk.fg_count .= 0
-            if !(isnothing(info_tuple) || isempty(info_tuple))
-                push!(wrk.result.records, info_tuple)
-            end
-            _apply_convergence_check!(wrk.result, check_convergence)
+            _finish_iteration!(wrk, iter, callback, check_convergence)
             if wrk.result.converged
                 fill!(obj.task, Cuchar(' '))
                 obj.task[1:24] = b"STOP: NEW_X -> CONVERGED"
