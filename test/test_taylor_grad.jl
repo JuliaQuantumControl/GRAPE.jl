@@ -48,24 +48,24 @@ using QuantumControlTestUtils.RandomObjects: random_matrix, random_state_vector
     end
 
     # forward
-    Φ̃₁ = U_grad(Ĥ, Ĥ₁, dt) * Ψ
-    Ψ̃₁ = similar(Ψ)
-    taylor_grad_step!(Ψ̃₁, Ψ, Ĥ, Ĥ₁, dt, temp_states)
-    @test norm(Φ̃₁ - Ψ̃₁) < 1e-14
-    Φ̃₂ = U_grad(Ĥ, Ĥ₂, dt) * Ψ
-    Ψ̃₂ = similar(Ψ)
-    taylor_grad_step!(Ψ̃₂, Ψ, Ĥ, Ĥ₂, dt, temp_states)
-    @test norm(Φ̃₂ - Ψ̃₂) < 1e-14
+    Ψ′₁_ref = U_grad(Ĥ, Ĥ₁, dt) * Ψ
+    Ψ′₁ = similar(Ψ)
+    taylor_grad_step!(Ψ′₁, Ψ, Ĥ, Ĥ₁, dt, temp_states)
+    @test norm(Ψ′₁_ref - Ψ′₁) < 1e-14
+    Ψ′₂_ref = U_grad(Ĥ, Ĥ₂, dt) * Ψ
+    Ψ′₂ = similar(Ψ)
+    taylor_grad_step!(Ψ′₂, Ψ, Ĥ, Ĥ₂, dt, temp_states)
+    @test norm(Ψ′₂_ref - Ψ′₂) < 1e-14
 
     # backward
     dt = -dt
-    Φ̃₁ = U_grad(Ĥ, Ĥ₁, dt) * Ψ
-    Ψ̃₁ = similar(Ψ)
-    taylor_grad_step!(Ψ̃₁, Ψ, Ĥ, Ĥ₁, dt, temp_states)
-    @test norm(Φ̃₁ - Ψ̃₁) < 1e-14
-    Φ̃₂ = U_grad(Ĥ, Ĥ₂, dt) * Ψ
-    Ψ̃₂ = similar(Ψ)
-    taylor_grad_step!(Ψ̃₂, Ψ, Ĥ, Ĥ₂, dt, temp_states)
-    @test norm(Φ̃₂ - Ψ̃₂) < 1e-14
+    Ψ′₁_ref = U_grad(Ĥ, Ĥ₁, dt) * Ψ
+    Ψ′₁ = similar(Ψ)
+    taylor_grad_step!(Ψ′₁, Ψ, Ĥ, Ĥ₁, dt, temp_states)
+    @test norm(Ψ′₁_ref - Ψ′₁) < 1e-14
+    Ψ′₂_ref = U_grad(Ĥ, Ĥ₂, dt) * Ψ
+    Ψ′₂ = similar(Ψ)
+    taylor_grad_step!(Ψ′₂, Ψ, Ĥ, Ĥ₂, dt, temp_states)
+    @test norm(Ψ′₂_ref - Ψ′₂) < 1e-14
 
 end

@@ -606,25 +606,25 @@ function _grad_J_T_via_chi!(∇J_T, τ, ∇τ)
 end
 
 
-# Evaluate `|Ψ̃̃ ≡ (∂ exp[-i Ĥ dt] / ∂ϵ) |Ψ⟩` with `μ̂ = ∂Ĥ/∂ϵ` via an expansion
+# Evaluate `|Ψ′⟩ ≡ (∂ exp[-i Ĥ dt] / ∂ϵ) |Ψ⟩` with `μ̂ = ∂Ĥ/∂ϵ` via an expansion
 # into a Taylor series. See Kuprov and Rogers,  J. Chem. Phys. 131, 234108
 # (2009), Eq. (20). That equation can be rewritten in a recursive formula
 #
 # ```math
-# |Ψ̃⟩ = \sum_{n=1}^{∞} \frac{(-i dt)^n}{n!} |Φₙ⟩
+# |Ψ′⟩ = \sum_{n=1}^{∞} \frac{(-i dt)^n}{n!} |Φₙ⟩
 # ```
 #
 # with
 #
 # ```math
 # \begin{align}
-#   |Φ_1⟩ &= μ̂ |Ψ⟩                  \\
-#   |ϕ_n⟩ &= μ̂ Ĥⁿ⁻¹ |Ψ⟩ + Ĥ |Φₙ₋₁⟩
+#   |Φ₁⟩ &= μ̂ |Ψ⟩                  \\
+#   |Φₙ⟩ &= μ̂ Ĥⁿ⁻¹ |Ψ⟩ + Ĥ |Φₙ₋₁⟩
 # \end{align}
 # ```
 # TODO: this should probably be adapted to static states (avoiding in-place)
 function taylor_grad_step!(
-    Ψ̃,
+    Ψ′,
     Ψ,
     Ĥ,
     μ̂,
@@ -639,7 +639,7 @@ function taylor_grad_step!(
     mul!(ϕₙ₋₁, μ̂, Ψ)
     mul!(Ĥⁿ⁻¹Ψ, Ĥ, Ψ)
     α = -1im * dt
-    mul!(Ψ̃, α, ϕₙ₋₁)
+    mul!(Ψ′, α, ϕₙ₋₁)
 
     r = 0.0
 
@@ -649,11 +649,11 @@ function taylor_grad_step!(
         mul!(ϕₙ, μ̂, Ĥⁿ⁻¹Ψ, true, true)  # (added) matrix-vector product
 
         α *= -1im * dt / n
-        mul!(Ψ̃, α, ϕₙ, true, true)      # (scaled) vector-vector sum
+        mul!(Ψ′, α, ϕₙ, true, true)      # (scaled) vector-vector sum
         if check_convergence
             r = abs(α * norm(ϕₙ))
             if r < tolerance
-                return Ψ̃
+                return Ψ′
             end
         end
 
@@ -669,7 +669,7 @@ function taylor_grad_step!(
             "taylor_grad_step! did not converge within $max_order iterations. Residual term r=$r."
         )
     else
-        return Ψ̃
+        return Ψ′
     end
 
 end
@@ -897,10 +897,10 @@ function evaluate_gradient!(G, pulsevals, wrk)
         # backward propagation of combined χ-state and gradient
         @threadsif wrk.use_threads for k = 1:N
             local Ψₖ = wrk.fw_propagators[k].state  # memory reuse
-            local χ̃ₖ = GradVector(χ[k], length(wrk.controls))
-            reinit_prop!(wrk.bw_grad_propagators[k], χ̃ₖ; transform_control_ranges)
+            local χₖ = GradVector(χ[k], length(wrk.controls))
+            reinit_prop!(wrk.bw_grad_propagators[k], χₖ; transform_control_ranges)
             for n = N_T:-1:1  # N_T is the number of time slices
-                χ̃ₖ = prop_step!(wrk.bw_grad_propagators[k])
+                χₖ = prop_step!(wrk.bw_grad_propagators[k])
                 if haskey(wrk.bw_grad_prop_kwargs[k], :callback)
                     local cb = wrk.bw_grad_prop_kwargs[k][:callback]
                     local observables =
@@ -913,22 +913,22 @@ function evaluate_gradient!(G, pulsevals, wrk)
                     Ψₖ = get_from_storage(wrk.fw_storage[k], n)
                 end
                 for l = 1:L
-                    wrk.tau_grads[k][n, l] = ρ[k] * (χ̃ₖ.grad_states[l] ⋅ Ψₖ)
+                    wrk.tau_grads[k][n, l] = ρ[k] * (χₖ.grad_states[l] ⋅ Ψₖ)
                 end
-                resetgradvec!(χ̃ₖ)
+                resetgradvec!(χₖ)
                 if !isnothing(xi_func) && n > 1
                     local xi_n = xi_func(Ψₖ, trajectories[k], tlist, n)
                     local dt = 0.5 * (tlist[n+1] - tlist[n-1])
-                    if supports_inplace(χ̃ₖ.state)
-                        axpy!(λ_b * dt / ρ[k], xi_n, χ̃ₖ.state)
+                    if supports_inplace(χₖ.state)
+                        axpy!(λ_b * dt / ρ[k], xi_n, χₖ.state)
                     else
-                        χ̃ₖ = GradVector(
-                            χ̃ₖ.state + (λ_b * dt / ρ[k]) * xi_n,
+                        χₖ = GradVector(
+                            χₖ.state + (λ_b * dt / ρ[k]) * xi_n,
                             length(wrk.controls)
                         )
                     end
                 end
-                set_state!(wrk.bw_grad_propagators[k], χ̃ₖ)
+                set_state!(wrk.bw_grad_propagators[k], χₖ)
             end
         end
 
@@ -970,17 +970,17 @@ function evaluate_gradient!(G, pulsevals, wrk)
                     if isnothing(μₖₗ)
                         wrk.tau_grads[k][n, l] = 0.0
                     else
-                        local μₗₖₙ = evaluate(μₖₗ, tlist, n; vals_dict)
+                        local μₖₗₙ = evaluate(μₖₗ, tlist, n; vals_dict)
                         local χₖ = wrk.bw_propagators[k].state
-                        local χ̃ₗₖ = wrk.taylor_grad_states[l, k][1]
+                        local χ′ₖₗ = wrk.taylor_grad_states[l, k][1]
                         local ϕ_temp = wrk.taylor_grad_states[l, k][2:5]
                         local dt = tlist[n] - tlist[n+1]
                         @assert dt < 0.0
                         taylor_grad_step!(
-                            χ̃ₗₖ,
+                            χ′ₖₗ,
                             χₖ,
                             Hₖₙ⁺,
-                            μₗₖₙ,
+                            μₖₗₙ,
                             dt,
                             ϕ_temp;
                             check_convergence = taylor_grad_check_convergence,
@@ -988,7 +988,7 @@ function evaluate_gradient!(G, pulsevals, wrk)
                             tolerance = taylor_grad_tolerance
                         )
                         # TODO: taylor_grad_step for immutable states
-                        wrk.tau_grads[k][n, l] = ρ[k] * dot(χ̃ₗₖ, Ψₖ)
+                        wrk.tau_grads[k][n, l] = ρ[k] * dot(χ′ₖₗ, Ψₖ)
                     end
                 end
                 prop_step!(wrk.bw_propagators[k])

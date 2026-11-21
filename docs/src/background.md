@@ -94,7 +94,7 @@ These two assumptions allow to analytically derive the gradient ``(\nabla J)_{nl
     \end{equation}
     ```
 
-    The gradient-state ``|\chi^\prime(t_{n-1})⟩`` is obtained either via an expansion of ``\hat{U}_n`` [into a Taylor series](@ref Overview-Taylor), or (by default), by backward-propagating an [extended state ``|\tilde\chi(t)⟩`` with gradient information](@ref Overview-Gradgen) [GoodwinJCP2015](@cite). The resulting scheme is illustrated in [Fig. 1](#fig-grape-scheme).
+    The gradient-state ``|\chi^\prime(t_{n-1})⟩`` is obtained either via an expansion of ``\hat{U}_n`` [into a Taylor series](@ref Overview-Taylor), or (by default), by backward-propagating a [gradient vector ``\chi(t)``](@ref Overview-Gradgen) that contains the gradient-state in addition to the state ``|\chi(t)⟩`` [GoodwinJCP2015](@cite). The resulting scheme is illustrated in [Fig. 1](#fig-grape-scheme).
 
 
 ## Prerequisite: Wirtinger derivatives and matrix calculus
@@ -353,11 +353,11 @@ Or, equivalently, if we had let ``\frac{\partial \hat{U}_n^{(k)}}{\partial \epsi
 ```math
 \begin{equation}\label{eq:grad-via-psi-prime}
 \frac{\partial J_T}{\partial \epsilon_{nl}}
-= -2 \Re \sum_k \bigg \langle \chi_{kl}(t_{n}) \bigg\vert \Psi^{\prime}_k(t_{n}) \bigg \rangle\,.
+= -2 \Re \sum_k \bigg \langle \chi_k(t_{n}) \bigg\vert \Psi^{\prime}_{kl}(t_{n}) \bigg \rangle\,.
 \end{equation}
 ```
 
-with ``|\Psi^{\prime}_k(t_{n})⟩ \equiv  \frac{\partial \hat{U}^{(k)}_n}{\partial \epsilon_{nl}} |\Psi_k(t_{n-1})⟩``.
+with ``|\Psi^{\prime}_{kl}(t_{n})⟩ \equiv  \frac{\partial \hat{U}^{(k)}_n}{\partial \epsilon_{nl}} |\Psi_k(t_{n-1})⟩``.
 
 ### [Taylor expansion](@id Overview-Taylor)
 
@@ -366,21 +366,21 @@ There are several possibilities for evaluating Eq. \eqref{eq:U-deriv}. One meth
 ```math
 \begin{equation}\label{eq:taylor-op}
 \frac{\partial \hat{U}^{\dagger(k)}_n}{\partial \epsilon_{nl}}
-= \sum_{m=1}^{\infty} \frac{\left(-\ii \hat{H}^{\dagger}_{kn} dt^{(-)}_n\right)^m}{m!}
+= \sum_{m=1}^{\infty} \frac{\left(-\ii dt^{(-)}_n\right)^m}{m!}
     \sum_{m^\prime=0}^{m-1}
     {\hat{H}^{\dagger}_{kn}}^{\!\!m^\prime}
-    \hat{\mu}_{lkn}^{\dagger}
+    \hat{\mu}_{kln}^{\dagger}
     {\hat{H}^{\dagger}_{kn}}^{\!\!m-m^\prime-1}
 \end{equation}
 ```
 
-with ``\hat{H}_{kn} \equiv \hat{H}_{k}(\{\epsilon_{nl}\})`` and ``\hat{\mu}_{lkn} \equiv \frac{\partial \hat{H}_{kn}}{\partial \epsilon_{nl}}``.
+with ``\hat{H}_{kn} \equiv \hat{H}_{k}(\{\epsilon_{nl}\})`` and ``\hat{\mu}_{kln} \equiv \frac{\partial \hat{H}_{kn}}{\partial \epsilon_{nl}}``.
 
 In practice, Eq. \eqref{eq:taylor-op} is best evaluated recursively, while being applied to ``|\chi_k(t_n)⟩``:
 
 ```math
 \begin{equation}
-|\chi^\prime_{kl}(t_{n-1})⟩ = \sum_{m=1}^{\infty} \frac{\left(-\ii \, dt_n^{(-)}\right)^m}{m!} |\Phi^{(lkn)}_m⟩\,,
+|\chi^\prime_{kl}(t_{n-1})⟩ = \sum_{m=1}^{\infty} \frac{\left(-\ii \, dt_n^{(-)}\right)^m}{m!} |\Phi^{(kln)}_m⟩\,,
 \end{equation}
 ```
 
@@ -389,8 +389,8 @@ with
 ```math
 \begin{equation}
 \begin{split}
-  |\Phi^{(lkn)}_1⟩ &= \hat{\mu}_{lkn}^{\dagger} |\chi_k(t_n)⟩\,,              \\
-  |\Phi^{(lkn)}_m⟩ &= \hat{\mu}_{lkn}^{\dagger} {\hat{H}^{\dagger}_{kn}}^{\!\!m-1}  |\chi_k(t_n)⟩ + {\hat{H}^{\dagger}_{kn}} |\Phi^{(lkn)}_{m-1}⟩\,.
+  |\Phi^{(kln)}_1⟩ &= \hat{\mu}_{kln}^{\dagger} |\chi_k(t_n)⟩\,,              \\
+  |\Phi^{(kln)}_m⟩ &= \hat{\mu}_{kln}^{\dagger} {\hat{H}^{\dagger}_{kn}}^{\!\!m-1}  |\chi_k(t_n)⟩ + {\hat{H}^{\dagger}_{kn}} |\Phi^{(kln)}_{m-1}⟩\,.
 \end{split}
 \end{equation}
 ```
@@ -399,12 +399,12 @@ In `GRAPE.jl`, Eq. \eqref{eq:U-deriv} can be evaluated via a Taylor expansion a
 
 !!! tip "TMIDR"
 
-    As in the [general TMIDR](#tmidr), the indices ``k`` and ``l`` are somewhat superfluous here. In addition, ``\hat{\mu}_{lkn} \equiv \frac{\partial \hat{H}_{kn}}{\partial \epsilon_{nl}}`` still depends on ``\epsilon_{nl}`` only for non-linear controls. Much more commonly, for linear Hamiltonians of the form ``\hat{H} = \hat{H_0} + \epsilon(t) \hat{\mu}``, the derivative ``\hat{\mu}`` is just a static [control operator](@extref QuantumControl :label:`Control-Operator`). If ``\hat{H}`` is a standard Hamiltonian, and thus Hermitian, we can drop the dagger. The time grid is usually uniform, so we can drop the index ``n`` from ``dt``. Thus, a simplified version of Eq. \eqref{eq:taylor-op} is
+    As in the [general TMIDR](#tmidr), the indices ``k`` and ``l`` are somewhat superfluous here. In addition, ``\hat{\mu}_{kln} \equiv \frac{\partial \hat{H}_{kn}}{\partial \epsilon_{nl}}`` still depends on ``\epsilon_{nl}`` only for non-linear controls. Much more commonly, for linear Hamiltonians of the form ``\hat{H} = \hat{H_0} + \epsilon(t) \hat{\mu}``, the derivative ``\hat{\mu}`` is just a static [control operator](@extref QuantumControl :label:`Control-Operator`). If ``\hat{H}`` is a standard Hamiltonian, and thus Hermitian, we can drop the dagger. The time grid is usually uniform, so we can drop the index ``n`` from ``dt``. Thus, a simplified version of Eq. \eqref{eq:taylor-op} is
 
     ```math
     \begin{equation}\label{eq:taylor-op-simplified}
     \frac{\partial \hat{U}^{\dagger}_n}{\partial \epsilon_{n}}
-    = \sum_{m=1}^{\infty} \frac{\left(-\ii \hat{H}_{n} dt^{(-)}\right)^m}{m!}
+    = \sum_{m=1}^{\infty} \frac{\left(-\ii dt^{(-)}\right)^m}{m!}
         \sum_{m^\prime=0}^{m-1}
         \hat{H}_{n}^{m^\prime}
         \hat{\mu}
@@ -424,14 +424,14 @@ In `GRAPE.jl`, Eq. \eqref{eq:U-deriv} can be evaluated via a Taylor expansion a
     \end{equation}
     ```
 
-For sufficiently small time steps, one may consider using only the first term in the Taylor series, ``|\chi^\prime_{kl}(t_{n-1})⟩ \approx -\ii dt_n^{(-)} |\Phi^{(lkn)}_1⟩``. That is, from Eq. \eqref{eq:grad-via-chi-prime}, we get
+For sufficiently small time steps, one may consider using only the first term in the Taylor series, ``|\chi^\prime_{kl}(t_{n-1})⟩ \approx -\ii dt_n^{(-)} |\Phi^{(kln)}_1⟩``. That is, from Eq. \eqref{eq:grad-via-chi-prime}, we get
 
 ```math
 \begin{equation}
 \begin{split}
 \frac{\partial J_T}{\partial \epsilon_{nl}}
-&\approx -2\,dt_n\,\Im \sum_k \bigg \langle \chi_{kl}(t_{n}) \bigg\vert \frac{\partial \hat{H}_{kn}}{\partial \epsilon_{nl}} \bigg\vert \Psi_k(t_{n-1}) \bigg \rangle \\
-&\approx -2\,dt_n\,\Im \sum_k \bigg \langle \chi_{kl}(t_{n}) \bigg\vert \frac{\partial \hat{H}_{kn}}{\partial \epsilon_{nl}} \bigg\vert \Psi_k(t_{n}) \bigg \rangle\,.
+&\approx -2\,dt_n\,\Im \sum_k \bigg \langle \chi_k(t_{n}) \bigg\vert \frac{\partial \hat{H}_{kn}}{\partial \epsilon_{nl}} \bigg\vert \Psi_k(t_{n-1}) \bigg \rangle \\
+&\approx -2\,dt_n\,\Im \sum_k \bigg \langle \chi_k(t_{n}) \bigg\vert \frac{\partial \hat{H}_{kn}}{\partial \epsilon_{nl}} \bigg\vert \Psi_k(t_{n}) \bigg \rangle\,.
 \end{split}
 \end{equation}
 ```
@@ -442,42 +442,41 @@ After GRAPE's original formulation [KhanejaJMR2005](@cite), it was quickly reali
 
 ### [Gradient Generators](@id Overview-Gradgen)
 
-In order to evaluate Eq. \eqref{eq:U-deriv} to high precision, one can use a trick from computational linear algebra [VanLoanITAC1978](@cite) that was reformulated in the context of quantum control by [GoodwinJCP2015](@citet). It allows to calculate ``|\chi^\prime_{kl}(t_{n-1})⟩ \equiv \frac{\partial \hat{U}^{\dagger(k)}_n}{\partial \epsilon_{nl}} |\chi_k(t_n)⟩`` and ``|\chi_{kl}(t_{n-1})⟩ = \hat{U}^{\dagger(k)}_n |\chi_k(t_n)⟩`` at the same time, as
+In order to evaluate Eq. \eqref{eq:U-deriv} to high precision, one can use a trick from computational linear algebra [VanLoanITAC1978](@cite) that was reformulated in the context of quantum control by [GoodwinJCP2015](@citet). It allows to calculate ``|\chi^\prime_{kl}(t_{n-1})⟩ \equiv \frac{\partial \hat{U}^{\dagger(k)}_n}{\partial \epsilon_{nl}} |\chi_k(t_n)⟩`` for all controls ``l`` and ``|\chi_k(t_{n-1})⟩ = \hat{U}^{\dagger(k)}_n |\chi_k(t_n)⟩`` at the same time, by backward-propagating a "gradient vector"
+
+```math
+\begin{equation}\label{eq:gradgen-state}
+    \chi_k
+    \equiv \begin{pmatrix} |\chi^\prime_{k1}⟩ \\ \vdots \\ |\chi^\prime_{kL}⟩ \\ |\chi_k⟩ \end{pmatrix}
+\end{equation}
+```
+
+of dimension ``N(L+1)``, where ``L`` is the number of controls and ``N`` is the dimension of ``|\chi_k⟩``. The gradient vector ``\chi_k`` is written without a ket, to distinguish it from the state ``|\chi_k⟩``. It contains the gradient-states ``|\chi^\prime_{kl}⟩`` in addition to the state ``|\chi_k⟩``. Starting from zero gradient-states, a single time step of the backward propagation under a "gradient generator" ``G[\hat{H}_{kn}^{\dagger}]`` results in
 
 ```math
 \begin{equation}\label{eq:gradprop-bw}
   \begin{pmatrix} |\chi^{\prime}_{k1}(t_{n-1})⟩ \\ \vdots \\ |\chi^{\prime}_{kL}(t_{n-1})⟩ \\ |\chi_k(t_{n-1})⟩ \end{pmatrix}
-  = \exp \left[-\ii\,G[\hat{H}_{kn}^{\dagger}]\,dt_n\right] |\tilde\chi_k(t_n)⟩
-  \,,\\
+  = \exp \left[-\ii\,G[\hat{H}_{kn}^{\dagger}]\,dt^{(-)}_n\right]
+  \begin{pmatrix} 0 \\ \vdots \\ 0 \\ |\chi_k(t_n)⟩ \end{pmatrix}\,,
 \end{equation}
 ```
 
-by backward-propagating an extended state
-
-```math
-\begin{equation}\label{eq:gradgen-state}
-    |\tilde\chi_k(t_n)⟩
-    \equiv \begin{pmatrix} 0 \\ \vdots \\ 0 \\ |\chi_k(t_n)⟩ \end{pmatrix}
-\end{equation}
-```
-
-of dimension ``N(L+1)``, where ``L`` is the number of controls and ``N`` is the dimension of ``|\chi_k⟩``, under a "gradient generator"
-
+where the gradient generator is
 
 ```math
 \begin{equation}\label{eq:gradgen}
     G[\hat{H}_{kn}^{\dagger}]
     = \begin{pmatrix}
-        \hat{H}^\dagger_{kn} & 0 & \dots & 0 &\hat{\mu}_{1kn}^{\dagger} \\
-        0 & \hat{H}^\dagger_{kn} & \dots & 0 & \hat{\mu}_{2kn}^{\dagger} \\
+        \hat{H}^\dagger_{kn} & 0 & \dots & 0 &\hat{\mu}_{k1n}^{\dagger} \\
+        0 & \hat{H}^\dagger_{kn} & \dots & 0 & \hat{\mu}_{k2n}^{\dagger} \\
         \vdots & & \ddots & & \vdots \\
-        0 & 0 & \dots & \hat{H}^\dagger_{kn} & \hat{\mu}_{Lkn}^{\dagger} \\
+        0 & 0 & \dots & \hat{H}^\dagger_{kn} & \hat{\mu}_{kLn}^{\dagger} \\
         0 & 0 & \dots & 0 & \hat{H}^\dagger_{kn}
     \end{pmatrix}\,.
 \end{equation}
 ```
 
-This is a purely formal way of writing the gradient generator; in practice, the extended state ``|\tilde\chi_k(t_n)⟩`` is represented by a data structure with slots for the states ``|\chi^{\prime}_{1}⟩`` … ``|\chi^{\prime}_{L}⟩``, in addition to the original state ``|\chi⟩``, and ``G[\hat{H}_{kn}^{\dagger}]`` is a container around all the operators ``\hat{\mu}^{\dagger}_{lkn} \equiv \frac{\partial \hat{H}^{\dagger}_{kn}}{\partial \epsilon_{nl}}`` in addition to the original (adjoint) Hamiltonian or Liouvillian ``\hat{H}^{\dagger}_{kn}`` itself. The gradient generator ``G`` is then implicitly defined by how it acts on the extended state,
+This is a purely formal way of writing the gradient generator. In practice, the gradient vector ``\chi_k`` is represented by a data structure ([`QuantumGradientGenerators.GradVector`](@extref)) that holds the gradient-states ``|\chi^{\prime}_{k1}⟩`` … ``|\chi^{\prime}_{kL}⟩`` in addition to the state ``|\chi_k⟩``, and ``G[\hat{H}_{kn}^{\dagger}]`` is a container ([`QuantumGradientGenerators.GradgenOperator`](@extref)) around all the operators ``\hat{\mu}^{\dagger}_{kln} \equiv \frac{\partial \hat{H}^{\dagger}_{kn}}{\partial \epsilon_{nl}}`` in addition to the original (adjoint) Hamiltonian or Liouvillian ``\hat{H}^{\dagger}_{kn}`` itself. The gradient generator ``G`` is then implicitly defined by how it acts on a gradient vector. Dropping the indices ``k`` and ``n`` ([TMIDR](#tmidr)),
 
 ```math
 \begin{equation}
@@ -493,7 +492,7 @@ This is a purely formal way of writing the gradient generator; in practice, the 
 \end{equation}
 ```
 
-This way, ``G[\hat{H}^{\dagger}_{kn}]`` replaces ``\hat{H}^{\dagger}_{kn}`` in the backwards propagation, using any of the methods in [`QuantumPropagators`](@extref QuantumPropagators :doc:`index`), e.g., the polynomial Chebychev propagator. The appropriate data structures for ``G`` and the extended states are implemented in [the `QuantumGradientGenerators` package](https://github.com/JuliaQuantumControl/QuantumGradientGenerators.jl). As it provides an "exact" gradient independently of the time step, the use of the gradient generator is the default in `GRAPE.jl`, or it can be explicitly requested with `gradient_method=:gradgen`.
+This way, ``G[\hat{H}^{\dagger}_{kn}]`` replaces ``\hat{H}^{\dagger}_{kn}`` in the backwards propagation, using any of the methods in [`QuantumPropagators`](@extref QuantumPropagators :doc:`index`), e.g., the polynomial Chebychev propagator. The appropriate data structures for ``G`` and the gradient vectors are implemented in [the `QuantumGradientGenerators` package](https://github.com/JuliaQuantumControl/QuantumGradientGenerators.jl). As it provides an "exact" gradient independently of the time step, the use of the gradient generator is the default in `GRAPE.jl`, or it can be explicitly requested with `gradient_method=:gradgen`.
 
 
 ## GRAPE scheme
@@ -511,13 +510,13 @@ With Eq. \eqref{eq:grad-at-T-U} and the [use of gradient generators](@ref Overv
 
 In each iteration, we start in the bottom left with the initial state ``|\Psi_k(t=t_0=0)⟩`` for the ``k'th`` trajectory. This state is forward-propagated under the guess pulse (in parallel for the different trajectories) over the entire time grid until final time ``T`` with ``N_T`` time steps. In the diagram, ``t_{-n}`` is a shorthand for ``t_{N_T - n}``. The propagation over the ``n``'th time interval uses the pulse values ``\epsilon_{nl}``. In the diagram, we have omitted the index ``l`` for the different control functions ``\epsilon_l(t)`` ([TMIDR](#tmidr)). All of the forward-propagated states (red in the diagram) must be stored in memory.
 
-Having determined ``|\Psi_k(T)⟩``, the state ``|\chi_k(T)⟩`` is calculated according to Eq. \eqref{eq:chi} for each trajectory ``k``. With the default `gradient_method=:gradgen` that is depicted here, ``|\chi_k(T)⟩`` is then converted into a zero-padded extended state ``|\tilde\chi_k(T)⟩``, see Eq. \eqref{eq:gradgen-state}, which is then backward propagated under a gradient-generator ``G[\hat{H}_{kn}^{\dagger}]`` defined according to Eq. \eqref{eq:gradgen}.
+Having determined ``|\Psi_k(T)⟩``, the state ``|\chi_k(T)⟩`` is calculated according to Eq. \eqref{eq:chi} for each trajectory ``k``. With the default `gradient_method=:gradgen` that is depicted here, ``|\chi_k(T)⟩`` is then converted into a gradient vector ``\chi_k(T)`` with zero gradient-states, see Eq. \eqref{eq:gradgen-state}, which is then backward propagated under a gradient generator ``G[\hat{H}_{kn}^{\dagger}]`` defined according to Eq. \eqref{eq:gradgen}.
 
-After each step in the backward propagation, the extended state ``|\tilde\chi_k(t_n)\rangle⟩`` contains the gradient-states ``|\chi^{\prime}_{kl}(t_n)⟩``, cf. Eq. \eqref{eq:gradprop-bw}. The corresponding forward-propagated states ``\Psi_k(t_n)`` are read from storage; the overlap ``⟨\chi^{\prime}_{kl}(t_n)|\Psi_k(t_n)⟩`` then contributes to the element ``(\nabla J)_{nl}`` of the gradient, cf. Eq. \eqref{eq:grad-via-chi-prime}. Note that ``|\tilde\chi_k(t_n)\rangle⟩`` must be reset in each time step, i.e., the components ``|\chi^{\prime}_{kl}(t_n)⟩`` must be zeroed out.
+After each step in the backward propagation, the gradient vector ``\chi_k(t_n)`` contains the gradient-states ``|\chi^{\prime}_{kl}(t_n)⟩``, cf. Eq. \eqref{eq:gradprop-bw}. The corresponding forward-propagated states ``|\Psi_k(t_n)⟩`` are read from storage; the overlap ``⟨\chi^{\prime}_{kl}(t_n)|\Psi_k(t_n)⟩`` then contributes to the element ``(\nabla J)_{nl}`` of the gradient, cf. Eq. \eqref{eq:grad-via-chi-prime}. Note that ``\chi_k(t_n)`` must be reset in each time step, i.e., the gradient-states ``|\chi^{\prime}_{kl}(t_n)⟩`` must be zeroed out.
 
-In the original formulation of GRAPE [KhanejaJMR2005](@cite), ``|\chi_k(T)⟩`` is always the target state associated with the ``k``'th trajectory. This makes it arbitrary whether to forward-propagate (and store) ``|\Psi_k(t)⟩`` first, or backward-propagate (and store) ``|\chi_k(t)⟩`` first. However, with the generalization to arbitrary functionals [GoerzQ2022](@cite) via the definition in Eq. \eqref{eq:chi}, ``|\chi_k(T)⟩`` can now depend on the forward-propagated states ``\{|\Psi_k(T)⟩\}``. Thus, the forward propagation and storage must always precede the backward propagation. The requirement for storing the forward-propagated states also explains the choice to let ``\frac{\partial \hat{U}_n^{(k)}}{\partial \epsilon_{nl}}`` act to the left in Eq. \eqref{eq:grad-at-T-U} to get Eq. \eqref{eq:grad-via-chi-prime}. If we had instead chosen to let the derivative act to the right to get Eq. \eqref{eq:grad-via-psi-prime}, we would have to store all of the states ``|\Psi^{\prime}_k(t_{n})⟩`` in addition to just ``|\Psi_k(t_{n})⟩`` for every time step, which would increase the required memory ``L``-fold for ``L`` controls.
+In the original formulation of GRAPE [KhanejaJMR2005](@cite), ``|\chi_k(T)⟩`` is always the target state associated with the ``k``'th trajectory. This makes it arbitrary whether to forward-propagate (and store) ``|\Psi_k(t)⟩`` first, or backward-propagate (and store) ``|\chi_k(t)⟩`` first. However, with the generalization to arbitrary functionals [GoerzQ2022](@cite) via the definition in Eq. \eqref{eq:chi}, ``|\chi_k(T)⟩`` can now depend on the forward-propagated states ``\{|\Psi_k(T)⟩\}``. Thus, the forward propagation and storage must always precede the backward propagation. The requirement for storing the forward-propagated states also explains the choice to let ``\frac{\partial \hat{U}_n^{(k)}}{\partial \epsilon_{nl}}`` act to the left in Eq. \eqref{eq:grad-at-T-U} to get Eq. \eqref{eq:grad-via-chi-prime}. If we had instead chosen to let the derivative act to the right to get Eq. \eqref{eq:grad-via-psi-prime}, we would have to store all of the states ``|\Psi^{\prime}_{kl}(t_{n})⟩`` in addition to just ``|\Psi_k(t_{n})⟩`` for every time step, which would increase the required memory ``L``-fold for ``L`` controls.
 
-The above scheme may be further augmented for [running costs](@ref Overview-Running-Costs). Also, if the alternative `gradient_method=:taylor` is used, the backward propagation is of the normal states ``|\chi_k(T)⟩`` instead of the extended ``|\chi_k(T)⟩``, but the ``|\chi^{\prime}_{kl}(t_n)⟩`` still have to be evaluated in each time step. In any case, once the full gradient vector has been collected, it is passed to an [optimizer such as L-BFGS-B](@ref Optimizers).
+The above scheme may be further augmented for [running costs](@ref Overview-Running-Costs). Also, if the alternative `gradient_method=:taylor` is used, the backward propagation is of the normal states ``|\chi_k(T)⟩`` instead of the gradient vectors ``\chi_k(T)``, but the ``|\chi^{\prime}_{kl}(t_n)⟩`` still have to be evaluated in each time step. In any case, once the full gradient ``\nabla J`` has been collected, it is passed to an [optimizer such as L-BFGS-B](@ref Optimizers).
 
 
 ## [Semi-automatic differentiation](@id Overview-SemiAD)
@@ -775,7 +774,7 @@ with
 \end{equation}
 ```
 
-Thus, there are no fundamental changes to the scheme in [Fig. 1](#fig-grape-scheme) in the presence of state-dependent running costs. The states ``\{|\Psi_k(0)⟩\}`` must be forward-propagated and stored, and then the extended states ``|\tilde\chi_k(t_n)⟩`` are propagated backward to produce the gradient. The only difference is that the boundary state ``|\tilde\chi_k(T)⟩`` is now constructed based on Eq. \eqref{eq:chi-boundary-gb} instead of Eq. \eqref{eq:chi}. Furthermore, the backward propagation uses the discrete inhomogeneous Eq. \eqref{eq:chi-bw-gb}. The inhomogeneity is calculated using the forward-propagated states stored previously, with the derivative of ``g_b`` performed analytically or by automatic differentiation.
+Thus, there are no fundamental changes to the scheme in [Fig. 1](#fig-grape-scheme) in the presence of state-dependent running costs. The states ``\{|\Psi_k(0)⟩\}`` must be forward-propagated and stored, and then the gradient vectors ``\chi_k(t_n)`` are propagated backward to produce the gradient. The only difference is that the boundary state ``|\chi_k(T)⟩`` in the gradient vector ``\chi_k(T)`` is now constructed based on Eq. \eqref{eq:chi-boundary-gb} instead of Eq. \eqref{eq:chi}. Furthermore, the backward propagation uses the discrete inhomogeneous Eq. \eqref{eq:chi-bw-gb}. The inhomogeneity is calculated using the forward-propagated states stored previously, with the derivative of ``g_b`` performed analytically or by automatic differentiation.
 
 ## Optimizers
 
