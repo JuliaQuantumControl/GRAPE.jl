@@ -66,6 +66,11 @@ unicodeplots()
         include("test_bounds.jl")
     end
 
+    println("\n* Parameter Passing (test_parameter_passing.jl):")
+    @time @safetestset "Parameter Passing" begin
+        include("test_parameter_passing.jl")
+    end
+
     println("\n* Convergence Checks (test_convergence_checks.jl):")
     @time @safetestset "Convergence Checks" begin
         include("test_convergence_checks.jl")
