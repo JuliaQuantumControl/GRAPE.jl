@@ -268,3 +268,12 @@ end
     wrk = GrapeWrk(problem)
     @test all(wrk.upper_bounds .== Inf)
 end
+
+
+@testset "L-BFGS-B message" begin
+    # The message from L-BFGS-B has no trailing whitespace
+    problem = tls_problem(; iter_stop = 100, lbfgsb_factr = 1e12)
+    res = optimize(problem; method = GRAPE)
+    @test startswith(res.message, "CONVERGENCE")
+    @test res.message == strip(res.message)
+end

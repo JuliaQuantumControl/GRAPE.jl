@@ -154,7 +154,7 @@ function run_optimizer(optimizer::LBFGSB.L_BFGS_B, wrk, fg!, callback, check_con
             end
         else
             if wrk.result.message == "in progress"
-                wrk.result.message = String(copy(obj.task))
+                wrk.result.message = strip(String(copy(obj.task)))
             end
             fill!(obj.task, Cuchar(' '))
             obj.task[1:10] = b"STOP: DONE"

@@ -43,7 +43,7 @@ arguments:
 * `check=true`: If `true` (default), test that all the objects stored in the
   trajectories implement the required interfaces correctly
 * `print_iters=true`: Whether to print information after each iteration.
-* `print_iter_info=["iter.", "J_T", "|∇J|", "|Δϵ|", "ΔJ", "FG(F)", "secs"]`:
+* `print_iter_info=["iter.", "J_T", "ǁ∇Jǁ", "ǁΔϵǁ", "ΔJ", "FG(F)", "secs"]`:
   Which fields to print if `print_iters=true`. See
   [`make_grape_print_iters`](@ref)
 * `store_iter_info=[]`: Which fields to store in `result.records`, given as
@@ -88,7 +88,7 @@ function optimize(trajectories, tlist; kwargs...)
     J_a_func = get(wrk.kwargs, :J_a, nothing)
     if isnothing(J_a_func)
         if haskey(wrk.kwargs, :grad_J_a)
-            @warn "Argument `grad_J_A` was given without `grad_J_a`. Ignoring"
+            @warn "Argument `grad_J_a` was given without `J_a`. Ignoring"
             delete!(wrk.kwargs, :grad_J_a)
         end
     else

@@ -116,7 +116,7 @@ Returns a [`GrapeResult`](@ref).
   maximum number of terms in the Taylor series. If
   `taylor_grad_check_convergence=true` (default), if the Taylor series does not
   convergence within the given number of terms, throw an error. With
-  `taylor_grad_check_convergence=true`, this is the exact order of the Taylor
+  `taylor_grad_check_convergence=false`, this is the exact order of the Taylor
   series.
 * `taylor_grad_tolerance=1e-16`: If given with `gradient_method=:taylor` and
   `taylor_grad_check_convergence=true`, stop the Taylor series when the norm of
@@ -226,6 +226,8 @@ The following keyword arguments may change in non-breaking releases:
   that `check_convergence` determines convergence. If the L-BFGS-B checks end
   the optimization, the result is not marked as converged.
 * `lbfgsb_iprint=-1`: The verbosity of the output of the L-BFGS-B optimizer.
+  For values greater than zero, L-BFGS-B also writes a summary of the
+  iterations to a file `iterate.dat` in the current working directory.
 * `x_abstol=0.0`, `x_reltol=0.0`, `f_abstol=0.0`, `f_reltol=0.0`,
   `g_abstol=1e-8`: Tolerances for the convergence checks of an Optim.jl
   `optimizer`, see `Optim.Options`. These checks are in addition to
@@ -234,7 +236,9 @@ The following keyword arguments may change in non-breaking releases:
   aliases for `x_abstol`, `f_reltol`, and `g_abstol`.
 * `allow_f_increases=false`: Whether an Optim.jl `optimizer` continues after an
   iteration that increases the value of the functional. Note that the default
-  differs from that of `Optim.Options`.
+  differs from that of `Optim.Options`. If the optimization stops because of
+  an increase, the result is for that last iteration, not for the iteration
+  with the smallest value of the functional.
 * `show_trace=false`, `extended_trace=false`, `show_every=1`: Options for
   printing the trace of an Optim.jl `optimizer`, see `Optim.Options`.
 

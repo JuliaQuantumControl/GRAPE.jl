@@ -30,6 +30,8 @@ For releases pre-1.0, see the [GitHub Releases](https://github.com/JuliaQuantumC
 * Fixed: If L-BFGS-B projects a guess that violates the bounds into the bounds, the workspace now uses the projected guess, with a warning. Previously, `pulsevals_guess`, the gradient for the guess, and the pulse update in the first iteration were inconsistent with the projected guess [[#124]]
 * Fixed: `result.J_a`, and the `J_a` and `J` columns printed with `print_iters`, were wrong for a negative running cost `J_a` or for `lambda_a=0` [[#124]]
 * Fixed: A singular `:upper_bound` or `:lower_bound` key in `pulse_options` was silently ignored. It now throws an `ArgumentError` pointing to `:upper_bounds` and `:lower_bounds` [[#124]]
+* Fixed: The `result.message` from L-BFGS-B no longer has trailing whitespace [[#124]]
+* Fixed: The documented default labels of `print_iter_info` were wrong, and the documentation of `taylor_grad_max_order` referred to the wrong value of `taylor_grad_check_convergence` [[#124]]
 * Added: Documentation for the keyword arguments `iter_start`, `iter_stop`, `continue_from`, and `use_threads`, and for the iteration number that the `callback` receives for the guess [[#124]]
 * Fixed: The documentation of the propagation keyword arguments now describes their actual precedence: any keyword argument (e.g., a global `prop_method`) overrides the properties of all trajectories, including properties with a more specific prefix like `fw_prop_method`. The documentation previously stated that `fw_prop_` and `bw_prop_` settings override any `prop_` setting [[#124]]
 
