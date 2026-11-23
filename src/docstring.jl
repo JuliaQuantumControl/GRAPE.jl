@@ -233,18 +233,36 @@ GRAPE may involve three types of time propagation, all of which are implemented 
   for every trajectory.
 
 The keyword arguments for each propagation (see [`propagate`](@ref)) are
-determined from any properties of each [`Trajectory`](@ref) that have a `prop_`
-prefix, cf. [`init_prop_trajectory`](@ref).
+determined from any properties of each [`Trajectory`](@ref) and any keyword
+arguments that have a `prop_` prefix, cf. [`init_prop_trajectory`](@ref).
 
 In situations where different parameters are required for the forward and
 backward propagation, instead of the `prop_` prefix, the `fw_prop_` and
-`bw_prop_` prefix can be used, respectively. These override any setting with
-the `prop_` prefix. Similarly, properties for the backward propagation of the
-gradient generators can be set with properties that have a `grad_prop_` prefix.
-These prefixes apply both to the properties of each [`Trajectory`](@ref) and
-the keyword arguments.
+`bw_prop_` prefixes can be used, respectively. Similarly, parameters for the
+backward propagation of the gradient generators can be set with a `grad_prop_`
+prefix (in addition to `bw_prop_`, which applies to both backward
+propagations).
+
+If the same parameter is set in more than one way, the following rules
+determine which setting is used:
+
+1. Any keyword argument (including the keyword arguments of the `problem` in
+   [`QuantumControl.optimize`](@ref)) that applies to a propagation overrides
+   any property of a [`Trajectory`](@ref) for that propagation, regardless of
+   the prefix.
+2. Among the keyword arguments, and among the properties of a
+   [`Trajectory`](@ref), a `fw_prop_`, `bw_prop_`, or `grad_prop_` prefix
+   overrides the `prop_` prefix, and the `grad_prop_` prefix overrides the
+   `bw_prop_` prefix.
+
+For example, a `prop_method` keyword argument overrides a `fw_prop_method`
+property of a [`Trajectory`](@ref).
 
 Note that the propagation method for each propagation must be specified. In
 most cases, it is sufficient (and recommended) to pass a global `prop_method`
-keyword argument.
+keyword argument. Since this overrides any per-trajectory setting, use
+trajectory properties instead if different trajectories require different
+propagation methods. GRAPE requires a piecewise propagation method (see
+[`init_prop`](@extref QuantumPropagators.init_prop)); other methods are
+rejected.
 """ optimize
