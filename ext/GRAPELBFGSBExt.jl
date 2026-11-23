@@ -124,6 +124,11 @@ function run_optimizer(optimizer::LBFGSB.L_BFGS_B, wrk, fg!, callback, check_con
                 # x is the guess for the 0 iteration
                 copyto!(wrk.gradient, obj.g)
                 _finish_iteration!(wrk, 0, callback, check_convergence)
+                if wrk.result.converged  # e.g., `iter_stop` already reached
+                    fill!(obj.task, Cuchar(' '))
+                    msg = b"STOP: FG_START -> CONVERGED"
+                    obj.task[1:length(msg)] = msg
+                end
             end
         elseif obj.task[1:5] == b"NEW_X"
             # x is the optimized pulses for the current iteration

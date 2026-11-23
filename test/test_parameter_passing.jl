@@ -9,6 +9,7 @@ using QuantumPropagators: ExpProp, AbstractPropagator
 import QuantumPropagators: init_prop
 using GRAPE
 using GRAPE: GrapeWrk
+import Optim
 
 
 function tls_problem(; N_T = 20, guess = 0.2, kwargs...)
@@ -25,6 +26,21 @@ function tls_problem(; N_T = 20, guess = 0.2, kwargs...)
         print_iters = false,
         kwargs...
     )
+end
+
+
+# Run an optimization and return the result, the list of iteration numbers
+# passed to the callback, and the workspace (in its final state)
+function optimize_and_record(problem; kwargs...)
+    iterations = Int[]
+    workspaces = []
+    function callback(wrk, iter)
+        push!(iterations, iter)
+        isempty(workspaces) && push!(workspaces, wrk)
+        return nothing
+    end
+    res = optimize(problem; method = GRAPE, callback, rethrow_exceptions = true, kwargs...)
+    return res, iterations, workspaces[1]
 end
 
 
@@ -113,4 +129,54 @@ end
     res = GRAPE.optimize(problem.trajectories, problem.tlist; problem.kwargs...)
     @test res.iter == 2
     @test res.message == "Reached maximum number of iterations"
+end
+
+
+@testset "iter_stop" begin
+    for optimizer in (nothing, Optim.LBFGS())
+        kw = isnothing(optimizer) ? (;) : (; optimizer)
+        # `iter_stop` not larger than the starting iteration: only the guess
+        for (iter_start, iter_stop) in ((0, 0), (5, 5), (5, 3))
+            problem = tls_problem(; iter_start, iter_stop, kw...)
+            res, iterations, _ = optimize_and_record(problem)
+            @test iterations == [0]
+            @test res.iter == iter_start
+            @test res.message == "Reached maximum number of iterations"
+        end
+        problem = tls_problem(; iter_start = 2, iter_stop = 4, kw...)
+        res, iterations, _ = optimize_and_record(problem)
+        @test iterations == [0, 3, 4]
+        @test res.iter == 4
+        # Continuing an optimization (from a copy of `res1`, since
+        # `continue_from` updates the result in place)
+        res1 = optimize(tls_problem(; iter_stop = 3, kw...); method = GRAPE)
+        @test res1.iter == 3
+        problem = tls_problem(; iter_stop = 3, continue_from = deepcopy(res1), kw...)
+        res, iterations, _ = optimize_and_record(problem)
+        @test iterations == [0]
+        @test res.iter == 3
+        problem = tls_problem(; iter_stop = 5, continue_from = deepcopy(res1), kw...)
+        res, iterations, _ = optimize_and_record(problem)
+        @test iterations == [0, 4, 5]
+        @test res.iter == 5
+    end
+end
+
+
+@testset "callback iteration number for the guess" begin
+    # The guess is always iteration 0 for the `callback`, and
+    # `wrk.result.iter` is the actual starting iteration
+    start_iters = Int[]
+    function callback(wrk, iter)
+        (iter == 0) && push!(start_iters, wrk.result.iter)
+        return nothing
+    end
+    res1 = optimize(tls_problem(; iter_start = 2, iter_stop = 3, callback); method = GRAPE)
+    @test start_iters == [2]
+    res2 = optimize(
+        tls_problem(; iter_stop = 4, continue_from = res1, callback);
+        method = GRAPE
+    )
+    @test start_iters == [2, 3]
+    @test res2.iter == 4
 end

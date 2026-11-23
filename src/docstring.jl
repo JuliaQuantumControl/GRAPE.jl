@@ -166,7 +166,11 @@ Returns a [`GrapeResult`](@ref).
   Finite values in `:upper_bounds` and `:lower_bounds` take precedence over the
   global `upper_bound` and `lower_bound`, even if they are less restrictive.
 * `callback`: A function that receives the [GRAPE workspace](@ref GrapeWrk)
-  and the iteration number. The function may return a tuple of values which are
+  and the iteration number. It is called once for the guess, with an iteration
+  number of 0, and then after each iteration. The guess is iteration 0 even if
+  the optimization starts at a later iteration (`iter_start` or
+  `continue_from`). In that case, the actual starting iteration is
+  `wrk.result.iter`. The function may return a tuple of values which are
   stored in the [`GrapeResult`](@ref) object `result.records`. The function can
   also mutate the workspace, in particular the updated `pulsevals`. This may be
   used, e.g., to apply a spectral filter to the updated pulses or to perform
@@ -182,6 +186,18 @@ Returns a [`GrapeResult`](@ref).
     indicate convergence
   The convergence check is performed after any `callback`.
 * `prop_method`: The propagation method to use for each trajectory, see below.
+* `iter_start=0`: The initial iteration number.
+* `iter_stop=5000`: The maximum iteration number. The optimization stops after
+  this iteration. If the starting iteration (`iter_start`, or the last
+  iteration of `continue_from`) is not smaller than `iter_stop`, only the guess
+  is evaluated.
+* `continue_from`: A result object from a previous optimization (a
+  [`GrapeResult`](@ref), or a result that can be converted to a `GrapeResult`).
+  The optimization starts from the optimized controls of that result, and the
+  iteration numbers continue from its last iteration (`iter_start` is ignored).
+  A `GrapeResult` given as `continue_from` is updated in place and returned.
+* `use_threads=false`: If `true`, propagate the different trajectories in
+  parallel, using multiple threads.
 * `verbose=false`: If `true`, print information during initialization
 * `rethrow_exceptions`: By default, any exception ends the optimization, but
   still returns a [`GrapeResult`](@ref) that captures the message associated

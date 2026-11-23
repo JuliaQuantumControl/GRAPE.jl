@@ -228,7 +228,7 @@ function update_result!(wrk::GrapeWrk, i::Int64)
         res.J_b = 0.0
     end
     (i > 0) && (res.iter = i)
-    if i >= res.iter_stop
+    if res.iter >= res.iter_stop
         res.converged = true
         res.message = "Reached maximum number of iterations"
         # Note: other convergence checks are done in user-supplied
