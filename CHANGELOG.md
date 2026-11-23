@@ -14,6 +14,10 @@ For releases pre-1.0, see the [GitHub Releases](https://github.com/JuliaQuantumC
 
 ## [Unreleased]
 
+* Fixed: The `lbfgsb_m` keyword argument for the number of limited memory corrections in the L-BFGS-B optimizer was ignored when allocating the optimizer, which always had room for 10 corrections. For `lbfgsb_m > 10`, this corrupted memory, resulting in crashes. A user-supplied L-BFGS-B `optimizer` that was allocated for fewer corrections than `lbfgsb_m` or for the wrong number of control values now throws an `ArgumentError` [[#120]]
+* Changed: For an explicit `optimizer = LBFGSB.L_BFGS_B(nmax, mmax)`, the number of limited memory corrections `lbfgsb_m` now defaults to `mmax` instead of 10
+* Added: Documentation for the keyword arguments `lbfgsb_m`, `lbfgsb_factr`, `lbfgsb_pgtol`, and `lbfgsb_iprint`
+
 
 ## [v1.2.0] — 2026-09-16
 
@@ -41,6 +45,7 @@ Initial stable release. No breaking changes compared to [v0.8.1].
 [v1.1.0]: https://github.com/JuliaQuantumControl/GRAPE.jl/releases/tag/v1.1.0
 [v1.0.0]: https://github.com/JuliaQuantumControl/GRAPE.jl/releases/tag/v1.0.0
 [v0.8.1]: https://github.com/JuliaQuantumControl/GRAPE.jl/releases/tag/v0.8.1
+[#120]: https://github.com/JuliaQuantumControl/GRAPE.jl/issues/120
 [#114]: https://github.com/JuliaQuantumControl/GRAPE.jl/pull/114
 [#110]: https://github.com/JuliaQuantumControl/GRAPE.jl/pull/110
 [#105]: https://github.com/JuliaQuantumControl/GRAPE.jl/pull/105

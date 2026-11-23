@@ -9,9 +9,35 @@ using GRAPE: GrapeWrk, _finish_iteration!
 import GRAPE: run_optimizer, gradient, step_width, search_direction, norm_search
 
 
+# The Fortran routine `setulb` uses the work arrays of the `optimizer` with
+# sizes determined by the number of variables `n` and the number of limited
+# memory corrections `m`. It does not check the actual size of the arrays, so
+# an optimizer that was allocated too small results in heap corruption.
+function check_lbfgsb_optimizer(optimizer::LBFGSB.L_BFGS_B, n, m)
+    if m < 1
+        throw(ArgumentError("`lbfgsb_m` must be a positive integer, not $(repr(m))"))
+    end
+    # An optimizer with `nmax > n` would be safe for `setulb`, but GRAPE uses
+    # `optimizer.g` as the gradient, which must have length `n`.
+    if (n != optimizer.nmax) || (m > optimizer.mmax)
+        throw(
+            ArgumentError(
+                "The L-BFGS-B `optimizer` was allocated for " *
+                "$(optimizer.nmax) variables and at most $(optimizer.mmax) limited " *
+                "memory corrections, but the optimization requires $n " *
+                "variables and `lbfgsb_m = $m` corrections. " *
+                "Use `LBFGSB.L_BFGS_B($n, $m)`."
+            )
+        )
+    end
+    return nothing
+end
+
+
 function run_optimizer(optimizer::LBFGSB.L_BFGS_B, wrk, fg!, callback, check_convergence)
 
-    m = get(wrk.kwargs, :lbfgsb_m, 10)
+    m = get(wrk.kwargs, :lbfgsb_m, optimizer.mmax)
+    # Without an explicit `optimizer`, `mmax` is the default `lbfgsb_m = 10`.
     factr = get(wrk.kwargs, :lbfgsb_factr, 1e1)
     # LBFGSB stops when the relative reduction in the functional f is
     #     (f^k - f^{k+1})/max{|f^k|,|f^{k+1}|,1} <= factr*epsmch
@@ -25,6 +51,7 @@ function run_optimizer(optimizer::LBFGSB.L_BFGS_B, wrk, fg!, callback, check_con
     x = wrk.pulsevals
     n = length(x)
     obj = optimizer
+    check_lbfgsb_optimizer(obj, n, m)
     f = 0.0
     # clean up
     fill!(obj.task, Cuchar(' '))
