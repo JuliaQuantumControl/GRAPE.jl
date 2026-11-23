@@ -369,8 +369,18 @@ end
 
 
 function get_optimizer(n; kwargs...)
-    m = 10 # TODO: kwarg for number of limited memory corrections
-    optimizer = get(kwargs, :optimizer, LBFGSB.L_BFGS_B(n, m))
+    if haskey(kwargs, :optimizer)
+        optimizer = kwargs[:optimizer]
+    else
+        m = get(kwargs, :lbfgsb_m, 10)  # number of limited memory corrections
+        optimizer = LBFGSB.L_BFGS_B(n, max(m, 1))
+    end
+    if optimizer isa LBFGSB.L_BFGS_B
+        # For a user-supplied optimizer, `lbfgsb_m` defaults to its `mmax`.
+        # This must match `run_optimizer` in GRAPELBFGSBExt.
+        m = get(kwargs, :lbfgsb_m, optimizer.mmax)
+        GRAPELBFGSBExt.check_lbfgsb_optimizer(optimizer, n, m)
+    end
     return optimizer
 end
 

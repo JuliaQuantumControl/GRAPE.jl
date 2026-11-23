@@ -191,6 +191,19 @@ The following keyword arguments may change in non-breaking releases:
 * `optimizer`: An optional first-order optimizer from Optim.jl (version 2),
   e.g., `Optim.LBFGS()`. If not given, an
   [L-BFGS-B](https://github.com/Gnimuc/LBFGSB.jl) optimizer will be used.
+  An explicit `LBFGSB.L_BFGS_B(nmax, mmax)` may also be given, where `nmax`
+  must be the number of control values (the number of controls times the
+  number of time intervals), and `mmax` is the number of limited memory
+  corrections, see `lbfgsb_m`.
+* `lbfgsb_m`: The number of limited memory corrections for the L-BFGS-B
+  optimizer. Defaults to `mmax` for an explicit `LBFGSB.L_BFGS_B(nmax, mmax)`
+  `optimizer`, and to 10 otherwise. If given together with an explicit
+  `optimizer`, it must not exceed `mmax`.
+* `lbfgsb_factr=10.0`, `lbfgsb_pgtol=1e-15`: Tolerances for the internal
+  convergence checks of the L-BFGS-B optimizer. The defaults are chosen so
+  that `check_convergence` determines convergence. If the L-BFGS-B checks end
+  the optimization, the result is not marked as converged.
+* `lbfgsb_iprint=-1`: The verbosity of the output of the L-BFGS-B optimizer.
 * `x_abstol=0.0`, `x_reltol=0.0`, `f_abstol=0.0`, `f_reltol=0.0`,
   `g_abstol=1e-8`: Tolerances for the convergence checks of an Optim.jl
   `optimizer`, see `Optim.Options`. These checks are in addition to
