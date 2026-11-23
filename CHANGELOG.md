@@ -22,6 +22,7 @@ For releases pre-1.0, see the [GitHub Releases](https://github.com/JuliaQuantumC
 * Fixed: Without an upper bound, the L-BFGS-B optimizer treated every control value as bounded from above by `Inf`, so it always solved a constrained problem, and a `lower_bound` alone was passed as a two-sided bound. Optimizations without bounds now take a different path through L-BFGS-B, so their results differ from previous versions. In particular, the first iteration is no longer a short steepest-descent step [[#123]]
 * Fixed: Invalid bounds now throw an `ArgumentError` that identifies the control and time interval: a `NaN` bound, an upper bound of `-Inf`, a lower bound of `Inf`, or a lower bound that exceeds the upper bound. Previously, such bounds were silently ignored, or the optimization ended before the first iteration with the message "ERROR: NO FEASIBLE SOLUTION" [[#123]]
 * Changed: The `:lower_bounds` and `:upper_bounds` in `pulse_options` must be a single number for all time intervals, or a vector with one value for each time interval. A vector of any other length, including a single-element vector, throws an `ArgumentError` [[#123]]
+* Changed: The minimum supported version of QuantumGradientGenerators is now 0.2 [[#124]]
 
 
 ## [v1.2.0] — 2026-09-16
@@ -50,6 +51,7 @@ Initial stable release. No breaking changes compared to [v0.8.1].
 [v1.1.0]: https://github.com/JuliaQuantumControl/GRAPE.jl/releases/tag/v1.1.0
 [v1.0.0]: https://github.com/JuliaQuantumControl/GRAPE.jl/releases/tag/v1.0.0
 [v0.8.1]: https://github.com/JuliaQuantumControl/GRAPE.jl/releases/tag/v0.8.1
+[#124]: https://github.com/JuliaQuantumControl/GRAPE.jl/pull/124
 [#123]: https://github.com/JuliaQuantumControl/GRAPE.jl/pull/123
 [#121]: https://github.com/JuliaQuantumControl/GRAPE.jl/issues/121
 [#120]: https://github.com/JuliaQuantumControl/GRAPE.jl/issues/120
