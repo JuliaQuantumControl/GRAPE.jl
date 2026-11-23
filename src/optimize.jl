@@ -831,6 +831,9 @@ information in `wrk`:
 * `wrk.J_parts`: The parts (`J_T`, `λₐJ_a`) of the functional
 * `wrk.fw_storage`: For each trajectory, the forward-propagated states at each
   point on the time grid.
+* `wrk.bw_fw_states`: Used as a buffer for the forward-propagated states in the
+  backward propagation. The states of the forward propagators in
+  `wrk.fw_propagators` remain the states at final time.
 * `wrk.chi_states`: The normalized states ``|χ(T)⟩`` that we used as the boundary
   condition for the backward propagation.
 * `wrk.chi_states_norm`: The original norm of the states ``|χ(T)⟩``, as
@@ -902,7 +905,7 @@ function evaluate_gradient!(G, pulsevals, wrk)
 
         # backward propagation of combined χ-state and gradient
         @threadsif wrk.use_threads for k = 1:N
-            local Ψₖ = wrk.fw_propagators[k].state  # memory reuse
+            local Ψₖ = wrk.bw_fw_states[k]  # forward-propagated state
             local χₖ = GradVector(χ[k], length(wrk.controls))
             reinit_prop!(wrk.bw_grad_propagators[k], χₖ; transform_control_ranges)
             for n = N_T:-1:1  # N_T is the number of time slices
@@ -946,7 +949,7 @@ function evaluate_gradient!(G, pulsevals, wrk)
             get(wrk.kwargs, :taylor_grad_check_convergence, true)
 
         @threadsif wrk.use_threads for k = 1:N
-            local Ψₖ = wrk.fw_propagators[k].state  # memory reuse
+            local Ψₖ = wrk.bw_fw_states[k]  # forward-propagated state
             reinit_prop!(wrk.bw_propagators[k], χ[k]; transform_control_ranges)
             local Hₖ⁺ = wrk.adjoint_trajectories[k].generator
             local Hₖₙ⁺ = wrk.taylor_genops[k]
