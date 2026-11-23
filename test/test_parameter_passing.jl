@@ -4,7 +4,7 @@
 
 using Test
 using QuantumControl: hamiltonian, optimize, ControlProblem, Trajectory
-using QuantumControl.Controls: discretize_on_midpoints
+using QuantumControl.Controls: get_controls, discretize_on_midpoints
 using QuantumControl.Functionals: J_T_sm
 using QuantumPropagators: ExpProp, AbstractPropagator
 import QuantumPropagators: init_prop
@@ -253,4 +253,18 @@ end
         @test res.J_a ≈ J_a(wrk.pulsevals, wrk.tlist)
         @test res.J_a < 0.0
     end
+end
+
+
+@testset "pulse_options with singular bound keys" begin
+    problem = tls_problem()
+    ϵ = get_controls(problem.trajectories)[1]
+    problem.kwargs[:pulse_options] = IdDict(ϵ => Dict(:upper_bound => 1.0))
+    msg = "`pulse_options[control]` for control 1 contains :upper_bound. Use :upper_bounds instead."
+    @test_throws ArgumentError(msg) GrapeWrk(problem)
+    # Keys for other optimization methods (e.g., Krotov) are ignored
+    problem.kwargs[:pulse_options] =
+        IdDict(ϵ => Dict(:lambda_a => 1.0, :update_shape => (t -> 1.0)))
+    wrk = GrapeWrk(problem)
+    @test all(wrk.upper_bounds .== Inf)
 end

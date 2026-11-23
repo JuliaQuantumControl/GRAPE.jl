@@ -205,6 +205,19 @@ function GrapeWrk(trajectories, tlist, kwargs)
     lower_bounds = fill(lower_bound, length(pulsevals))
     for (l, control) in enumerate(controls)
         options = get(pulse_options, control, Dict())
+        # Other keys are ignored, since `pulse_options` may also contain keys
+        # for other optimization methods (e.g., Krotov). The singular keys are
+        # likely a mistake, since they are the names of the global bounds.
+        for key in (:upper_bound, :lower_bound)
+            if haskey(options, key)
+                throw(
+                    ArgumentError(
+                        "`pulse_options[control]` for control $l contains " *
+                        "$(repr(key)). Use $(repr(Symbol(key, :s))) instead."
+                    )
+                )
+            end
+        end
         block = ((l-1)*N_T+1):(l*N_T)  # same as for `parameters`
         for (key, bounds, global_bound, unbounded) in (
             (:upper_bounds, upper_bounds, upper_bound, Inf),
