@@ -156,3 +156,45 @@ end
     @test all(0.0 .<= ϵ1_opt .<= 0.15)
     @test all(-0.5 .<= ϵ2_opt .<= 0.5)
 end
+
+
+@testset "invalid bounds" begin
+    for kwargs in (
+        (; upper_bound = -Inf),
+        (; lower_bound = Inf),
+        (; lower_bound = 1.0, upper_bound = -1.0),
+        (; upper_bound = NaN),
+    )
+        problem, _, _ = two_control_problem(; kwargs...)
+        @test_throws ArgumentError GrapeWrk(problem)
+    end
+    # The error message identifies the control and time interval
+    problem, ϵ1, ϵ2 = two_control_problem(; lower_bound = -1.0)
+    problem.kwargs[:pulse_options] =
+        IdDict(ϵ2 => Dict(:upper_bounds => [1.0, 1.0, -2.0, 1.0]))
+    exc = try
+        GrapeWrk(problem)
+    catch e
+        e
+    end
+    @test exc isa ArgumentError
+    @test startswith(
+        exc.msg,
+        "Invalid bounds for control 2 in time interval 3: lower bound -1.0, upper bound -2.0."
+    )
+    # An infinity of the wrong sign does not fall back to the global bound
+    problem, ϵ1, ϵ2 = two_control_problem(; upper_bound = 2.0)
+    problem.kwargs[:pulse_options] =
+        IdDict(ϵ1 => Dict(:upper_bounds => [-Inf, 1.0, 1.0, 1.0]))
+    @test_throws ArgumentError GrapeWrk(problem)
+    problem.kwargs[:pulse_options] = IdDict(ϵ1 => Dict(:lower_bounds => [Inf, 0, 0, 0]))
+    @test_throws ArgumentError GrapeWrk(problem)
+    problem.kwargs[:pulse_options] = IdDict(ϵ1 => Dict(:lower_bounds => [NaN, 0, 0, 0]))
+    @test_throws ArgumentError GrapeWrk(problem)
+    # Equal lower and upper bounds are allowed
+    problem, ϵ1, ϵ2 = two_control_problem()
+    problem.kwargs[:pulse_options] =
+        IdDict(ϵ1 => Dict(:lower_bounds => 0.1, :upper_bounds => 0.1))
+    wrk = GrapeWrk(problem)
+    @test wrk.lower_bounds[1:4] == wrk.upper_bounds[1:4] == fill(0.1, 4)
+end

@@ -227,6 +227,21 @@ function GrapeWrk(trajectories, tlist, kwargs)
             end
         end
     end
+    for (i, (lb, ub)) in enumerate(zip(lower_bounds, upper_bounds))
+        if isnan(lb) || isnan(ub) || (lb == Inf) || (ub == -Inf) || (lb > ub)
+            l = (i - 1) ÷ N_T + 1
+            n = (i - 1) % N_T + 1
+            throw(
+                ArgumentError(
+                    "Invalid bounds for control $l in time interval $n: " *
+                    "lower bound $lb, upper bound $ub. Bounds must not be NaN, " *
+                    "the lower bound must be less than Inf, the upper bound " *
+                    "greater than -Inf, and the lower bound must not exceed " *
+                    "the upper bound."
+                )
+            )
+        end
+    end
     fw_storage = [init_storage(traj.initial_state, tlist) for traj in trajectories]
     kwargs[:piecewise] = true  # only accept piecewise propagators
     _prefixes = ["prop_", "fw_prop_"]
