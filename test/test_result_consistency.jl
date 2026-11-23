@@ -10,6 +10,7 @@ using QuantumControl.Functionals: J_T_sm
 using QuantumPropagators: ExpProp
 using GRAPE
 using GRAPE: evaluate_functional
+import Krotov
 using LinearAlgebra: dot
 import Optim
 
@@ -219,4 +220,25 @@ end
     @test res.iter == 2
     @test unchanged == [true, true]
     @test is_consistent(res)
+end
+
+
+@testset "continue_from a Krotov result" begin
+    # Continuing from a result of a different method does not modify that
+    # result
+    problem = make_problem(; lambda_a = 5, update_shape = (t -> 1.0))
+    res_krotov = optimize(problem; method = Krotov, iter_stop = 2, print_iters = false)
+    res_krotov_before = deepcopy(res_krotov)
+    res = optimize(
+        problem;
+        method = GRAPE,
+        iter_stop = 4,
+        continue_from = res_krotov,
+        print_iters = false
+    )
+    @test res.iter == 4
+    @test is_consistent(res)
+    for field in (:optimized_controls, :states, :tau_vals, :J_T, :iter)
+        @test getfield(res_krotov, field) == getfield(res_krotov_before, field)
+    end
 end

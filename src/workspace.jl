@@ -188,8 +188,10 @@ function GrapeWrk(trajectories, tlist, kwargs)
         @info "Continuing previous optimization"
         result = kwargs[:continue_from]
         if !(result isa GrapeResult)
-            # account for continuing from a different optimization method
-            result = convert(GrapeResult, result)
+            # account for continuing from a different optimization method. The
+            # `deepcopy` is necessary because `convert` may share arrays with
+            # the original result, which must not be modified.
+            result = convert(GrapeResult, deepcopy(result))
         end
         result.iter_stop = get(kwargs, :iter_stop, 5000)
         result.converged = false

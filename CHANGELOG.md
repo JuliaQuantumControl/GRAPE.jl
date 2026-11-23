@@ -39,6 +39,7 @@ For releases pre-1.0, see the [GitHub Releases](https://github.com/JuliaQuantumC
 * Fixed: If an optimization was interrupted by an exception (e.g., Ctrl-C), `result.optimized_controls` and `result.tau_vals` could be for an incomplete iteration (e.g., a point in a line search), unlike the other attributes of the result. The result now consistently describes the last completed iteration [[#127]]
 * Changed: The overlaps with the target states from the most recent evaluation of the functional are now in the workspace (`wrk.tau_vals`). `result.tau_vals` is only updated at the end of each iteration [[#127]]
 * Changed: Until the guess has been evaluated, `result.J_T` and `result.tau_vals` are `NaN` instead of zero, so that an optimization that ends before the guess has been evaluated (e.g., with Ctrl-C) does not report a value of zero for the functional [[#127]]
+* Fixed: Continuing an optimization (`continue_from`) from the result of a different method (e.g., a `KrotovResult`) modified that result [[#127]]
 
 
 ## [v1.2.0] — 2026-09-16
