@@ -3,10 +3,11 @@
 # SPDX-License-Identifier: MIT
 
 using Test
-using QuantumControl: hamiltonian, ControlProblem, Trajectory
+using QuantumControl: hamiltonian, optimize, ControlProblem, Trajectory
 using QuantumControl.Functionals: J_T_sm
 using QuantumPropagators: ExpProp, AbstractPropagator
 import QuantumPropagators: init_prop
+using GRAPE
 using GRAPE: GrapeWrk
 
 
@@ -82,4 +83,23 @@ end
     @test parent(wrk.fw_prop_kwargs[1][:parameters][ϵ]) === wrk.pulsevals
     wrk = GrapeWrk(tls_problem(; gradient_method = :taylor, bw_prop_backward = false))
     @test wrk.bw_prop_kwargs[1][:backward] == true
+end
+
+
+@testset "propagation callback observables" begin
+    # Each propagation passes its own `observables` to the `prop_callback`
+    seen = Dict{Symbol,Vector{Any}}(:fw => [], :bw => [])
+    function prop_callback(propagator, observables)
+        push!(seen[propagator.backward ? :bw : :fw], observables)
+        return nothing
+    end
+    problem = tls_problem(;
+        iter_stop = 1,
+        prop_callback,
+        fw_prop_observables = :FW,
+        grad_prop_observables = :GRAD,
+    )
+    optimize(problem; method = GRAPE, rethrow_exceptions = true)
+    @test unique(seen[:fw]) == [:FW]
+    @test unique(seen[:bw]) == [:GRAD]
 end

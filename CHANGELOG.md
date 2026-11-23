@@ -24,6 +24,7 @@ For releases pre-1.0, see the [GitHub Releases](https://github.com/JuliaQuantumC
 * Changed: The `:lower_bounds` and `:upper_bounds` in `pulse_options` must be a single number for all time intervals, or a vector with one value for each time interval. A vector of any other length, including a single-element vector, throws an `ArgumentError` [[#123]]
 * Changed: The minimum supported version of QuantumGradientGenerators is now 0.2 [[#124]]
 * Fixed: The propagators for GRAPE were not required to be piecewise, so that a propagation method that is not piecewise (e.g., an ODE solver) was accepted. All propagations now use `piecewise=true`, and `init_prop` throws an error for a method that is not piecewise. The `piecewise`, `backward`, and `parameters` arguments that GRAPE passes to the propagators can no longer be overridden by keyword arguments [[#124]]
+* Fixed: The `prop_callback` of the backward propagation of the gradient generator received the `observables` of the forward propagation instead of its own (`grad_prop_observables`) [[#124]]
 
 
 ## [v1.2.0] — 2026-09-16

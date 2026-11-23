@@ -904,7 +904,7 @@ function evaluate_gradient!(G, pulsevals, wrk)
                 if haskey(wrk.bw_grad_prop_kwargs[k], :callback)
                     local cb = wrk.bw_grad_prop_kwargs[k][:callback]
                     local observables =
-                        get(wrk.fw_prop_kwargs[k], :observables, _StoreState())
+                        get(wrk.bw_grad_prop_kwargs[k], :observables, _StoreState())
                     cb(wrk.bw_grad_propagators[k], observables)
                 end
                 if supports_inplace(Ψₖ)
