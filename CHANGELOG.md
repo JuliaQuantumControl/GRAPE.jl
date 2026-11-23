@@ -14,15 +14,21 @@ For releases pre-1.0, see the [GitHub Releases](https://github.com/JuliaQuantumC
 
 ## [Unreleased]
 
+
+## [v1.3.0] — 2026-11-23
+
+* Changed: The minimum supported version of QuantumGradientGenerators is now 0.2 [[#124]]
+* Changed: For an explicit `optimizer = LBFGSB.L_BFGS_B(nmax, mmax)`, the number of limited memory corrections `lbfgsb_m` now defaults to `mmax` instead of 10 [[#122]]
+* Changed: The `:lower_bounds` and `:upper_bounds` in `pulse_options` must be a single number for all time intervals, or a vector with one value for each time interval. A vector of any other length, including a single-element vector, throws an `ArgumentError` [[#123]]
+* Changed: The overlaps with the target states from the most recent evaluation of the functional are now in the workspace (`wrk.tau_vals`). `result.tau_vals` is only updated at the end of each iteration [[#127]]
+* Changed: Until the guess has been evaluated, `result.J_T` and `result.tau_vals` are `NaN` instead of zero, so that an optimization that ends before the guess has been evaluated (e.g., with Ctrl-C) does not report a value of zero for the functional [[#127]]
+* Added: Documentation for the keyword arguments `lbfgsb_m`, `lbfgsb_factr`, `lbfgsb_pgtol`, and `lbfgsb_iprint` [[#122]]
+* Added: Documentation for the keyword arguments `iter_start`, `iter_stop`, `continue_from`, and `use_threads`, and for the iteration number that the `callback` receives for the guess [[#124]]
 * Fixed: The `lbfgsb_m` keyword argument for the number of limited memory corrections in the L-BFGS-B optimizer was ignored when allocating the optimizer, which always had room for 10 corrections. For `lbfgsb_m > 10`, this corrupted memory, resulting in crashes. A user-supplied L-BFGS-B `optimizer` that was allocated for fewer corrections than `lbfgsb_m` or for the wrong number of control values now throws an `ArgumentError` [[#120]]
-* Changed: For an explicit `optimizer = LBFGSB.L_BFGS_B(nmax, mmax)`, the number of limited memory corrections `lbfgsb_m` now defaults to `mmax` instead of 10
-* Added: Documentation for the keyword arguments `lbfgsb_m`, `lbfgsb_factr`, `lbfgsb_pgtol`, and `lbfgsb_iprint`
 * Fixed: For more than one control, the per-control `:lower_bounds` and `:upper_bounds` in `pulse_options` were applied to the wrong time intervals, interleaved across all controls [[#121]]
 * Fixed: Values of `Inf` in the `:upper_bounds` and `-Inf` in the `:lower_bounds` of `pulse_options` now fall back to the global `upper_bound` and `lower_bound`, as documented. Previously, they removed the global bound for that time interval [[#123]]
 * Fixed: Without an upper bound, the L-BFGS-B optimizer treated every control value as bounded from above by `Inf`, so it always solved a constrained problem, and a `lower_bound` alone was passed as a two-sided bound. Optimizations without bounds now take a different path through L-BFGS-B, so their results differ from previous versions. In particular, the first iteration is no longer a short steepest-descent step [[#123]]
 * Fixed: Invalid bounds now throw an `ArgumentError` that identifies the control and time interval: a `NaN` bound, an upper bound of `-Inf`, a lower bound of `Inf`, or a lower bound that exceeds the upper bound. Previously, such bounds were silently ignored, or the optimization ended before the first iteration with the message "ERROR: NO FEASIBLE SOLUTION" [[#123]]
-* Changed: The `:lower_bounds` and `:upper_bounds` in `pulse_options` must be a single number for all time intervals, or a vector with one value for each time interval. A vector of any other length, including a single-element vector, throws an `ArgumentError` [[#123]]
-* Changed: The minimum supported version of QuantumGradientGenerators is now 0.2 [[#124]]
 * Fixed: The propagators for GRAPE were not required to be piecewise, so that a propagation method that is not piecewise (e.g., an ODE solver) was accepted. All propagations now use `piecewise=true`, and `init_prop` throws an error for a method that is not piecewise. The `piecewise`, `backward`, and `parameters` arguments that GRAPE passes to the propagators can no longer be overridden by keyword arguments [[#124]]
 * Fixed: The `prop_callback` of the backward propagation of the gradient generator received the `observables` of the forward propagation instead of its own (`grad_prop_observables`) [[#124]]
 * Fixed: An explicit `callback=nothing` (e.g., stored in a `ControlProblem`) ended the optimization with an exception. It is now treated as no callback [[#124]]
@@ -32,13 +38,10 @@ For releases pre-1.0, see the [GitHub Releases](https://github.com/JuliaQuantumC
 * Fixed: A singular `:upper_bound` or `:lower_bound` key in `pulse_options` was silently ignored. It now throws an `ArgumentError` pointing to `:upper_bounds` and `:lower_bounds` [[#124]]
 * Fixed: The `result.message` from L-BFGS-B no longer has trailing whitespace [[#124]]
 * Fixed: The documented default labels of `print_iter_info` were wrong, and the documentation of `taylor_grad_max_order` referred to the wrong value of `taylor_grad_check_convergence` [[#124]]
-* Added: Documentation for the keyword arguments `iter_start`, `iter_stop`, `continue_from`, and `use_threads`, and for the iteration number that the `callback` receives for the guess [[#124]]
 * Fixed: The documentation of the propagation keyword arguments now describes their actual precedence: any keyword argument (e.g., a global `prop_method`) overrides the properties of all trajectories, including properties with a more specific prefix like `fw_prop_method`. The documentation previously stated that `fw_prop_` and `bw_prop_` settings override any `prop_` setting [[#124]]
 * Fixed: For states that support in-place operations (e.g., `Vector`), `result.states`, and the state of the forward propagators as seen by a `callback`, were the initial states instead of the states at final time for the current pulses [[#126]]
 * Fixed: `result.optimized_controls` was only set at the end of the optimization, so a `callback` or `check_convergence` saw the guess controls together with the `states` and `J_T` of the current iteration, and continuing from a result saved on an unexpected exit (by `QuantumControl.@optimize_or_load`) restarted from the guess controls. It is now updated in every iteration [[#127]]
 * Fixed: If an optimization was interrupted by an exception (e.g., Ctrl-C), `result.optimized_controls` and `result.tau_vals` could be for an incomplete iteration (e.g., a point in a line search), unlike the other attributes of the result. The result now consistently describes the last completed iteration [[#127]]
-* Changed: The overlaps with the target states from the most recent evaluation of the functional are now in the workspace (`wrk.tau_vals`). `result.tau_vals` is only updated at the end of each iteration [[#127]]
-* Changed: Until the guess has been evaluated, `result.J_T` and `result.tau_vals` are `NaN` instead of zero, so that an optimization that ends before the guess has been evaluated (e.g., with Ctrl-C) does not report a value of zero for the functional [[#127]]
 * Fixed: Continuing an optimization (`continue_from`) from the result of a different method (e.g., a `KrotovResult`) modified that result [[#127]]
 
 
@@ -63,7 +66,8 @@ For releases pre-1.0, see the [GitHub Releases](https://github.com/JuliaQuantumC
 
 Initial stable release. No breaking changes compared to [v0.8.1].
 
-[Unreleased]: https://github.com/JuliaQuantumControl/GRAPE.jl/compare/v1.2.0..HEAD
+[Unreleased]: https://github.com/JuliaQuantumControl/GRAPE.jl/compare/v1.3.0..HEAD
+[v1.3.0]: https://github.com/JuliaQuantumControl/GRAPE.jl/releases/tag/v1.3.0
 [v1.2.0]: https://github.com/JuliaQuantumControl/GRAPE.jl/releases/tag/v1.2.0
 [v1.1.0]: https://github.com/JuliaQuantumControl/GRAPE.jl/releases/tag/v1.1.0
 [v1.0.0]: https://github.com/JuliaQuantumControl/GRAPE.jl/releases/tag/v1.0.0
@@ -72,6 +76,7 @@ Initial stable release. No breaking changes compared to [v0.8.1].
 [#126]: https://github.com/JuliaQuantumControl/GRAPE.jl/pull/126
 [#124]: https://github.com/JuliaQuantumControl/GRAPE.jl/pull/124
 [#123]: https://github.com/JuliaQuantumControl/GRAPE.jl/pull/123
+[#122]: https://github.com/JuliaQuantumControl/GRAPE.jl/pull/122
 [#121]: https://github.com/JuliaQuantumControl/GRAPE.jl/issues/121
 [#120]: https://github.com/JuliaQuantumControl/GRAPE.jl/issues/120
 [#114]: https://github.com/JuliaQuantumControl/GRAPE.jl/pull/114
