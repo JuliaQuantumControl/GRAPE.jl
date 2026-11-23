@@ -97,7 +97,10 @@ end
     # Without an explicit optimizer, the default is `lbfgsb_m = 10`
     for (kwargs, m) in (((;), 10), ((; lbfgsb_m = 15), 15))
         workspaces = []
-        callback(wrk, iter) = (iter == 0) && push!(workspaces, wrk)
+        function callback(wrk, iter)
+            (iter == 0) && push!(workspaces, wrk)
+            return nothing
+        end
         problem = tls_problem(; callback, kwargs...)
         res = optimize(problem; method = GRAPE, rethrow_exceptions = true)
         @test res.iter == 5
