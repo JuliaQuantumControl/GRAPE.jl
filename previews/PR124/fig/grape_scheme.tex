@@ -1,0 +1,163 @@
+% SPDX-FileCopyrightText: © 2025 Michael Goerz <mail@michaelgoerz.net>
+%
+% SPDX-License-Identifier: CC-BY-4.0
+
+\documentclass[aps,pra,letterpaper,allowtoday,onecolumn,unpublished]{quantumarticle}
+\pdfoutput=1
+\usepackage{xcolor}
+\usepackage{amsmath}
+\usepackage{amsfonts}
+\usepackage{braket}
+\newcommand{\Op}[1]{\ensuremath{\mathsf{\hat{#1}}}}
+\newcommand{\tgt}{\text{tgt}}
+\newcommand{\ii}{\mathrm{i}}
+\renewcommand{\Re}{\mathrm{Re}}
+\renewcommand{\Im}{\mathrm{Im}}
+\newcommand{\Liouville}[0]{\mathcal{L}}
+\newcommand{\identity}[0]{\mathbf{1}}
+\DeclareMathSymbol{\shortminus}{\mathbin}{AMSa}{"39}
+\renewcommand{\familydefault}{\sfdefault}
+\definecolor{DarkBlue}{rgb}{0.1,0.1,0.5}
+\definecolor{DarkRed}{rgb}{0.75,0.,0.}
+
+\usepackage{tikz}
+
+\usepackage[psfixbb,graphics,tightpage,active]{preview}
+\PreviewEnvironment{tikzpicture}
+
+\begin{document}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{tikzpicture}[
+  x=0.62cm,
+  y=0.5cm,
+]
+\tikzstyle{every node}+=[font= \footnotesize ]
+
+%%% propagation boxes
+% lower
+\draw[color=gray!20, fill=gray!20,rounded corners=5] (2,1.1) rectangle +(14,3.55);
+\node[align=center] at (9, 1.5){\raisebox{.5pt}{\textcircled{\raisebox{-.9pt} {1}}} forward-prop and storage with guess};
+% upper
+\draw[color=gray!20, fill=gray!20,rounded corners=5] (2,6.35) rectangle +(14,3.55);
+  \node[align=center] at (9, 9.5){\raisebox{.5pt}{\textcircled{\raisebox{-.9pt} {2}}} backward-prop of extended state/gradient};
+
+%%% forward propagation
+
+\node (psifw1) at (3,4.2) {%
+  \begin{tikzpicture}
+    \draw (-0.3,0)--(0.5,-0.25)--(1.3,0);
+    \node[color=DarkRed] at (0.5,0.35) {$\Psi_k(0)$};
+  \end{tikzpicture}
+};
+
+\node (psifw2) at (6,4.2) {%
+  \begin{tikzpicture}
+    \draw (-0.3,0)--(0.5,-0.25)--(1.3,0);
+    \node[color=DarkRed] at (0.5,0.35) {$\Psi_k(t_1)$};
+  \end{tikzpicture}
+};
+\draw[->] (psifw1) edge[bend right=50] node[below]{$\epsilon_{1}$} (psifw2);
+
+\node (psifw3) at (9,4.2) {%
+  \begin{tikzpicture}
+    \draw[color=gray!20] (-0.3,0)--(0.5,-0.25)--(1.3,0);
+    \node[color=gray!20] at (0.5,0.25) {$\Psi_k(t)$};
+    \node at (0.5,0.35) {\dots};
+  \end{tikzpicture}
+};
+\draw[->] (psifw2) edge[bend right=50] node[below]{$\epsilon_{2}$} (psifw3);
+
+\node (psifw4) at (12,4.2) {%
+  \begin{tikzpicture}
+    \draw (-0.3,0)--(0.5,-0.25)--(1.3,0);
+    \node[color=DarkRed] at (0.5,0.35) {$\Psi_k(t_{\shortminus\!1})$};
+  \end{tikzpicture}
+};
+\draw[->] (psifw3) edge[bend right=50] node[below]{$\epsilon_{\shortminus\!2}$} (psifw4);
+
+\node (psifw5) at (15,4.2) {%
+  \begin{tikzpicture}
+    \node[color=DarkRed] at (0.5,0.35) {$\Psi_k(T)$};
+  \end{tikzpicture}
+};
+\draw[->] (psifw4)  edge[bend right=50] node[below]{$\epsilon_{\shortminus\!1}$} (psifw5);
+
+%%% backward propagation
+
+\node (chi1) at (3,6.8) {%
+  \begin{tikzpicture}
+    \draw (-0.3,0)--(0.5,0.25)--(1.3,0);
+    \node at (0.5,-0.35) {$\chi^{\prime}_k(0)$};
+  \end{tikzpicture}
+};
+
+\node (chi2) at (6,6.8) {%
+  \begin{tikzpicture}
+    \draw (-0.3,0)--(0.5,0.25)--(1.3,0);
+    \node at (0.5,-0.35) {$\chi^{\prime}_k(t_1)$};
+  \end{tikzpicture}
+};
+\draw[<-] (chi1) edge[bend left=50] node[above]{$\epsilon_{1}$} node(gradn1)[below,color=DarkBlue]{$\nabla\!J_{1}$} (chi2);
+
+\node (chi3) at (9,6.8) {%
+  \begin{tikzpicture}
+    \draw[color=gray!20] (-0.3,0)--(0.5,0.25)--(1.3,0);
+    \node[color=gray!20] at (0.5,-0.25) {$\chi^{\prime}_k(t)$};
+    \node at (0.5,-0.35) {\dots};
+  \end{tikzpicture}
+};
+\draw[<-] (chi2)  edge[bend left=50] node[above]{$\epsilon_{2}$} node(gradn2)[below,color=DarkBlue]{$\nabla\!J_{2}$} (chi3);
+
+\node (chi4) at (12,6.8) {%
+  \begin{tikzpicture}
+    \draw (-0.3,0)--(0.5,0.25)--(1.3,0);
+    \node at (0.5,-0.35) {$\chi^{\prime}_k(t_{\shortminus\!1})$};
+  \end{tikzpicture}
+};
+\draw[<-] (chi3) edge[bend left=50] node[above]{$\epsilon_{\shortminus\!2}$} node(gradn3)[below,color=DarkBlue]{$\nabla\!J_{\shortminus\!2}$}(chi4);
+
+\node (chi5) at (15,6.8) {%
+  \begin{tikzpicture}
+    \draw[color=gray!20] (-0.3,0)--(0.5,0.25)--(1.3,0);
+    \node[] at (0.5,-0.35) {$\tilde\chi_k(T)$};
+  \end{tikzpicture}
+};
+\draw[<-] (chi4) edge[bend left=50] node[above]{$\epsilon_{\shortminus\!1}$} node(gradn4)[below,color=DarkBlue]{$\nabla\!J_{\shortminus\!1}$} (chi5);
+
+%%% mu
+\node (mu1) at (3,5.5) {%
+  \begin{tikzpicture}
+    \draw (-0.8,0.0)--(0.8,0.0);
+  \end{tikzpicture}
+};
+\draw[->,color=DarkBlue] (mu1) -| node[right=-2pt,pos=0.65] {+} (gradn1);
+
+\node (mu2) at (6,5.5) {%
+  \begin{tikzpicture}
+    \draw (-0.8,0.0)--(0.8,0.0);
+  \end{tikzpicture}
+};
+\draw[->,color=DarkBlue] (mu2) -| node[right=-2pt,pos=0.65] {+} (gradn2);
+
+\node (mu3) at (9,5.5) {%
+  \begin{tikzpicture}
+    \draw[color=white] (-0.8,0.6)--(0.8,0.6);
+    \node at (0,0) {\dots};
+    \draw[color=white] (-0.8,-0.6)--(0.8,-0.6);
+  \end{tikzpicture}
+};
+\draw[->,color=DarkBlue] (mu3) -| node[right=-2pt,pos=0.65] {+} (gradn3);
+
+\node (mu4) at (12,5.5) {%
+  \begin{tikzpicture}
+    \draw (-0.8,0.0)--(0.8,0.0);
+  \end{tikzpicture}
+};
+\draw[->,color=DarkBlue] (mu4) -| node[right=-2pt,pos=0.65] {+} (gradn4);
+
+
+\end{tikzpicture}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\end{document}
