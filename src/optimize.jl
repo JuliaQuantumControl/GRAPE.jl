@@ -214,18 +214,22 @@ function update_result!(wrk::GrapeWrk, i::Int64)
     res.J_T_prev = res.J_T
     res.J_T = wrk.J_parts[1]
     res.J_a_prev = res.J_a
-    res.J_a = wrk.J_parts[2]
-    if res.J_a > 0.0
-        λₐ = get(wrk.kwargs, :lambda_a, 1.0)
-        res.J_a /= λₐ
+    J_a = get(wrk.kwargs, :J_a, nothing)
+    λₐ = get(wrk.kwargs, :lambda_a, 1.0)
+    if isnothing(J_a)
+        res.J_a = 0.0
+    elseif iszero(λₐ)
+        # `J_parts[2] = λₐ * J_a` does not determine `J_a` for `λₐ = 0`
+        res.J_a = J_a(wrk.pulsevals, wrk.tlist)
+    else
+        res.J_a = wrk.J_parts[2] / λₐ
     end
     res.J_b_prev = res.J_b
-    lambda_b = get(wrk.kwargs, :lambda_b, 1.0)
-    g_b = get(wrk.kwargs, :g_b, nothing)
-    if !(iszero(lambda_b) && isnothing(g_b))
-        res.J_b = wrk.J_parts[3] / lambda_b
-    else
+    if isnothing(get(wrk.kwargs, :g_b, nothing))
         res.J_b = 0.0
+    else
+        # `J_b_trajectory` is from the same evaluation as `J_parts[3] = λ_b * J_b`
+        res.J_b = sum(wrk.J_b_trajectory)
     end
     (i > 0) && (res.iter = i)
     if res.iter >= res.iter_stop

@@ -238,3 +238,19 @@ end
     )
     @test res.iter == 12
 end
+
+
+@testset "J_a in result" begin
+    # `result.J_a` is the running cost without the weight `lambda_a`, also for
+    # negative values and for `lambda_a = 0`
+    J_a(pulsevals, tlist) = -sum(abs2, pulsevals)
+    grad_J_a(pulsevals, tlist) = -2 .* pulsevals
+    for lambda_a in (0.5, 0.0)
+        # `J_a` is unbounded from below, so the pulses need bounds
+        bounds = (; upper_bound = 0.5, lower_bound = -0.5)
+        problem = tls_problem(; iter_stop = 1, J_a, grad_J_a, lambda_a, bounds...)
+        res, _, wrk = optimize_and_record(problem)
+        @test res.J_a ≈ J_a(wrk.pulsevals, wrk.tlist)
+        @test res.J_a < 0.0
+    end
+end
