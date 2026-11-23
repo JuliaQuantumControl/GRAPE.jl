@@ -17,6 +17,9 @@ For releases pre-1.0, see the [GitHub Releases](https://github.com/JuliaQuantumC
 * Fixed: The `lbfgsb_m` keyword argument for the number of limited memory corrections in the L-BFGS-B optimizer was ignored when allocating the optimizer, which always had room for 10 corrections. For `lbfgsb_m > 10`, this corrupted memory, resulting in crashes. A user-supplied L-BFGS-B `optimizer` that was allocated for fewer corrections than `lbfgsb_m` or for the wrong number of control values now throws an `ArgumentError` [[#120]]
 * Changed: For an explicit `optimizer = LBFGSB.L_BFGS_B(nmax, mmax)`, the number of limited memory corrections `lbfgsb_m` now defaults to `mmax` instead of 10
 * Added: Documentation for the keyword arguments `lbfgsb_m`, `lbfgsb_factr`, `lbfgsb_pgtol`, and `lbfgsb_iprint`
+* Fixed: For more than one control, the per-control `:lower_bounds` and `:upper_bounds` in `pulse_options` were applied to the wrong time intervals, interleaved across all controls [[#121]]
+* Fixed: Values of `Inf` in the `:upper_bounds` and `-Inf` in the `:lower_bounds` of `pulse_options` now fall back to the global `upper_bound` and `lower_bound`, as documented. Previously, they removed the global bound for that time interval [[#123]]
+* Changed: The `:lower_bounds` and `:upper_bounds` in `pulse_options` must be a single number for all time intervals, or a vector with one value for each time interval. A vector of any other length, including a single-element vector, throws an `ArgumentError` [[#123]]
 
 
 ## [v1.2.0] — 2026-09-16
@@ -45,6 +48,8 @@ Initial stable release. No breaking changes compared to [v0.8.1].
 [v1.1.0]: https://github.com/JuliaQuantumControl/GRAPE.jl/releases/tag/v1.1.0
 [v1.0.0]: https://github.com/JuliaQuantumControl/GRAPE.jl/releases/tag/v1.0.0
 [v0.8.1]: https://github.com/JuliaQuantumControl/GRAPE.jl/releases/tag/v0.8.1
+[#123]: https://github.com/JuliaQuantumControl/GRAPE.jl/pull/123
+[#121]: https://github.com/JuliaQuantumControl/GRAPE.jl/issues/121
 [#120]: https://github.com/JuliaQuantumControl/GRAPE.jl/issues/120
 [#114]: https://github.com/JuliaQuantumControl/GRAPE.jl/pull/114
 [#110]: https://github.com/JuliaQuantumControl/GRAPE.jl/pull/110

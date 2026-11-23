@@ -61,6 +61,11 @@ unicodeplots()
         include("test_lbfgsb_memory.jl")
     end
 
+    println("\n* Bounds (test_bounds.jl):")
+    @time @safetestset "Bounds" begin
+        include("test_bounds.jl")
+    end
+
     println("\n* Convergence Checks (test_convergence_checks.jl):")
     @time @safetestset "Convergence Checks" begin
         include("test_convergence_checks.jl")

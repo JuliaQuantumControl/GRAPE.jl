@@ -154,11 +154,17 @@ Returns a [`GrapeResult`](@ref).
 * `pulse_options`: A dictionary that maps every control (as obtained by
   [`get_controls`](@ref QuantumControl.QuantumPropagators.Controls.get_controls)
   from the `trajectories`) to a dict with the following possible keys:
-  - `:upper_bounds`: A vector of upper bound values, one for each intervals of
-    the time grid. Values of `Inf` indicate an unconstrained upper bound for
-    that time interval, respectively the global `upper_bound`, if given.
-  - `:lower_bounds`: A vector of lower bound values. Values of `-Inf` indicate
-    an unconstrained lower bound for that time interval,
+  - `:upper_bounds`: A vector of upper bound values, one for each interval of
+    the time grid, or a single number for all intervals. Values of `Inf`
+    indicate an unconstrained upper bound for that time interval, respectively
+    the global `upper_bound`, if given.
+  - `:lower_bounds`: A vector of lower bound values, one for each interval of
+    the time grid, or a single number for all intervals. Values of `-Inf`
+    indicate an unconstrained lower bound for that time interval, respectively
+    the global `lower_bound`, if given.
+
+  Finite values in `:upper_bounds` and `:lower_bounds` take precedence over the
+  global `upper_bound` and `lower_bound`, even if they are less restrictive.
 * `callback`: A function that receives the [GRAPE workspace](@ref GrapeWrk)
   and the iteration number. The function may return a tuple of values which are
   stored in the [`GrapeResult`](@ref) object `result.records`. The function can
