@@ -72,7 +72,9 @@ QuantumControl.optimize(problem, method::Val{:grape}) =
 # syntax highlighting)
 function optimize(trajectories, tlist; kwargs...)
     # TODO: check if x_tol, f_tol, g_tol are used necessary / used correctly
-    callback = get(kwargs, :callback, (args...) -> nothing)
+    # An explicit `callback = nothing` (e.g., in a `ControlProblem`) means "no
+    # callback"
+    callback = something(get(kwargs, :callback, nothing), (args...) -> nothing)
     if haskey(kwargs, :update_hook) || haskey(kwargs, :info_hook)
         msg = "The `update_hook` and `info_hook` arguments have been superseded by the `callback` argument"
         throw(ArgumentError(msg))

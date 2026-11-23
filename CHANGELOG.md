@@ -25,6 +25,7 @@ For releases pre-1.0, see the [GitHub Releases](https://github.com/JuliaQuantumC
 * Changed: The minimum supported version of QuantumGradientGenerators is now 0.2 [[#124]]
 * Fixed: The propagators for GRAPE were not required to be piecewise, so that a propagation method that is not piecewise (e.g., an ODE solver) was accepted. All propagations now use `piecewise=true`, and `init_prop` throws an error for a method that is not piecewise. The `piecewise`, `backward`, and `parameters` arguments that GRAPE passes to the propagators can no longer be overridden by keyword arguments [[#124]]
 * Fixed: The `prop_callback` of the backward propagation of the gradient generator received the `observables` of the forward propagation instead of its own (`grad_prop_observables`) [[#124]]
+* Fixed: An explicit `callback=nothing` (e.g., stored in a `ControlProblem`) ended the optimization with an exception. It is now treated as no callback [[#124]]
 * Fixed: The documentation of the propagation keyword arguments now describes their actual precedence: any keyword argument (e.g., a global `prop_method`) overrides the properties of all trajectories, including properties with a more specific prefix like `fw_prop_method`. The documentation previously stated that `fw_prop_` and `bw_prop_` settings override any `prop_` setting [[#124]]
 
 

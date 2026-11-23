@@ -103,3 +103,14 @@ end
     @test unique(seen[:fw]) == [:FW]
     @test unique(seen[:bw]) == [:GRAD]
 end
+
+
+@testset "callback = nothing" begin
+    problem = tls_problem(; iter_stop = 2, callback = nothing)
+    res = optimize(problem; method = GRAPE)
+    @test res.iter == 2
+    @test res.message == "Reached maximum number of iterations"
+    res = GRAPE.optimize(problem.trajectories, problem.tlist; problem.kwargs...)
+    @test res.iter == 2
+    @test res.message == "Reached maximum number of iterations"
+end
