@@ -34,6 +34,7 @@ For releases pre-1.0, see the [GitHub Releases](https://github.com/JuliaQuantumC
 * Fixed: The documented default labels of `print_iter_info` were wrong, and the documentation of `taylor_grad_max_order` referred to the wrong value of `taylor_grad_check_convergence` [[#124]]
 * Added: Documentation for the keyword arguments `iter_start`, `iter_stop`, `continue_from`, and `use_threads`, and for the iteration number that the `callback` receives for the guess [[#124]]
 * Fixed: The documentation of the propagation keyword arguments now describes their actual precedence: any keyword argument (e.g., a global `prop_method`) overrides the properties of all trajectories, including properties with a more specific prefix like `fw_prop_method`. The documentation previously stated that `fw_prop_` and `bw_prop_` settings override any `prop_` setting [[#124]]
+* Fixed: For states that support in-place operations (e.g., `Vector`), `result.states`, and the state of the forward propagators as seen by a `callback`, were the initial states instead of the states at final time for the current pulses [[#126]]
 
 
 ## [v1.2.0] — 2026-09-16
@@ -62,6 +63,7 @@ Initial stable release. No breaking changes compared to [v0.8.1].
 [v1.1.0]: https://github.com/JuliaQuantumControl/GRAPE.jl/releases/tag/v1.1.0
 [v1.0.0]: https://github.com/JuliaQuantumControl/GRAPE.jl/releases/tag/v1.0.0
 [v0.8.1]: https://github.com/JuliaQuantumControl/GRAPE.jl/releases/tag/v0.8.1
+[#126]: https://github.com/JuliaQuantumControl/GRAPE.jl/pull/126
 [#124]: https://github.com/JuliaQuantumControl/GRAPE.jl/pull/124
 [#123]: https://github.com/JuliaQuantumControl/GRAPE.jl/pull/123
 [#121]: https://github.com/JuliaQuantumControl/GRAPE.jl/issues/121

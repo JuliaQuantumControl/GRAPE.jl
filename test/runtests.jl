@@ -71,6 +71,11 @@ unicodeplots()
         include("test_parameter_passing.jl")
     end
 
+    println("\n* Result States (test_result_states.jl):")
+    @time @safetestset "Result States" begin
+        include("test_result_states.jl")
+    end
+
     println("\n* Convergence Checks (test_convergence_checks.jl):")
     @time @safetestset "Convergence Checks" begin
         include("test_convergence_checks.jl")

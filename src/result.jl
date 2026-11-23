@@ -28,6 +28,8 @@ The attributes of a `GrapeResult` object include
   discretized to the points of `tlist`)
 * `optimized_controls`: A vector of the optimized control fields in the current
   iterations
+* `states`: For each trajectory, the state at final time for the pulses of the
+  current iteration
 * `records`: A vector of tuples with values returned by a `callback` routine
   passed to [`optimize`](@ref)
 * `converged`: A boolean flag on whether the optimization is converged. This

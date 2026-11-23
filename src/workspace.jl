@@ -57,7 +57,16 @@ attributes:
 * `tau_grads`: The gradients ∂τₖ/ϵₗ(tₙ)
 * `fw_storage`: The storage of states for the forward propagation, as a vector
   of storage contains (one for each trajectory)
-* `fw_propagators`: The propagators used for the forward propagation
+* `bw_fw_states`: Internal to the backward propagation: for each trajectory,
+  the forward-propagated state for the current time step of the backward
+  propagation, loaded from `fw_storage` (only for states that support in-place
+  operations; otherwise, the backward propagation uses the states from
+  `fw_storage` directly). Outside of the backward propagation, the values are
+  not meaningful.
+* `fw_propagators`: The propagators used for the forward propagation. The
+  state of each propagator is the state at final time for `pulsevals`, from
+  the most recent evaluation of the functional. In a `callback`, this is the
+  state for the optimized pulses of the current iteration.
 * `bw_grad_propagators`: The propagators used for the backward propagation of
   [`QuantumGradientGenerators.GradVector`](@extref) states
   (`gradient_method=:gradgen` only)
@@ -111,6 +120,12 @@ mutable struct GrapeWrk{O}
 
     tau_grads::Vector{Matrix{ComplexF64}}
     fw_storage
+
+    # forward-propagated states in the backward propagation, loaded from
+    # `fw_storage` (so that the state of the forward propagators is not
+    # overwritten)
+    bw_fw_states
+
     fw_prop_kwargs::Vector{Dict{Symbol,Any}}
     bw_grad_prop_kwargs::Vector{Dict{Symbol,Any}}
     bw_prop_kwargs::Vector{Dict{Symbol,Any}}
@@ -256,6 +271,7 @@ function GrapeWrk(trajectories, tlist, kwargs)
         end
     end
     fw_storage = [init_storage(traj.initial_state, tlist) for traj in trajectories]
+    bw_fw_states = [copy(traj.initial_state) for traj in trajectories]
     _prefixes = ["prop_", "fw_prop_"]
     fw_prop_kwargs = [Dict{Symbol,Any}() for _ = 1:N]
     bw_grad_prop_kwargs = [Dict{Symbol,Any}() for _ = 1:N]
@@ -396,6 +412,7 @@ function GrapeWrk(trajectories, tlist, kwargs)
         chi_states_norm,
         tau_grads,
         fw_storage,
+        bw_fw_states,
         fw_prop_kwargs,
         bw_grad_prop_kwargs,
         bw_prop_kwargs,
