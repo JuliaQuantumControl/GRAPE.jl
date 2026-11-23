@@ -5,7 +5,7 @@
 module GRAPEOptimExt
 
 import Optim
-using GRAPE: GrapeWrk, _finish_iteration!
+using GRAPE: GrapeWrk, _finish_iteration!, _update_optimized_controls!
 import GRAPE: run_optimizer, step_width, search_direction
 
 
@@ -54,6 +54,10 @@ function run_optimizer(
             copyto!(wrk.gradient, state.g_x)
         end
         if wrk.pulsevals != state.x
+            # Restore the evaluated pulse values, so that the result
+            # (`optimized_controls`) is consistent with the other attributes
+            copyto!(wrk.pulsevals, state.x)
+            _update_optimized_controls!(wrk)
             error("A `callback` must not modify `pulsevals` for an Optim.jl optimizer")
         end
         return converged

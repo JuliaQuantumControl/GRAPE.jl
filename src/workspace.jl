@@ -45,6 +45,10 @@ attributes:
 * `grad_J_a`: The *current*  gradient for the running cost part of the
   functional.
 * `J_parts`: The three-component vector ``[J_T, λ_a J_a, λ_b J_b]``
+* `tau_vals`: For each trajectory that defines a `target_state`, the complex
+  overlap of that target state with the propagated state, from the most recent
+  evaluation of the functional (`NaN` for any trajectory without a
+  `target_state`)
 * `upper_bounds`: Upper bound for every `pulsevals`; `+Inf` indicates no bound.
 * `lower_bounds`: Lower bound for every `pulsevals`; `-Inf` indicates no bound.
 * `fg_count`: A two-element vector containing the number of evaluations of the
@@ -100,6 +104,7 @@ mutable struct GrapeWrk{O}
     grad_J_a::Vector{Float64}
     J_parts::Vector{Float64}
     J_b_trajectory::Vector{Float64}  # per-trajectory J_b accumulator
+    tau_vals::Vector{ComplexF64}  # overlaps with target states (most recent evaluation)
     upper_bounds::Vector{Float64}
     lower_bounds::Vector{Float64}
     fg_count::Vector{Int64}
@@ -213,6 +218,7 @@ function GrapeWrk(trajectories, tlist, kwargs)
     grad_J_a = zeros(length(pulsevals))
     J_parts = zeros(3)
     J_b_trajectory = zeros(N)
+    tau_vals = zeros(ComplexF64, N)
     pulsevals_guess = copy(pulsevals)
     upper_bound = Float64(get(kwargs, :upper_bound, Inf))
     lower_bound = Float64(get(kwargs, :lower_bound, -Inf))
@@ -400,6 +406,7 @@ function GrapeWrk(trajectories, tlist, kwargs)
         grad_J_a,
         J_parts,
         J_b_trajectory,
+        tau_vals,
         upper_bounds,
         lower_bounds,
         fg_count,

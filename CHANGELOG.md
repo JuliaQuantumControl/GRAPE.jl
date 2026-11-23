@@ -35,6 +35,10 @@ For releases pre-1.0, see the [GitHub Releases](https://github.com/JuliaQuantumC
 * Added: Documentation for the keyword arguments `iter_start`, `iter_stop`, `continue_from`, and `use_threads`, and for the iteration number that the `callback` receives for the guess [[#124]]
 * Fixed: The documentation of the propagation keyword arguments now describes their actual precedence: any keyword argument (e.g., a global `prop_method`) overrides the properties of all trajectories, including properties with a more specific prefix like `fw_prop_method`. The documentation previously stated that `fw_prop_` and `bw_prop_` settings override any `prop_` setting [[#124]]
 * Fixed: For states that support in-place operations (e.g., `Vector`), `result.states`, and the state of the forward propagators as seen by a `callback`, were the initial states instead of the states at final time for the current pulses [[#126]]
+* Fixed: `result.optimized_controls` was only set at the end of the optimization, so a `callback` or `check_convergence` saw the guess controls together with the `states` and `J_T` of the current iteration, and continuing from a result saved on an unexpected exit (by `QuantumControl.@optimize_or_load`) restarted from the guess controls. It is now updated in every iteration [[#127]]
+* Fixed: If an optimization was interrupted by an exception (e.g., Ctrl-C), `result.optimized_controls` and `result.tau_vals` could be for an incomplete iteration (e.g., a point in a line search), unlike the other attributes of the result. The result now consistently describes the last completed iteration [[#127]]
+* Changed: The overlaps with the target states from the most recent evaluation of the functional are now in the workspace (`wrk.tau_vals`). `result.tau_vals` is only updated at the end of each iteration [[#127]]
+* Changed: Until the guess has been evaluated, `result.J_T` and `result.tau_vals` are `NaN` instead of zero, so that an optimization that ends before the guess has been evaluated (e.g., with Ctrl-C) does not report a value of zero for the functional [[#127]]
 
 
 ## [v1.2.0] — 2026-09-16
@@ -63,6 +67,7 @@ Initial stable release. No breaking changes compared to [v0.8.1].
 [v1.1.0]: https://github.com/JuliaQuantumControl/GRAPE.jl/releases/tag/v1.1.0
 [v1.0.0]: https://github.com/JuliaQuantumControl/GRAPE.jl/releases/tag/v1.0.0
 [v0.8.1]: https://github.com/JuliaQuantumControl/GRAPE.jl/releases/tag/v0.8.1
+[#127]: https://github.com/JuliaQuantumControl/GRAPE.jl/pull/127
 [#126]: https://github.com/JuliaQuantumControl/GRAPE.jl/pull/126
 [#124]: https://github.com/JuliaQuantumControl/GRAPE.jl/pull/124
 [#123]: https://github.com/JuliaQuantumControl/GRAPE.jl/pull/123

@@ -13,29 +13,42 @@ using Dates
 
 The attributes of a `GrapeResult` object include
 
-* `iter`:  The number of the current iteration
-* `J_T`: The value of the final-time functional in the current iteration
+* `iter`:  The number of the last completed iteration
+* `J_T`: The value of the final-time functional for the `states`
 * `J_T_prev`: The value of the final-time functional in the previous iteration
-* `J_a`: The value of the running cost ``J_a`` in the current iteration
+* `J_a`: The value of the running cost ``J_a`` in the last completed iteration
   (excluding ``λ_a``)
 * `J_a_prev`: The value of ``J_a`` in the previous iteration
 * `J_b`: If `g_b` and `lambda_b ≠ 0` was given, the value of the
-  state-dependent running cost ``J_b`` in the current iteration
+  state-dependent running cost ``J_b`` in the last completed iteration
   (excluding ``λ_b``)
 * `J_b_prev`: The value of ``J_b`` in the previous iteration
 * `tlist`: The time grid on which the control are discretized.
 * `guess_controls`: A vector of the original control fields (each field
   discretized to the points of `tlist`)
-* `optimized_controls`: A vector of the optimized control fields in the current
-  iterations
-* `states`: For each trajectory, the state at final time for the pulses of the
-  current iteration
+* `optimized_controls`: A vector of the control fields obtained in the last
+  completed iteration (each field discretized to the points of `tlist`). If a
+  `callback` modifies the pulse values in the workspace (`pulsevals`),
+  `optimized_controls` contains the modified pulses, whereas `states`,
+  `tau_vals`, and `J_T` are obtained from the pulses before the modification.
+* `states`: The states obtained by forward-propagating the initial state of
+  each trajectory under the control fields of the last completed iteration
+* `tau_vals`: For any trajectory that defines a `target_state`, the complex
+  overlap of that target state with the corresponding state in `states`. For
+  any trajectory for which the `target_state` is `nothing`, the value is `NaN`.
 * `records`: A vector of tuples with values returned by a `callback` routine
   passed to [`optimize`](@ref)
 * `converged`: A boolean flag on whether the optimization is converged. This
   may be set to `true` by a `check_convergence` function.
 * `message`: A message string to explain the reason for convergence. This may be
   set by a `check_convergence` function.
+
+Before the first iteration, the attributes describe the guess (iteration 0, or
+the starting iteration given by `iter_start` or `continue_from`). After that,
+they describe the last completed iteration. This also holds if the optimization
+ends because of an exception (e.g., an `InterruptException`). If the
+optimization ends before the guess has been evaluated, `J_T` and `tau_vals` are
+`NaN`, and `states` is undefined.
 
 All of the above attributes may be referenced in a `check_convergence` function
 passed to
@@ -74,10 +87,11 @@ function GrapeResult(trajectories, tlist, kwargs)
     iter_stop = get(kwargs, :iter_stop, 5000)
     iter = iter_start
     secs = 0
-    tau_vals = zeros(ComplexF64, length(trajectories))
+    # `NaN` until the guess has been evaluated
+    tau_vals = fill(ComplexF64(NaN), length(trajectories))
     guess_controls = [discretize(control, tlist) for control in controls]
-    J_T = 0.0
-    J_T_prev = 0.0
+    J_T = NaN
+    J_T_prev = NaN
     J_a = 0.0
     J_a_prev = 0.0
     J_b = 0.0
