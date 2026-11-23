@@ -105,6 +105,34 @@ end
 end
 
 
+@testset "L-BFGS-B bound types" begin
+    # `nbd[i]` is 0 (unbounded), 1 (lower bound only), 2 (lower and upper
+    # bound), or 3 (upper bound only). `lsave[2]` indicates whether L-BFGS-B
+    # treats the problem as constrained.
+    for (kwargs, nbd, constrained) in (
+        ((;), 0, 0),
+        ((; lower_bound = -1.0), 1, 1),
+        ((; lower_bound = -1.0, upper_bound = 1.0), 2, 1),
+        ((; upper_bound = 1.0), 3, 1),
+    )
+        problem, _, _ = two_control_problem(; iter_stop = 1, kwargs...)
+        _, wrk = optimize_with_workspace(problem)
+        @test all(wrk.optimizer.nbd .== nbd)
+        @test wrk.optimizer.lsave[2] == constrained
+    end
+    # Mixed bounds
+    problem, ϵ1, ϵ2 = two_control_problem(; iter_stop = 1)
+    problem.kwargs[:pulse_options] = IdDict(
+        ϵ1 => Dict(
+            :lower_bounds => [-1.0, -Inf, -1.0, -Inf],
+            :upper_bounds => [1.0, 1.0, Inf, Inf],
+        ),
+    )
+    _, wrk = optimize_with_workspace(problem)
+    @test wrk.optimizer.nbd == [2, 3, 1, 0, 0, 0, 0, 0]
+end
+
+
 @testset "per-control bounds optimization" begin
     # The bounds of each control are enforced on that control only. Without
     # bounds, both controls reach values of about ±0.9.

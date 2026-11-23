@@ -65,16 +65,17 @@ function run_optimizer(optimizer::LBFGSB.L_BFGS_B, wrk, fg!, callback, check_con
     fill!(obj.nbd, zero(Cint))
     fill!(obj.l, zero(Cdouble))
     fill!(obj.u, zero(Cdouble))
-    # set bounds
+    # set bounds: `nbd[i]` is 0 (unbounded), 1 (lower bound only), 2 (lower
+    # and upper bound), or 3 (upper bound only)
     for i = 1:n
         obj.nbd[i] = 0
         obj.l[i] = 0.0
         obj.u[i] = 0.0
         if wrk.lower_bounds[i] > -Inf
-            obj.nbd[i] += 1
+            obj.nbd[i] = 1  # lower bound only
             obj.l[i] = wrk.lower_bounds[i]
         end
-        if wrk.upper_bounds[i] > -Inf
+        if wrk.upper_bounds[i] < Inf
             if obj.nbd[i] == 1
                 obj.nbd[i] = 2  # lower and upper bound
             else

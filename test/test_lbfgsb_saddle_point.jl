@@ -115,7 +115,7 @@ end;
     opt_result = optimize(problem; method = GRAPE, lbfgsb_pgtol = 1e-5, lbfgsb_factr = 1e7)
     @test !opt_result.converged
     @test contains(opt_result.message, "NORM_OF_PROJECTED_GRADIENT_<=_PGTOL")
-    @test abs(opt_result.J_T - 0.75) < 1e-3
+    @test abs(opt_result.J_T - 0.75) < 5e-3
 
     opt_result = optimize(problem; method = GRAPE)
     @test opt_result.converged

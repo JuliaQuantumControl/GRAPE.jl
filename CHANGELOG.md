@@ -19,6 +19,7 @@ For releases pre-1.0, see the [GitHub Releases](https://github.com/JuliaQuantumC
 * Added: Documentation for the keyword arguments `lbfgsb_m`, `lbfgsb_factr`, `lbfgsb_pgtol`, and `lbfgsb_iprint`
 * Fixed: For more than one control, the per-control `:lower_bounds` and `:upper_bounds` in `pulse_options` were applied to the wrong time intervals, interleaved across all controls [[#121]]
 * Fixed: Values of `Inf` in the `:upper_bounds` and `-Inf` in the `:lower_bounds` of `pulse_options` now fall back to the global `upper_bound` and `lower_bound`, as documented. Previously, they removed the global bound for that time interval [[#123]]
+* Fixed: Without an upper bound, the L-BFGS-B optimizer treated every control value as bounded from above by `Inf`, so it always solved a constrained problem, and a `lower_bound` alone was passed as a two-sided bound. Optimizations without bounds now take a different path through L-BFGS-B, so their results differ from previous versions. In particular, the first iteration is no longer a short steepest-descent step [[#123]]
 * Changed: The `:lower_bounds` and `:upper_bounds` in `pulse_options` must be a single number for all time intervals, or a vector with one value for each time interval. A vector of any other length, including a single-element vector, throws an `ArgumentError` [[#123]]
 
 
