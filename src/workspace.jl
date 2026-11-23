@@ -199,17 +199,47 @@ function GrapeWrk(trajectories, tlist, kwargs)
     J_parts = zeros(3)
     J_b_trajectory = zeros(N)
     pulsevals_guess = copy(pulsevals)
-    upper_bounds = fill(get(kwargs, :upper_bound, Inf), length(pulsevals))
-    lower_bounds = fill(get(kwargs, :lower_bound, -Inf), length(pulsevals))
+    upper_bound = Float64(get(kwargs, :upper_bound, Inf))
+    lower_bound = Float64(get(kwargs, :lower_bound, -Inf))
+    upper_bounds = fill(upper_bound, length(pulsevals))
+    lower_bounds = fill(lower_bound, length(pulsevals))
     for (l, control) in enumerate(controls)
         options = get(pulse_options, control, Dict())
-        if haskey(options, :upper_bounds)
-            ub = @view upper_bounds[l:length(controls):end]
-            ub .= options[:upper_bounds]
+        block = ((l-1)*N_T+1):(l*N_T)  # same as for `parameters`
+        for (key, bounds, global_bound, unbounded) in (
+            (:upper_bounds, upper_bounds, upper_bound, Inf),
+            (:lower_bounds, lower_bounds, lower_bound, -Inf),
+        )
+            if haskey(options, key)
+                bound_values = options[key]
+                if !(bound_values isa Real) && (length(bound_values) != N_T)
+                    throw(
+                        ArgumentError(
+                            "`pulse_options[control][$(repr(key))]` for control $l " *
+                            "must be a number or have one value for each of the " *
+                            "$N_T time intervals, not $(length(bound_values))"
+                        )
+                    )
+                end
+                # `Inf` (upper) or `-Inf` (lower) falls back to the global bound
+                bounds[block] .=
+                    ifelse.(bound_values .== unbounded, global_bound, bound_values)
+            end
         end
-        if haskey(options, :lower_bounds)
-            lb = @view lower_bounds[l:length(controls):end]
-            lb .= options[:lower_bounds]
+    end
+    for (i, (lb, ub)) in enumerate(zip(lower_bounds, upper_bounds))
+        if isnan(lb) || isnan(ub) || (lb == Inf) || (ub == -Inf) || (lb > ub)
+            l = (i - 1) ÷ N_T + 1
+            n = (i - 1) % N_T + 1
+            throw(
+                ArgumentError(
+                    "Invalid bounds for control $l in time interval $n: " *
+                    "lower bound $lb, upper bound $ub. Bounds must not be NaN, " *
+                    "the lower bound must be less than Inf, the upper bound " *
+                    "greater than -Inf, and the lower bound must not exceed " *
+                    "the upper bound."
+                )
+            )
         end
     end
     fw_storage = [init_storage(traj.initial_state, tlist) for traj in trajectories]

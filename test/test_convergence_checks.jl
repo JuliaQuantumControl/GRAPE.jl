@@ -31,7 +31,7 @@ PASSTHROUGH = false
     @test res.converged
     @test res.iter_start == 0
     @test res.iter_stop == 100
-    @test res.iter == 17
+    @test res.iter == 12
     @test res.message == "J_T < 10⁻⁵"
 end
 
