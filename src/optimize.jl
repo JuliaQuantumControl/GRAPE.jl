@@ -43,7 +43,7 @@ arguments:
 * `check=true`: If `true` (default), test that all the objects stored in the
   trajectories implement the required interfaces correctly
 * `print_iters=true`: Whether to print information after each iteration.
-* `print_iter_info=["iter.", "J_T", "|∇J|", "|Δϵ|", "ΔJ", "FG(F)", "secs"]`:
+* `print_iter_info=["iter.", "J_T", "ǁ∇Jǁ", "ǁΔϵǁ", "ΔJ", "FG(F)", "secs"]`:
   Which fields to print if `print_iters=true`. See
   [`make_grape_print_iters`](@ref)
 * `store_iter_info=[]`: Which fields to store in `result.records`, given as
@@ -72,7 +72,9 @@ QuantumControl.optimize(problem, method::Val{:grape}) =
 # syntax highlighting)
 function optimize(trajectories, tlist; kwargs...)
     # TODO: check if x_tol, f_tol, g_tol are used necessary / used correctly
-    callback = get(kwargs, :callback, (args...) -> nothing)
+    # An explicit `callback = nothing` (e.g., in a `ControlProblem`) means "no
+    # callback"
+    callback = something(get(kwargs, :callback, nothing), (args...) -> nothing)
     if haskey(kwargs, :update_hook) || haskey(kwargs, :info_hook)
         msg = "The `update_hook` and `info_hook` arguments have been superseded by the `callback` argument"
         throw(ArgumentError(msg))
@@ -86,7 +88,7 @@ function optimize(trajectories, tlist; kwargs...)
     J_a_func = get(wrk.kwargs, :J_a, nothing)
     if isnothing(J_a_func)
         if haskey(wrk.kwargs, :grad_J_a)
-            @warn "Argument `grad_J_A` was given without `grad_J_a`. Ignoring"
+            @warn "Argument `grad_J_a` was given without `J_a`. Ignoring"
             delete!(wrk.kwargs, :grad_J_a)
         end
     else
@@ -212,21 +214,25 @@ function update_result!(wrk::GrapeWrk, i::Int64)
     res.J_T_prev = res.J_T
     res.J_T = wrk.J_parts[1]
     res.J_a_prev = res.J_a
-    res.J_a = wrk.J_parts[2]
-    if res.J_a > 0.0
-        λₐ = get(wrk.kwargs, :lambda_a, 1.0)
-        res.J_a /= λₐ
+    J_a = get(wrk.kwargs, :J_a, nothing)
+    λₐ = get(wrk.kwargs, :lambda_a, 1.0)
+    if isnothing(J_a)
+        res.J_a = 0.0
+    elseif iszero(λₐ)
+        # `J_parts[2] = λₐ * J_a` does not determine `J_a` for `λₐ = 0`
+        res.J_a = J_a(wrk.pulsevals, wrk.tlist)
+    else
+        res.J_a = wrk.J_parts[2] / λₐ
     end
     res.J_b_prev = res.J_b
-    lambda_b = get(wrk.kwargs, :lambda_b, 1.0)
-    g_b = get(wrk.kwargs, :g_b, nothing)
-    if !(iszero(lambda_b) && isnothing(g_b))
-        res.J_b = wrk.J_parts[3] / lambda_b
-    else
+    if isnothing(get(wrk.kwargs, :g_b, nothing))
         res.J_b = 0.0
+    else
+        # `J_b_trajectory` is from the same evaluation as `J_parts[3] = λ_b * J_b`
+        res.J_b = sum(wrk.J_b_trajectory)
     end
     (i > 0) && (res.iter = i)
-    if i >= res.iter_stop
+    if res.iter >= res.iter_stop
         res.converged = true
         res.message = "Reached maximum number of iterations"
         # Note: other convergence checks are done in user-supplied
@@ -904,7 +910,7 @@ function evaluate_gradient!(G, pulsevals, wrk)
                 if haskey(wrk.bw_grad_prop_kwargs[k], :callback)
                     local cb = wrk.bw_grad_prop_kwargs[k][:callback]
                     local observables =
-                        get(wrk.fw_prop_kwargs[k], :observables, _StoreState())
+                        get(wrk.bw_grad_prop_kwargs[k], :observables, _StoreState())
                     cb(wrk.bw_grad_propagators[k], observables)
                 end
                 if supports_inplace(Ψₖ)

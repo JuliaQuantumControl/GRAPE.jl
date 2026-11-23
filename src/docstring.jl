@@ -116,7 +116,7 @@ Returns a [`GrapeResult`](@ref).
   maximum number of terms in the Taylor series. If
   `taylor_grad_check_convergence=true` (default), if the Taylor series does not
   convergence within the given number of terms, throw an error. With
-  `taylor_grad_check_convergence=true`, this is the exact order of the Taylor
+  `taylor_grad_check_convergence=false`, this is the exact order of the Taylor
   series.
 * `taylor_grad_tolerance=1e-16`: If given with `gradient_method=:taylor` and
   `taylor_grad_check_convergence=true`, stop the Taylor series when the norm of
@@ -166,7 +166,11 @@ Returns a [`GrapeResult`](@ref).
   Finite values in `:upper_bounds` and `:lower_bounds` take precedence over the
   global `upper_bound` and `lower_bound`, even if they are less restrictive.
 * `callback`: A function that receives the [GRAPE workspace](@ref GrapeWrk)
-  and the iteration number. The function may return a tuple of values which are
+  and the iteration number. It is called once for the guess, with an iteration
+  number of 0, and then after each iteration. The guess is iteration 0 even if
+  the optimization starts at a later iteration (`iter_start` or
+  `continue_from`). In that case, the actual starting iteration is
+  `wrk.result.iter`. The function may return a tuple of values which are
   stored in the [`GrapeResult`](@ref) object `result.records`. The function can
   also mutate the workspace, in particular the updated `pulsevals`. This may be
   used, e.g., to apply a spectral filter to the updated pulses or to perform
@@ -182,6 +186,18 @@ Returns a [`GrapeResult`](@ref).
     indicate convergence
   The convergence check is performed after any `callback`.
 * `prop_method`: The propagation method to use for each trajectory, see below.
+* `iter_start=0`: The initial iteration number.
+* `iter_stop=5000`: The maximum iteration number. The optimization stops after
+  this iteration. If the starting iteration (`iter_start`, or the last
+  iteration of `continue_from`) is not smaller than `iter_stop`, only the guess
+  is evaluated.
+* `continue_from`: A result object from a previous optimization (a
+  [`GrapeResult`](@ref), or a result that can be converted to a `GrapeResult`).
+  The optimization starts from the optimized controls of that result, and the
+  iteration numbers continue from its last iteration (`iter_start` is ignored).
+  A `GrapeResult` given as `continue_from` is updated in place and returned.
+* `use_threads=false`: If `true`, propagate the different trajectories in
+  parallel, using multiple threads.
 * `verbose=false`: If `true`, print information during initialization
 * `rethrow_exceptions`: By default, any exception ends the optimization, but
   still returns a [`GrapeResult`](@ref) that captures the message associated
@@ -210,6 +226,8 @@ The following keyword arguments may change in non-breaking releases:
   that `check_convergence` determines convergence. If the L-BFGS-B checks end
   the optimization, the result is not marked as converged.
 * `lbfgsb_iprint=-1`: The verbosity of the output of the L-BFGS-B optimizer.
+  For values greater than zero, L-BFGS-B also writes a summary of the
+  iterations to a file `iterate.dat` in the current working directory.
 * `x_abstol=0.0`, `x_reltol=0.0`, `f_abstol=0.0`, `f_reltol=0.0`,
   `g_abstol=1e-8`: Tolerances for the convergence checks of an Optim.jl
   `optimizer`, see `Optim.Options`. These checks are in addition to
@@ -218,7 +236,9 @@ The following keyword arguments may change in non-breaking releases:
   aliases for `x_abstol`, `f_reltol`, and `g_abstol`.
 * `allow_f_increases=false`: Whether an Optim.jl `optimizer` continues after an
   iteration that increases the value of the functional. Note that the default
-  differs from that of `Optim.Options`.
+  differs from that of `Optim.Options`. If the optimization stops because of
+  an increase, the result is for that last iteration, not for the iteration
+  with the smallest value of the functional.
 * `show_trace=false`, `extended_trace=false`, `show_every=1`: Options for
   printing the trace of an Optim.jl `optimizer`, see `Optim.Options`.
 
@@ -233,18 +253,36 @@ GRAPE may involve three types of time propagation, all of which are implemented 
   for every trajectory.
 
 The keyword arguments for each propagation (see [`propagate`](@ref)) are
-determined from any properties of each [`Trajectory`](@ref) that have a `prop_`
-prefix, cf. [`init_prop_trajectory`](@ref).
+determined from any properties of each [`Trajectory`](@ref) and any keyword
+arguments that have a `prop_` prefix, cf. [`init_prop_trajectory`](@ref).
 
 In situations where different parameters are required for the forward and
 backward propagation, instead of the `prop_` prefix, the `fw_prop_` and
-`bw_prop_` prefix can be used, respectively. These override any setting with
-the `prop_` prefix. Similarly, properties for the backward propagation of the
-gradient generators can be set with properties that have a `grad_prop_` prefix.
-These prefixes apply both to the properties of each [`Trajectory`](@ref) and
-the keyword arguments.
+`bw_prop_` prefixes can be used, respectively. Similarly, parameters for the
+backward propagation of the gradient generators can be set with a `grad_prop_`
+prefix (in addition to `bw_prop_`, which applies to both backward
+propagations).
+
+If the same parameter is set in more than one way, the following rules
+determine which setting is used:
+
+1. Any keyword argument (including the keyword arguments of the `problem` in
+   [`QuantumControl.optimize`](@ref)) that applies to a propagation overrides
+   any property of a [`Trajectory`](@ref) for that propagation, regardless of
+   the prefix.
+2. Among the keyword arguments, and among the properties of a
+   [`Trajectory`](@ref), a `fw_prop_`, `bw_prop_`, or `grad_prop_` prefix
+   overrides the `prop_` prefix, and the `grad_prop_` prefix overrides the
+   `bw_prop_` prefix.
+
+For example, a `prop_method` keyword argument overrides a `fw_prop_method`
+property of a [`Trajectory`](@ref).
 
 Note that the propagation method for each propagation must be specified. In
 most cases, it is sufficient (and recommended) to pass a global `prop_method`
-keyword argument.
+keyword argument. Since this overrides any per-trajectory setting, use
+trajectory properties instead if different trajectories require different
+propagation methods. GRAPE requires a piecewise propagation method (see
+[`init_prop`](@extref QuantumPropagators.init_prop)); other methods are
+rejected.
 """ optimize

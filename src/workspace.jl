@@ -205,6 +205,19 @@ function GrapeWrk(trajectories, tlist, kwargs)
     lower_bounds = fill(lower_bound, length(pulsevals))
     for (l, control) in enumerate(controls)
         options = get(pulse_options, control, Dict())
+        # Other keys are ignored, since `pulse_options` may also contain keys
+        # for other optimization methods (e.g., Krotov). The singular keys are
+        # likely a mistake, since they are the names of the global bounds.
+        for key in (:upper_bound, :lower_bound)
+            if haskey(options, key)
+                throw(
+                    ArgumentError(
+                        "`pulse_options[control]` for control $l contains " *
+                        "$(repr(key)). Use $(repr(Symbol(key, :s))) instead."
+                    )
+                )
+            end
+        end
         block = ((l-1)*N_T+1):(l*N_T)  # same as for `parameters`
         for (key, bounds, global_bound, unbounded) in (
             (:upper_bounds, upper_bounds, upper_bound, Inf),
@@ -243,7 +256,6 @@ function GrapeWrk(trajectories, tlist, kwargs)
         end
     end
     fw_storage = [init_storage(traj.initial_state, tlist) for traj in trajectories]
-    kwargs[:piecewise] = true  # only accept piecewise propagators
     _prefixes = ["prop_", "fw_prop_"]
     fw_prop_kwargs = [Dict{Symbol,Any}() for _ = 1:N]
     bw_grad_prop_kwargs = [Dict{Symbol,Any}() for _ = 1:N]
@@ -257,8 +269,10 @@ function GrapeWrk(trajectories, tlist, kwargs)
             _prefixes,
             _filter_kwargs = true,
             _kwargs_dict = fw_prop_kwargs[k],
+            kwargs...,
+            # After `kwargs...`, so that these cannot be overridden:
             fw_prop_parameters = parameters,  # will filter to `parameters`
-            kwargs...
+            fw_prop_piecewise = true,  # only accept piecewise propagators
         ) for (k, traj) in enumerate(trajectories)
     ]
     chi_states = [zero(traj.initial_state) for traj in trajectories]
@@ -283,9 +297,11 @@ function GrapeWrk(trajectories, tlist, kwargs)
                 _prefixes,
                 _filter_kwargs = true,
                 _kwargs_dict = bw_grad_prop_kwargs[k],
+                kwargs...,
+                # After `kwargs...`, so that these cannot be overridden:
                 grad_prop_backward = true,  # will filter to `backward=true`
                 grad_prop_parameters = parameters,  # will filter to `parameters`
-                kwargs...
+                grad_prop_piecewise = true,  # only accept piecewise propagators
             ) for (k, traj) in enumerate(grad_trajectories)
         ]
         bw_propagators = []
@@ -305,9 +321,11 @@ function GrapeWrk(trajectories, tlist, kwargs)
                 _prefixes,
                 _filter_kwargs = true,
                 _kwargs_dict = bw_prop_kwargs[k],
+                kwargs...,
+                # After `kwargs...`, so that these cannot be overridden:
                 bw_prop_backward = true,  # will filter to `backward=true`
                 bw_prop_parameters = parameters,  # will filter to `parameters`
-                kwargs...
+                bw_prop_piecewise = true,  # only accept piecewise propagators
             ) for (k, traj) in enumerate(adjoint_trajectories)
         ]
         taylor_genops =

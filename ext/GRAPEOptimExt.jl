@@ -61,7 +61,8 @@ function run_optimizer(
 
     options = Optim.Options(;
         callback = optim_callback,
-        iterations = (wrk.result.iter_stop - wrk.result.iter_start),
+        # `wrk.result.iter` is `iter_start`, or the last iteration of `continue_from`
+        iterations = max(wrk.result.iter_stop - wrk.result.iter, 0),
         x_abstol = get(wrk.kwargs, :x_abstol, get(wrk.kwargs, :x_tol, 0.0)),
         x_reltol = get(wrk.kwargs, :x_reltol, 0.0),
         f_abstol = get(wrk.kwargs, :f_abstol, 0.0),
