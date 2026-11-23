@@ -121,7 +121,18 @@ function run_optimizer(optimizer::LBFGSB.L_BFGS_B, wrk, fg!, callback, check_con
             f = fg!(f, obj.g, x)
             # println("calling fg! for |x|=$(norm(x)) -> f=$f, |g|=$(norm(obj.g))")
             if obj.task[1:5] == b"FG_ST" # FG_START
-                # x is the guess for the 0 iteration
+                # x is the guess for the 0 iteration. Before `FG_START`,
+                # `setulb` has projected `x` into the bounds.
+                if x != wrk.pulsevals_guess
+                    # Pulses from `continue_from` that ended on a bound may be
+                    # outside of it by round-off, which does not warrant a
+                    # warning.
+                    Δ = maximum(abs.(x .- wrk.pulsevals_guess))
+                    if Δ > 1e-12 * max(1.0, maximum(abs.(x)))
+                        @warn "The guess pulses violate the bounds. L-BFGS-B uses the guess projected into the bounds."
+                    end
+                    copyto!(wrk.pulsevals_guess, x)
+                end
                 copyto!(wrk.gradient, obj.g)
                 _finish_iteration!(wrk, 0, callback, check_convergence)
                 if wrk.result.converged  # e.g., `iter_stop` already reached

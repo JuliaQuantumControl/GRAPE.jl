@@ -4,11 +4,12 @@
 
 using Test
 using QuantumControl: hamiltonian, optimize, ControlProblem, Trajectory
+using QuantumControl.Controls: discretize_on_midpoints
 using QuantumControl.Functionals: J_T_sm
 using QuantumPropagators: ExpProp, AbstractPropagator
 import QuantumPropagators: init_prop
 using GRAPE
-using GRAPE: GrapeWrk
+using GRAPE: GrapeWrk, step_width, search_direction
 import Optim
 
 
@@ -179,4 +180,61 @@ end
     )
     @test start_iters == [2, 3]
     @test res2.iter == 4
+end
+
+
+@testset "guess outside of bounds" begin
+    # L-BFGS-B projects the guess into the bounds before the first evaluation
+    # of the functional. The workspace must be consistent with that.
+    problem = tls_problem(; guess = 0.3, upper_bound = 0.21, iter_stop = 2)
+    records = []
+    function callback(wrk, iter)
+        if iter <= 1
+            push!(
+                records,
+                (
+                    pulsevals = copy(wrk.pulsevals),
+                    pulsevals_guess = copy(wrk.pulsevals_guess),
+                    update = step_width(wrk) * search_direction(wrk),
+                )
+            )
+        end
+        return nothing
+    end
+    msg = "The guess pulses violate the bounds. L-BFGS-B uses the guess projected into the bounds."
+    res = @test_logs (:warn, msg) match_mode = :any optimize(
+        problem;
+        method = GRAPE,
+        callback,
+        rethrow_exceptions = true
+    )
+    @test res.iter == 2
+    @test all(records[1].pulsevals .== 0.21)
+    @test records[1].pulsevals_guess == records[1].pulsevals
+    Δϵ = records[2].pulsevals - records[2].pulsevals_guess
+    @test Δϵ ≈ records[2].update
+end
+
+
+@testset "continue with active bounds" begin
+    # Pulse values that ended on a bound can come back from `continue_from`
+    # outside of the bound by round-off. This must not trigger a warning.
+    bounds = (; upper_bound = 0.15, lower_bound = -0.05)
+    problem = tls_problem(; N_T = 200, guess = 0.1, iter_stop = 10, bounds...)
+    res1 = optimize(problem; method = GRAPE)
+    pulsevals = discretize_on_midpoints(res1.optimized_controls[1], res1.tlist)
+    @test maximum(pulsevals) > bounds.upper_bound  # by round-off
+    @test maximum(pulsevals) ≈ bounds.upper_bound
+    problem = tls_problem(;
+        N_T = 200,
+        guess = 0.1,
+        iter_stop = 12,
+        continue_from = res1,
+        bounds...
+    )
+    res = @test_logs (:info, "Continuing previous optimization") optimize(
+        problem;
+        method = GRAPE
+    )
+    @test res.iter == 12
 end
