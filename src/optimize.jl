@@ -195,6 +195,9 @@ end
 function _finish_iteration!(wrk, iter, callback, check_convergence)
     update_result!(wrk, iter)
     info_tuple = callback(wrk, iter)
+    # The `callback` may have modified `wrk.pulsevals` (e.g., by applying a
+    # filter), and the result should reflect that
+    _update_optimized_controls!(wrk)
     wrk.fg_count .= 0
     if !(isnothing(info_tuple) || isempty(info_tuple))
         push!(wrk.result.records, info_tuple)
@@ -207,10 +210,18 @@ end
 
 
 function update_result!(wrk::GrapeWrk, i::Int64)
+    # The result describes the last completed iteration. Apart from the call
+    # counters (`f_calls`, `fg_calls`), its setup in `GrapeWrk` (e.g., for
+    # `continue_from`), and the end of the optimization (`converged`,
+    # `message`, `end_local_time`), it is only set here and in
+    # `_finish_iteration!`. Data from each evaluation of the functional
+    # (including the evaluations in a line search) is in `wrk`.
     res = wrk.result
     for (k, propagator) in enumerate(wrk.fw_propagators)
         copyto!(res.states[k], propagator.state)
     end
+    copyto!(res.tau_vals, wrk.tau_vals)
+    _update_optimized_controls!(wrk)
     res.J_T_prev = res.J_T
     res.J_T = wrk.J_parts[1]
     res.J_a_prev = res.J_a
@@ -245,11 +256,18 @@ end
 
 
 function finalize_result!(wrk::GrapeWrk)
-    L = length(wrk.controls)
+    # The `optimized_controls` are already set for the last completed
+    # iteration. After an exception, `wrk.pulsevals` may be for an incomplete
+    # iteration (e.g., a point in a line search), so they must not be used.
+    wrk.result.end_local_time = now()
+end
+
+
+# Set `wrk.result.optimized_controls` from `wrk.pulsevals`
+function _update_optimized_controls!(wrk::GrapeWrk)
     res = wrk.result
-    res.end_local_time = now()
     N_T = length(res.tlist) - 1
-    for l = 1:L
+    for l in eachindex(wrk.controls)
         ϵ_opt = wrk.pulsevals[((l-1)*N_T+1):(l*N_T)]
         res.optimized_controls[l] = discretize(ϵ_opt, res.tlist)
     end
@@ -711,7 +729,7 @@ As a side effect, the evaluation sets the following information in `wrk`:
   propagators in `wrk`.
 * `wrk.result.f_calls`: Will be incremented by one (only if `count_call=true`)
 * `wrk.fg_count[2]`: Will be incremented by one (only if `count_call=true`)
-* `wrk.result.tau_vals`: For any trajectory that defines a `target_state`, the
+* `wrk.tau_vals`: For any trajectory that defines a `target_state`, the
   overlap of the propagated state with that target state.
 * `wrk.J_parts`: The parts (`J_T`, `λₐJ_a`) of the functional
 
@@ -778,11 +796,11 @@ function evaluate_functional(pulsevals, wrk; storage = nothing, count_call = tru
             end
         end
         local Ψₖ = wrk.fw_propagators[k].state
-        wrk.result.tau_vals[k] = isnothing(Ψtgt(k)) ? NaN : (Ψtgt(k) ⋅ Ψₖ)
+        wrk.tau_vals[k] = isnothing(Ψtgt(k)) ? NaN : (Ψtgt(k) ⋅ Ψₖ)
     end
     Ψ = [p.state for p ∈ wrk.fw_propagators]
     if wrk.J_T_takes_tau
-        wrk.J_parts[1] = J_T(Ψ, trajectories; tau = wrk.result.tau_vals)
+        wrk.J_parts[1] = J_T(Ψ, trajectories; tau = wrk.tau_vals)
     else
         wrk.J_parts[1] = J_T(Ψ, trajectories)
     end
@@ -826,7 +844,7 @@ information in `wrk`:
   [`evaluate_functional`](@ref).
 * `wrk.result.fg_calls`: Will be incremented by one
 * `wrk.fg_count[1]`: Will be incremented by one
-* `wrk.result.tau_vals`: For any trajectory that defines a `target_state`, the
+* `wrk.tau_vals`: For any trajectory that defines a `target_state`, the
   overlap of the propagated state with that target state.
 * `wrk.J_parts`: The parts (`J_T`, `λₐJ_a`) of the functional
 * `wrk.fw_storage`: For each trajectory, the forward-propagated states at each
@@ -880,7 +898,7 @@ function evaluate_gradient!(G, pulsevals, wrk)
     if wrk.chi_takes_tau
         # we rely on `evaluate_functional` setting the `tau_vals` as a side
         # effect
-        χ = chi(Ψ, trajectories; tau = wrk.result.tau_vals)
+        χ = chi(Ψ, trajectories; tau = wrk.tau_vals)
     else
         χ = chi(Ψ, trajectories)
     end
@@ -1030,7 +1048,7 @@ function evaluate_gradient!(G, pulsevals, wrk)
 
     end
 
-    _grad_J_T_via_chi!(wrk.grad_J_Tb, wrk.result.tau_vals, wrk.tau_grads)
+    _grad_J_T_via_chi!(wrk.grad_J_Tb, wrk.tau_vals, wrk.tau_grads)
     copyto!(G, wrk.grad_J_Tb)
     if haskey(wrk.kwargs, :grad_J_a)
         grad_J_a = get(wrk.kwargs, :grad_J_a, nothing)

@@ -76,6 +76,11 @@ unicodeplots()
         include("test_result_states.jl")
     end
 
+    println("\n* Result Consistency (test_result_consistency.jl):")
+    @time @safetestset "Result Consistency" begin
+        include("test_result_consistency.jl")
+    end
+
     println("\n* Convergence Checks (test_convergence_checks.jl):")
     @time @safetestset "Convergence Checks" begin
         include("test_convergence_checks.jl")
