@@ -8,7 +8,8 @@ using QuantumControl.QuantumPropagators.Storage:
     write_to_storage!, get_from_storage!, get_from_storage
 using QuantumControl.QuantumPropagators.Interfaces: supports_inplace
 using QuantumGradientGenerators: resetgradvec!
-using QuantumControl: set_atexit_save_optimization, @threadsif
+using QuantumControl:
+    set_atexit_save_optimization, remove_atexit_save_optimization, @threadsif
 using QuantumControl.Functionals: make_chi, make_grad_J_a
 using QuantumControl.QuantumPropagators: _StoreState
 using LinearAlgebra
@@ -116,14 +117,17 @@ function optimize(trajectories, tlist; kwargs...)
     atexit_filename = get(kwargs, :atexit_filename, nothing)
     # atexit_filename is undocumented on purpose: this is considered a feature
     # of @optimize_or_load
-    if !isnothing(atexit_filename)
-        set_atexit_save_optimization(atexit_filename, wrk.result)
-        if !isinteractive()
-            @info "Set callback to store result in $(relpath(atexit_filename)) on unexpected exit."
-            # In interactive mode, `atexit` is very unlikely, and
-            # `InterruptException` is handles via try/catch instead.
-        end
+    if !isnothing(atexit_filename) && !isinteractive()
+        @info "Set callback to store result in $(relpath(atexit_filename)) on unexpected exit."
+        # In interactive mode, `atexit` is very unlikely, and
+        # `InterruptException` is handled via try/catch instead.
     end
+    atexit_hook = nothing
+    if !isnothing(atexit_filename)
+        atexit_hook = set_atexit_save_optimization(atexit_filename, wrk.result)
+    end
+    # Nothing that could throw an exception may come between registering the
+    # hook and the `try` whose `finally` removes it
     try
         run_optimizer(optimizer, wrk, fg!, callback, check_convergence)
     catch exc
@@ -134,12 +138,14 @@ function optimize(trajectories, tlist; kwargs...)
         # optimizations (InterruptException)
         exc_msg = sprint(showerror, exc)
         wrk.result.message = "Exception: $exc_msg"
+    finally
+        # Also with `rethrow_exceptions=true`. This removes exactly the hook
+        # registered above, even if other hooks were registered in the
+        # meantime (a no-op for `atexit_hook = nothing`).
+        remove_atexit_save_optimization(atexit_hook)
     end
 
     finalize_result!(wrk)
-    if !isnothing(atexit_filename)
-        popfirst!(Base.atexit_hooks)
-    end
 
     return wrk.result
 
@@ -217,31 +223,36 @@ function update_result!(wrk::GrapeWrk, i::Int64)
     # `_finish_iteration!`. Data from each evaluation of the functional
     # (including the evaluations in a line search) is in `wrk`.
     res = wrk.result
+    # Calculate all values before modifying `res`, so that an exception (e.g.,
+    # in a user-supplied `J_a`) leaves the result for the previous iteration
+    J_a = get(wrk.kwargs, :J_a, nothing)
+    λₐ = get(wrk.kwargs, :lambda_a, 1.0)
+    if isnothing(J_a)
+        J_a_val = 0.0
+    elseif iszero(λₐ)
+        # `J_parts[2] = λₐ * J_a` does not determine `J_a` for `λₐ = 0`
+        J_a_val = J_a(wrk.pulsevals, wrk.tlist)
+    else
+        J_a_val = wrk.J_parts[2] / λₐ
+    end
+    if isnothing(get(wrk.kwargs, :g_b, nothing))
+        J_b_val = 0.0
+    else
+        # `J_b_trajectory` is from the same evaluation as `J_parts[3] = λ_b * J_b`
+        J_b_val = sum(wrk.J_b_trajectory)
+    end
+    optimized_controls = _optimized_controls(wrk)
     for (k, propagator) in enumerate(wrk.fw_propagators)
         copyto!(res.states[k], propagator.state)
     end
     copyto!(res.tau_vals, wrk.tau_vals)
-    _update_optimized_controls!(wrk)
+    copyto!(res.optimized_controls, optimized_controls)
     res.J_T_prev = res.J_T
     res.J_T = wrk.J_parts[1]
     res.J_a_prev = res.J_a
-    J_a = get(wrk.kwargs, :J_a, nothing)
-    λₐ = get(wrk.kwargs, :lambda_a, 1.0)
-    if isnothing(J_a)
-        res.J_a = 0.0
-    elseif iszero(λₐ)
-        # `J_parts[2] = λₐ * J_a` does not determine `J_a` for `λₐ = 0`
-        res.J_a = J_a(wrk.pulsevals, wrk.tlist)
-    else
-        res.J_a = wrk.J_parts[2] / λₐ
-    end
+    res.J_a = J_a_val
     res.J_b_prev = res.J_b
-    if isnothing(get(wrk.kwargs, :g_b, nothing))
-        res.J_b = 0.0
-    else
-        # `J_b_trajectory` is from the same evaluation as `J_parts[3] = λ_b * J_b`
-        res.J_b = sum(wrk.J_b_trajectory)
-    end
+    res.J_b = J_b_val
     (i > 0) && (res.iter = i)
     if res.iter >= res.iter_stop
         res.converged = true
@@ -263,14 +274,20 @@ function finalize_result!(wrk::GrapeWrk)
 end
 
 
+# The controls for `wrk.pulsevals`, discretized to the points of `tlist`
+function _optimized_controls(wrk::GrapeWrk)
+    tlist = wrk.result.tlist
+    N_T = length(tlist) - 1
+    return [
+        discretize(wrk.pulsevals[((l-1)*N_T+1):(l*N_T)], tlist) for
+        l in eachindex(wrk.controls)
+    ]
+end
+
+
 # Set `wrk.result.optimized_controls` from `wrk.pulsevals`
 function _update_optimized_controls!(wrk::GrapeWrk)
-    res = wrk.result
-    N_T = length(res.tlist) - 1
-    for l in eachindex(wrk.controls)
-        ϵ_opt = wrk.pulsevals[((l-1)*N_T+1):(l*N_T)]
-        res.optimized_controls[l] = discretize(ϵ_opt, res.tlist)
-    end
+    copyto!(wrk.result.optimized_controls, _optimized_controls(wrk))
 end
 
 

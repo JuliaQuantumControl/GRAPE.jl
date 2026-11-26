@@ -81,6 +81,11 @@ unicodeplots()
         include("test_result_consistency.jl")
     end
 
+    println("\n* Atexit Hook (test_atexit.jl):")
+    @time @safetestset "Atexit Hook" begin
+        include("test_atexit.jl")
+    end
+
     println("\n* Convergence Checks (test_convergence_checks.jl):")
     @time @safetestset "Convergence Checks" begin
         include("test_convergence_checks.jl")
