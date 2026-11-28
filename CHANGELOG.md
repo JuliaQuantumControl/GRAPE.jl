@@ -14,6 +14,9 @@ For releases pre-1.0, see the [GitHub Releases](https://github.com/JuliaQuantumC
 
 ## [Unreleased]
 
+
+## [v1.4.0] — 2026-11-27
+
 * Changed: The minimum supported version of QuantumControl is now 0.11.7 [[#128]]
 * Changed: GRAPE now requires QuantumControl 0.12 (and thus QuantumPropagators 0.10) and QuantumGradientGenerators 0.2.1
 * Fixed: With `rethrow_exceptions=true`, an exception during the optimization left the hook registered that saves the result when Julia exits during an optimization with `QuantumControl.@optimize_or_load`. At the exit of the Julia process, that hook could overwrite a later result in the same file with the partial result of the failed optimization. Also, if another `atexit` hook was registered during the optimization, the wrong hook was removed at the end of the optimization. As a result of the fix, a script with `rethrow_exceptions=true` no longer writes the partial result (with the message "Abort: ATEXIT") to the file of `QuantumControl.@optimize_or_load` when an exception ends the optimization. An interruption of the Julia process by a signal (e.g., SIGINT or SIGTERM) still saves the partial result [[#128]]
@@ -70,7 +73,8 @@ For releases pre-1.0, see the [GitHub Releases](https://github.com/JuliaQuantumC
 
 Initial stable release. No breaking changes compared to [v0.8.1].
 
-[Unreleased]: https://github.com/JuliaQuantumControl/GRAPE.jl/compare/v1.3.0..HEAD
+[Unreleased]: https://github.com/JuliaQuantumControl/GRAPE.jl/compare/v1.4.0..HEAD
+[v1.4.0]: https://github.com/JuliaQuantumControl/GRAPE.jl/releases/tag/v1.4.0
 [v1.3.0]: https://github.com/JuliaQuantumControl/GRAPE.jl/releases/tag/v1.3.0
 [v1.2.0]: https://github.com/JuliaQuantumControl/GRAPE.jl/releases/tag/v1.2.0
 [v1.1.0]: https://github.com/JuliaQuantumControl/GRAPE.jl/releases/tag/v1.1.0
