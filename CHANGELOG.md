@@ -12,7 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 For releases pre-1.0, see the [GitHub Releases](https://github.com/JuliaQuantumControl/GRAPE.jl/releases).
 
 
-## [Unreleased]
+## [v1.4.0] — 2026-11-27
 
 * Changed: The minimum supported version of QuantumControl is now 0.11.7 [[#128]]
 * Changed: GRAPE now requires QuantumControl 0.12 (and thus QuantumPropagators 0.10) and QuantumGradientGenerators 0.2.1
@@ -70,7 +70,8 @@ For releases pre-1.0, see the [GitHub Releases](https://github.com/JuliaQuantumC
 
 Initial stable release. No breaking changes compared to [v0.8.1].
 
-[Unreleased]: https://github.com/JuliaQuantumControl/GRAPE.jl/compare/v1.3.0..HEAD
+[Unreleased]: https://github.com/JuliaQuantumControl/GRAPE.jl/compare/v1.4.0..HEAD
+[v1.4.0]: https://github.com/JuliaQuantumControl/GRAPE.jl/releases/tag/v1.4.0
 [v1.3.0]: https://github.com/JuliaQuantumControl/GRAPE.jl/releases/tag/v1.3.0
 [v1.2.0]: https://github.com/JuliaQuantumControl/GRAPE.jl/releases/tag/v1.2.0
 [v1.1.0]: https://github.com/JuliaQuantumControl/GRAPE.jl/releases/tag/v1.1.0
